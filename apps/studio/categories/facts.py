@@ -808,40 +808,18 @@ def _token(trusted, number, letter):
                and not _class_letter(said, match) for match in CLASS_TOKEN.finditer(said))
 
 
-# The technology tokens a number and a letter write ("3D modellash", "5G aloqa", "4K", "1C"). Uzbek classes are
-# lettered A, B, V, G, D, so "5G" and "3D" are also classes: a token is read as technology only with a device's or a
-# medium's word right after it (`TECHNOLOGY_WORD`), never as a whole value or a class label's. A school subject's or a
-# curriculum's word is no such word: "3D texnologiya", "Texnologiya 3D dasturi asosida" and "Informatika, 5G dastur"
-# for a "3-sinf" or a "5-sinf" are classes.
-TECHNOLOGY = frozenset(('2D', '3D', '4D', '3G', '4G', '5G', '4K', '8K', '1C'))
-TECHNOLOGY_WORD = re.compile(
-    r"[  ]*-?[  ]*(?:modell\w*|model\w*|printer\w*|print\w*|skaner\w*|scanner\w*|aloqa\w*|tarmo(?:q|g['‘’ʻʼ`])\w*"
-    r"|internet\w*|network\w*|mobil\w*|video\w*|kamera\w*|camera\w*|grafika\w*|graphics?|animatsiya\w*|animation\w*"
-    r"|dizayn\w*|design\w*|ekran\w*|screen\w*|monitor\w*|televizor\w*|display\w*|film\w*|kino\w*"
-    r"|ko['‘’ʻʼ`]zoynak\w*|glasses|router\w*|modem\w*|smartfon\w*|smartphone\w*|telefon\w*|phones?"
-    r"|buxgalteriya\w*|моделир\w*|модел\w*|принтер\w*|печат\w*|сет(?:ь|и|ей|ях)"
-    r"|связ\w*|интернет\w*|видео\w*|графи\w*|бухгалтери\w*|предприяти\w*)(?![^\W\d_])",
-    re.IGNORECASE)
-
-
 def _class_letters(text, trusted, grade=False, weak=False):
     """The class letters of `text` the customer never wrote after the same number, as match objects.
 
     `weak` (a title-page line, a line or a list fact) also reads as a class a number and a letter that are the whole
     value ("7B" on a cover, "Sinf: 7B" once its label is split off) or whose number the customer wrote as their class
-    ("7B matematika" for their "7-sinf"), unless the customer wrote them as a token of their own (`_token`) or they
-    are a technology token with its technology word after it (`TECHNOLOGY`, `TECHNOLOGY_WORD`: "Texnologiya 3D
-    modellash" for a "3-sinf"), which only a class's own marks make a class (quoted, after a hyphen, beside a class's
-    or a pupil's word). "5G matematika", "Matematika, 5G" and a cover's "5G" for a "5-sinf" are a class: G is one of
-    the Uzbek class letters."""
+    ("7B matematika" for their "7-sinf"), unless the customer wrote them as a token of their own (`_token`)."""
     said = fold(trusted.said)
     found = []
     for match in CLASS_LETTER.finditer(text):
         strong = _class_letter(text, match, grade)
         whole = not text[:match.start()].strip() and not text[match.end():].strip()
-        technology = not whole and match.group(1) + match.group(3).translate(LOOKALIKES) in TECHNOLOGY \
-            and TECHNOLOGY_WORD.match(text, match.end()) is not None
-        if not strong and not (weak and not technology and (whole or match.group(1) in _class_numbers(trusted))):
+        if not strong and not (weak and (whole or match.group(1) in _class_numbers(trusted))):
             continue
         number, letter = match.group(1), fold(match.group(3))
         if re.search(rf"(?<!\d){number}\W{{0,4}}{re.escape(letter)}(?![^\W\d_])", said):

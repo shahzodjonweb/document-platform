@@ -310,10 +310,9 @@ EN_ORDINAL = re.compile(EN_ORDINAL_WORD, re.IGNORECASE)
 # A placing is read with what makes it one, never an idiom of the same words: a prize; a run of years; a Russian
 # "место" in any case but the prepositional of "на первом месте"; an Uzbek "o‘rin" bare, in the accusative or the
 # genitive, or "o‘ringa sazovor"; a place an English verb wins ("won first place", "took the second place", "came in
-# third place"). The forms an idiom shares are read where `ORDINAL_SPOT` and `ORDINAL_RANK` say.
-# The present of "egallamoq" after an accusative "o‘rinni": "Mijoz manfaati birinchi o‘rinni egallaydi" (comes first), an
-# idiom with "birinchi" only, read where `_idiom` says (`ORDINAL_IDIOM`).
-IDIOM_VERB = r"(?:egallaydi|egallab[  ]+keladi|tutadi)(?![^\W\d_])"
+# third place"). The forms an idiom shares are read where `ORDINAL_SPOT` and `ORDINAL_RANK` say. "birinchi o‘rinni
+# egallaydi" is a placing whatever its subject: the idiom "comes first" ("Mijoz manfaati birinchi o‘rinni egallaydi") is
+# blanked with it, an accepted false blank (the owner's tie-break).
 # The people a Russian ordinal after a dash ranks (`ORDINAL_RANK`): "— третий продавец банка по объёму продаж".
 RU_RANKED_PEOPLE = r"продав|менеджер|сотрудни|консультант|ученик|ученица|студент|участни|кассир|агент"
 # The people an ordinal "-highest" or "-best" ranks (`ORDINAL_PLACE`).
@@ -326,8 +325,7 @@ ORDINAL_PLACE = re.compile(
     rf"|{GAP_ORDINAL}(?:consecutive|straight|successive){GAP_ORDINAL}(?:year|time|season|month|quarter)s?"
     rf"|{GAP_ORDINAL}(?:year|time|season)s?{GAP_ORDINAL}(?:in a row|running)"
     rf"|{GAP_ORDINAL}мест(?:о|а|у|ом)|{GAP_ORDINAL}(?:год|раз|сезон|месяц|квартал)\w*{GAP_ORDINAL}подряд"
-    rf"|{GAP_ORDINAL}o{APOSTROPHE}rin(?:ni(?!{GAP_ORDINAL}{IDIOM_VERB})|i|ini|ning|ga(?={GAP_ORDINAL}sazovor))?"
-    rf"|{GAP_ORDINAL}sovrin\w*"
+    rf"|{GAP_ORDINAL}o{APOSTROPHE}rin(?:ni|i|ini|ning|ga(?={GAP_ORDINAL}sazovor))?|{GAP_ORDINAL}sovrin\w*"
     # A diploma's or an award's degree: "ikkinchi darajali diplom", "second-degree diploma".
     rf"|{GAP_ORDINAL}darajali{GAP_ORDINAL}(?:diplom|sertifikat|mukofot|faxriy{GAP_ORDINAL}yorliq|yorliq|sovrin)\w*"
     rf"|[- ]degree{GAP_ORDINAL}(?:diploma|certificate|award|prize|honou?r)s?"
@@ -355,24 +353,10 @@ ORDINAL_PLACE = re.compile(
 ORDINAL_SPOT = re.compile(rf"(?<![^\W\d_])({ORDINAL_WORD})({GAP_ORDINAL}|-)(place|places|position)(?![^\W\d_])",
                           re.IGNORECASE)
 SPOT_EXEMPT = re.compile(r"(?<![^\W\d_])(?:the|my|a|an)[  ]+$", re.IGNORECASE)
-# A position that is a job (`_position_job`): "first position as a cashier" whatever stands before it
-# (`POSITION_AS`), and a position at the company (`POSITION_AT`) whose possessive or demonstrative opens its sentence,
-# past one opening preposition (`POSITION_OWNER`), with no scope after the company (`POSITION_SCOPE`): "His first
-# position at the company was ...", "This first position at the bank taught me ...", "In her first position at the
-# company, ...". Any verb, copula or noun before the possessive makes the placing the same words make: "She held first
-# position at the company in loan sales", "She maintained her first position at the bank", "She was in her first
-# position at the company", "By sales volume, their first position at the bank ..."; so does a scope after the company:
-# "Her first position at the school in mathematics". A possessive before "first place" exempts nothing: "Her first
-# place at the science fair".
+# A job's position, with no contest's word in its sentence: "first position as a cashier". A position at the company
+# and a place of work, study or business are read as the placings the same words make ("His first position at the
+# company was ...", "Her first place of work was ..."): accepted false blanks, the owner's tie-break.
 POSITION_AS = re.compile(r"[  ]+as(?![^\W\d_])", re.IGNORECASE)
-POSITION_AT = re.compile(r"[  ]+(?:at|in|with)[  ]+(?:the|our|their|his|her|its|this|that)[  ]+"
-                         r"(?:company|firm|bank|store|shop|organi[sz]ation|school|office)(?![^\W\d_])", re.IGNORECASE)
-POSITION_OWNER = re.compile(r"[\s\"'“‘«(*•–—-]*(?:(?:in|during|after|since|from)[  ]+)?"
-                            r"(?:his|her|my|our|their|this|that)[  ]+", re.IGNORECASE)
-POSITION_SCOPE = re.compile(r"[  ]+(?:in|for|by|among|across)(?![^\W\d_])", re.IGNORECASE)
-# A place of work, employment or study is never a placing: "First place of work: a pharmacy".
-SPOT_OF = re.compile(r"[  ]+of[  ]+(?:work|employment|study|studies|residence|birth|business)(?![^\W\d_])",
-                     re.IGNORECASE)
 # The forms an idiom shares, read only beside a contest's or a ranking's word in the sentence (`CONTEST`): Uzbek
 # "ikkinchi o‘ringa chiqdi", "ikkinchi o‘rinda bo‘ldi" (never "birinchi o‘rinda turadi", "birinchi o‘ringa
 # qo‘yiladi"), Russian "на первом месте в регионе" (never "на первом месте качество"), "came first", "finished second".
@@ -414,38 +398,6 @@ ORDINAL_RANK = re.compile(
     rf"(?!{GAP_ORDINAL}line(?![^\W\d_])))"
     rf"|(?<![^\W\d_])({EN_ORDINAL_WORD})(?=[- ](?:best|highest)(?![^\W\d_]))",
     re.IGNORECASE)
-# An ordinal before an accusative "o‘rinni" and the present of "egallamoq" (`IDIOM_VERB`): a placing ("U har yili
-# sinfda birinchi o‘rinni egallaydi", "Jamoamiz kompaniyada ikkinchi o‘rinni egallab keladi") unless it is the idiom
-# "comes first" (`_idiom`): "Mijoz manfaati birinchi o‘rinni egallaydi", "Sifat biz uchun birinchi o‘rinni egallaydi".
-ORDINAL_IDIOM = re.compile(rf"(?<![^\W\d_])({ORDINAL_WORD})(?={GAP_ORDINAL}o{APOSTROPHE}rinni{GAP_ORDINAL}{IDIOM_VERB})",
-                           re.IGNORECASE)
-# The idiom's abstract subjects, a whole word right before "birinchi" (`_idiom`): the noun bare, plural or its third
-# person's ("Sifat", "Mijoz manfaati", "Bolalar xavfsizligi", "Mijozlar talabi"; the group is the third person's
-# ending), never another word of the same stem ("talaba", "sifatida", "bilimdon") nor "adolat", a given name too.
-IDIOM_SUBJECT = re.compile(
-    rf"(?:manfaat|sifat|xavfsizli[kg]|salomatli[kg]|sog{APOSTROPHE}l[iy](?:q|g{APOSTROPHE}?)|oila|ta{APOSTROPHE}lim"
-    rf"|bilim|tarbiya|halolli[kg]|mas{APOSTROPHE}uliyat|intizom|qadriyat|ishonch|axloq|odob|sabr|ehtiyoj|talab"
-    rf"|tayyorgarli[kg])(?:lar)?(i|si)?", re.IGNORECASE)
-# The one word the idiom's subject may follow: a generic beneficiary whose noun it is ("Mijoz manfaati", "Bolalar
-# xavfsizligi"), or a dative before a bare subject ("Olimpiadaga tayyorgarlik"); never a person, a name, an
-# organisation or a product ("Malika bilimi", "Kompaniya sifati", "Mebel sifati").
-IDIOM_BENEFICIARY = re.compile(rf"(?:mijoz|xaridor|bola|inson|odam|bemor|iste{APOSTROPHE}molchi|fuqaro)(?:lar)?",
-                               re.IGNORECASE)
-IDIOM_DATIVE = re.compile(r"[^\W\d_]{2,}(?:ga|kka|qqa)", re.IGNORECASE)  # never "Malika": -ka only after a k
-# Whom or what the idiom ranks for: "biz uchun", "uning hayotida".
-IDIOM_FOR = re.compile(r"(?<![^\W\d_])(?:uchun|hayotida)(?![^\W\d_])", re.IGNORECASE)
-# The adverbs of "always" between the idiom's subject and "birinchi": "Mijozlar ehtiyoji har doim birinchi ...".
-IDIOM_ALWAYS = frozenset(('doimo', 'doim', 'har', 'hamisha', 'albatta', 'ham'))
-# A respect, a means, a comparison or a ranking's scope before the ordinal, which makes the same words a placing:
-# "Sifat jihatidan mahsulotimiz ...", "Bilimi bilan u ...", "Raqobatchilarga nisbatan mebel sifati ...", "Toshkent
-# bo‘ylab ...", "Natijalarga ko‘ra ...", "Raqobatchilar orasidan ..." ("bo‘yicha" is a scope, `IDIOM_SCOPE`).
-IDIOM_NEVER = re.compile(rf"jihat(?:i|lar|lari)?dan|bilan|nisbatan|orasidan|bo{APOSTROPHE}ylab|ko{APOSTROPHE}ra"
-                         r"|yuzasidan|nazaridan|solishtirganda", re.IGNORECASE)
-# The quote marks around a name: "«Ishonch» birinchi o‘rinni egallaydi".
-IDIOM_QUOTES = frozenset('«»"“”„‘’\'`')
-# A place or a scope ranked in, which makes the same words a placing: a locative ("sinfda", "kompaniyada",
-# "mahallada", "O‘qishda", "Fan oyligida") or "bo‘yicha".
-IDIOM_SCOPE = re.compile(rf"(?<![^\W\d_])(?:[^\W\d_]{{2,}}(?:da|dagi)|bo{APOSTROPHE}yicha)(?![^\W\d_])", re.IGNORECASE)
 # An Uzbek ordinal made a noun, a placing: "ikkinchilikni qo‘lga kiritdi" in the accusative always, any other case
 # beside a contest ("tuman birinchiligida" is also the district's championship).
 ORDINAL_NOUN = re.compile(rf"(?<![^\W\d_])((?:(?:o{APOSTROPHE}n|yigirma|o{APOSTROPHE}ttiz)[ \u00a0])?[^\W\d_]+?i?nchi)"
@@ -773,17 +725,16 @@ class _Reader:
         found = [match for match in ORDINAL_PLACE.finditer(text)]
         for match in ORDINAL_SPOT.finditer(text):
             before = text[:match.start()]
-            # "a first-place finish" is a placing whatever stands before it; a place of work never is.
+            # "a first-place finish" is a placing whatever stands before it.
             first = _ordinal_value(match.group(1)) == 1
-            if before[-7:].casefold().endswith('in the ') or SPOT_OF.match(text, match.end()) or (
+            if before[-7:].casefold().endswith('in the ') or (
                     not _contest(text, match.start(), first) and match.group(2) != '-' and (
                         SPOT_EXEMPT.search(before[-8:]) or (match.group(3).casefold() == 'position'
-                                                            and _position_job(text, match)))):
+                                                            and POSITION_AS.match(text, match.end())))):
                 continue
             found.append(match)
         found += [match for match in ORDINAL_RANK.finditer(text) if _contest(text, match.start(), _ordinal_value(
             next(group for group in match.groups() if group is not None)) == 1)]
-        found += [match for match in ORDINAL_IDIOM.finditer(text) if not _idiom(text, match)]
         for match in found:
             group = next(number for number in range(1, (match.re.groups or 0) + 1)
                          if match.group(number) is not None and _ordinal_value(match.group(number)) is not None)
@@ -1001,79 +952,6 @@ def _contest(text, at, first=False):
         return False
     return not first or EN_RANKING.search(text, start, end) is not None \
         or FIRST_IN_SALES.search(text, start, end) is not None
-
-
-def _position_job(text, match):
-    """Whether an `ORDINAL_SPOT` "position" is a job: one "as" a role (`POSITION_AS`), or one at the company
-    (`POSITION_AT`) with no scope after it (`POSITION_SCOPE`) whose possessive or demonstrative, right before its
-    ordinal, opens the sentence, past one opening preposition (`POSITION_OWNER`)."""
-    if POSITION_AS.match(text, match.end()):
-        return True
-    at = POSITION_AT.match(text, match.end())
-    if at is None or POSITION_SCOPE.match(text, at.end()):
-        return False
-    start, _ = _sentence_span(text, match.start())
-    return POSITION_OWNER.fullmatch(text, start, match.start()) is not None
-
-
-def _idiom(text, match):
-    """Whether an `ORDINAL_IDIOM` match is the idiom "comes first", no placing: "birinchi" only, with an abstract noun
-    as its subject right before it (`IDIOM_SUBJECT`) past the adverbs of "always" (`IDIOM_ALWAYS`) and a "biz uchun" or
-    an "uning hayotida" (`IDIOM_FOR`) after the subject or before it ("Mijoz manfaati ...", "Sifat biz uchun ...",
-    "Malika uchun bilim ...", "Uning hayotida bilim ..."). The subject stands alone and bare ("Talab", "Ishonch", two
-    with "va": "Sifat va halollik"), or after one word: a generic beneficiary whose noun it is ("Mijozlar ehtiyoji",
-    "Bolalar xavfsizligi") or a dative before it bare ("Olimpiadaga tayyorgarlik"; `IDIOM_BENEFICIARY`,
-    `IDIOM_DATIVE`). Never with a person, a name or an organisation or a product as its subject or its owner ("Jamoa
-    uchun u doimo ...", "Har yili Adolat ...", "Malika bilimi ...", "Bilimi doimo ...", "Do‘konimiz mahsulotlari sifati
-    ...", "Kompaniya sifati ...", "Mahsulotimiz sifati ..."), a quoted or a capitalised word inside the sentence
-    ("«Ishonch» ..."), after "jihatidan", "bilan" or a comparison's or a ranking's scope (`IDIOM_NEVER`), with a place
-    or "bo‘yicha" scope in its sentence (`IDIOM_SCOPE`), nor with a contest (`CONTEST`) but one the idiom's "uchun" or
-    "hayotida" subject is about, outside the locative. The idiom said with a place ("Kompaniyamizda mijoz manfaati
-    birinchi o‘rinni egallaydi") or after a noun that is no beneficiary ("Mahsulot sifati ...") is read as the placing
-    the same words make: an accepted false blank, the owner's tie-break."""
-    if _ordinal_value(match.group(1)) != 1:
-        return False
-    start, end = _sentence_span(text, match.start())
-    before = text[start:match.start()]
-    if any(found.group(0).casefold() != 'hayotida' for found in IDIOM_SCOPE.finditer(text, start, end)):
-        return False
-    # A contest's word is the placing's place unless it is what the idiom's subject is about ("Olimpiadaga tayyorgarlik
-    # uning hayotida birinchi o‘rinni egallaydi"): with "uchun" or "hayotida", a contest not in the locative.
-    contests = list(CONTEST.finditer(text, start, end))
-    if contests and not (IDIOM_FOR.search(before) and not any(
-            re.search(r"(?:da|dagi)$", found.group(0), re.IGNORECASE) for found in contests)):
-        return False
-    words = list(re.finditer(rf"[^\W\d_]+(?:{APOSTROPHE}[^\W\d_]+)*", text[:match.start()]))
-    words = [word for word in words if word.start() >= start]
-    if any(IDIOM_NEVER.fullmatch(word.group(0)) for word in words):
-        return False
-    first = words[0].start() if words else -1
-
-    def named(word):
-        """A capitalised word inside the sentence or a quoted one: a name."""
-        return (word.group(0)[0].isupper() and word.start() != first) or \
-            text[word.start() - 1:word.start()] in IDIOM_QUOTES or text[word.end():word.end() + 1] in IDIOM_QUOTES
-
-    words = [word for word in words if word.group(0).casefold() not in IDIOM_ALWAYS]
-    if len(words) >= 2 and IDIOM_FOR.fullmatch(words[-1].group(0)):
-        del words[-2:]
-    whom = [index for index, word in enumerate(words) if IDIOM_FOR.fullmatch(word.group(0))]
-    if whom:
-        del words[:whom[-1] + 1]
-    # Two bare abstract nouns: "Sifat va halollik ...".
-    pair = [IDIOM_SUBJECT.fullmatch(word.group(0)) for word in words[::2]] if len(words) == 3 else []
-    if pair and words[1].group(0).casefold() in ('va', 'hamda') and all(
-            found is not None and found.group(1) is None for found in pair):
-        del words[:2]
-    if not words or len(words) > 2:
-        return False
-    subject = IDIOM_SUBJECT.fullmatch(words[-1].group(0))
-    if subject is None or any(named(word) for word in words):
-        return False
-    if len(words) == 1:
-        return subject.group(1) is None
-    return IDIOM_BENEFICIARY.fullmatch(words[0].group(0)) is not None or (
-        subject.group(1) is None and IDIOM_DATIVE.fullmatch(words[0].group(0)) is not None)
 
 
 @functools.lru_cache(maxsize=8192)

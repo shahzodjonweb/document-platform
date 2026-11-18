@@ -27,7 +27,7 @@ open work. Every person, organisation, figure and source here is invented.
 """
 import copy
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import pytest
 
@@ -98,6 +98,18 @@ def guard(id, direction, brief, locale, value, **more):
 
 def supported(id, direction, brief, locale, kind, value, **more):
     return Case(id, direction, brief, locale, 'value', value, call=f'supported:{kind}', **more)
+
+
+def removed(keep, gone, pair, listed=False):
+    """The cases a keep becomes once the exemption it was made for is removed (round 5, the owner's decision: four
+    exemptions kept leaking paraphrases, so a position at the company, a place of work, the idiom "birinchi o‘rinni
+    egallaydi" and a technology token are read as c491da9 reads them). The model's words are an accepted false blank
+    paid for by `pair`, a blank case c491da9 blanks too. A keep id the core list names (`listed`) still exists,
+    repointed to the customer's own words: their brief says the same, and the paper keeps it."""
+    said = keep.value if keep.value.endswith('.') else keep.value + '.'
+    blank = replace(keep, id=keep.id.removesuffix('-' + KEEP) + '-' + ACCEPTED, direction=ACCEPTED, gone=gone,
+                    pair=pair)
+    return [replace(keep, brief=f'{keep.brief} {said}'), blank] if listed else [blank]
 
 
 # ---------------------------------------------------------------- briefs (the customer's messages, from the probes)
@@ -1715,8 +1727,9 @@ CASES += [
          facts=(('secretary', 'Katta o‘qituvchi Hikmat Rahim'),)),
 ]
 
-# ---- An Uzbek Cyrillic brief's "7-синф" is the customer's class number (final re-check, must 3, from e4f9b7e); a
-# technology token equal to the class number is no class letter (should, from e4f9b7e).
+# ---- An Uzbek Cyrillic brief's "7-синф" is the customer's class number (final re-check, must 3, from e4f9b7e). A
+# technology token equal to the class number was no class letter (should, from e4f9b7e) until round 5 removed the
+# technology exemption: it is the class c491da9 reads, the customer's own "3D modellash" stays.
 LESSON_UZ_CYRILLIC = '7-синф математика фанидан дарс ишланмаси ёзинг, мавзу: касрлар.'
 LESSON_UZ_3 = '3-sinf texnologiya fanidan dars ishlanmasi yozing, mavzu: modellar.'
 CASES += [
@@ -1728,10 +1741,12 @@ CASES += [
          'subject', '7-sinf matematika'),
     fact('class-the-customers-cyrillic-class-letter-uz-keep', KEEP, 'pdf.dars_ishlanmasi',
          '7-«Б» синф математика фанидан дарс ишланмаси ёзинг, мавзу: касрлар.', 'uz', 'subject', '7B matematika'),
-    fact('class-technology-token-3d-equal-to-the-class-number-uz-keep', KEEP, 'pdf.dars_ishlanmasi', LESSON_UZ_3, 'uz',
-         'textbook', 'Texnologiya 3D modellash'),
-    fact('class-technology-token-5g-equal-to-the-class-number-uz-keep', KEEP, 'pdf.dars_ishlanmasi',
-         '5-sinf informatika dars ishlanmasi, mavzu: aloqa.', 'uz', 'subject', 'Informatika: 5G aloqa'),
+    *removed(fact('class-technology-token-3d-equal-to-the-class-number-uz-keep', KEEP, 'pdf.dars_ishlanmasi',
+                  LESSON_UZ_3, 'uz', 'textbook', 'Texnologiya 3D modellash'),
+             ('3D',), 'class-technology-shaped-letter-3d-before-model-darsi-uz-blank', listed=True),
+    *removed(fact('class-technology-token-5g-equal-to-the-class-number-uz-keep', KEEP, 'pdf.dars_ishlanmasi',
+                  '5-sinf informatika dars ishlanmasi, mavzu: aloqa.', 'uz', 'subject', 'Informatika: 5G aloqa'),
+             ('5G',), 'class-technology-shaped-letter-3d-before-aloqa-madaniyati-uz-blank', listed=True),
     fact('class-letter-after-the-customers-class-number-in-a-textbook-line-uz-blank', BLANK, 'pdf.dars_ishlanmasi',
          LESSON_UZ_3, 'uz', 'textbook', 'Texnologiya 3B', gone=('3B',)),
     fact('class-technology-token-beside-a-class-word-uz-blank', BLANK, 'pdf.dars_ishlanmasi', LESSON_UZ_3, 'uz',
@@ -1739,7 +1754,8 @@ CASES += [
 ]
 
 # ---- Placings written as ordinal words (final re-check, must 4, an old limit): read beside a contest, a diploma or
-# a ranking; a place of work, a position at a company and the idiom "birinchi o‘rinni egallaydi" place nothing.
+# a ranking. A place of work, a position at a company and the idiom "birinchi o‘rinni egallaydi" placed nothing until
+# round 5 removed those exemptions: they are the placings c491da9 reads, the customer's own words stay.
 CASES += [
     gp('numbers-ordinal-with-boldi-beside-an-olympiad-uz-blank', BLANK, REFERENCE_UZ, 'uz',
        'Viloyat olimpiadasida uchinchi bo‘ldi.', gone=('uchinchi',)),
@@ -1767,12 +1783,18 @@ CASES += [
        'Viloyat olimpiadasida har yili birinchi o‘rinni egallaydi.', gone=('birinchi',)),
     gp('numbers-first-place-accusative-present-in-a-region-uz-blank', BLANK, PLAN_UZ, 'uz',
        'Nonvoyxonamiz viloyatda birinchi o‘rinni egallaydi.', gone=('birinchi',)),
-    gp('numbers-her-first-place-of-work-en-keep', KEEP, RECOMMENDATION_EN, 'en', 'Her first place of work was a pharmacy.'),
-    gp('numbers-his-first-position-at-the-company-en-keep', KEEP, RECOMMENDATION_EN, 'en',
-       'His first position at the company was junior accountant.'),
-    gp('numbers-this-first-place-of-employment-en-keep', KEEP, COVER_EN, 'en',
-       'This first place of employment taught me discipline.'),
-    gp('numbers-first-place-accusative-idiom-uz-keep', KEEP, REFERENCE_UZ, 'uz', 'Mijoz manfaati birinchi o‘rinni egallaydi.'),
+    *removed(gp('numbers-her-first-place-of-work-en-keep', KEEP, RECOMMENDATION_EN, 'en',
+                'Her first place of work was a pharmacy.'),
+             ('first',), 'numbers-her-first-place-of-study-an-olympiad-en-blank', listed=True),
+    *removed(gp('numbers-his-first-position-at-the-company-en-keep', KEEP, RECOMMENDATION_EN, 'en',
+                'His first position at the company was junior accountant.'),
+             ('first',), 'numbers-her-first-position-at-the-company-in-loan-sales-en-blank', listed=True),
+    *removed(gp('numbers-this-first-place-of-employment-en-keep', KEEP, COVER_EN, 'en',
+                'This first place of employment taught me discipline.'),
+             ('first',), 'numbers-held-first-place-of-study-in-a-cover-letter-en-blank', listed=True),
+    *removed(gp('numbers-first-place-accusative-idiom-uz-keep', KEEP, REFERENCE_UZ, 'uz',
+                'Mijoz manfaati birinchi o‘rinni egallaydi.'),
+             ('birinchi',), 'numbers-first-place-of-quality-in-a-region-uz-blank', listed=True),
     gp('numbers-came-first-to-arrive-uz-keep', KEEP, REFERENCE_UZ, 'uz', 'U darsga har doim birinchi bo‘lib keladi.'),
     gp('numbers-first-rate-importance-uz-keep', KEEP, PLAN_UZ, 'uz', 'Sifat biz uchun birinchi darajali ahamiyatga ega.'),
     gp('numbers-second-contest-of-mine-ru-keep', KEEP, COVER_RU, 'ru', 'Это был мой второй конкурс продавцов.'),
@@ -1878,7 +1900,7 @@ CASES += [
 # ---- A technology token is no class letter only beside a technology word (must, from 595f182): Uzbek classes are
 # lettered A, B, V, G, D, so the paper's "5G" and "3D" for the customer's "5-sinf" and "3-sinf" are invented classes
 # unless "modellash", "aloqa", "printer" or such stands beside them. The whole value and a class label's value are
-# always a class.
+# always a class. Round 5 removed the technology exemption: beside "printer" too the token is the class c491da9 reads.
 LESSON_UZ_5 = '5-sinf matematika fanidan dars ishlanmasi yozing, mavzu: kasrlar.'
 for number, letter in (('5', 'G'), ('3', 'D'), ('4', 'G'), ('2', 'D')):
     brief = f'{number}-sinf matematika fanidan dars ishlanmasi yozing, mavzu: kasrlar.'
@@ -1898,8 +1920,9 @@ CASES += [
          '5-синф математика дарс ишланмаси, мавзу: касрлар.', 'uz', 'textbook', 'Matematika, 5G', gone=('5G',)),
     fact('class-technology-shaped-letter-after-a-subject-word-uz-blank', BLANK, 'pdf.dars_ishlanmasi', LESSON_UZ_3,
          'uz', 'textbook', 'Texnologiya, 3D', gone=('3D',)),
-    fact('class-technology-token-beside-a-printer-uz-keep', KEEP, 'pdf.dars_ishlanmasi', LESSON_UZ_3, 'uz', 'textbook',
-         'Texnologiya: 3D printer bilan ishlash'),
+    *removed(fact('class-technology-token-beside-a-printer-uz-keep', KEEP, 'pdf.dars_ishlanmasi', LESSON_UZ_3, 'uz',
+                  'textbook', 'Texnologiya: 3D printer bilan ishlash'),
+             ('3D',), 'class-technology-shaped-letter-3d-before-printsiplari-uz-blank', listed=True),
     # A technology token with no technology word beside it reads as the class it may be: the blank is the price of
     # "5G matematika".
     fact('class-technology-token-with-no-technology-word-uz-accepted_false_blank', ACCEPTED, 'pdf.dars_ishlanmasi',
@@ -1909,7 +1932,8 @@ CASES += [
 
 # ---- "o‘rinni egallaydi" is the idiom "comes first" only with "birinchi", an abstract subject or "uchun"/"hayotida",
 # and no place or "bo‘yicha" scope (must, from bdfb210): any other ordinal, and a locative or "bo‘yicha" beside it,
-# make it a placing.
+# make it a placing. Round 5 removed the idiom exemption: "birinchi o‘rinni egallaydi" is always the placing c491da9
+# reads.
 CASES += [
     gp('numbers-first-place-present-in-a-class-uz-blank', BLANK, REFERENCE_UZ, 'uz',
        'U har yili sinfda birinchi o‘rinni egallaydi.', gone=('birinchi',)),
@@ -1933,12 +1957,15 @@ CASES += [
          'achievements', 'U har yili sinfda birinchi o‘rinni egallaydi.', gone=('birinchi',)),
     body('numbers-first-place-present-in-a-cover-letter-uz-blank', BLANK, 'pdf.xat.ishga_kirish', COVER_UZ, 'uz',
          'fit', 'Filialimiz sotuv bo‘yicha birinchi o‘rinni egallaydi.', gone=('birinchi',)),
-    gp('numbers-first-place-idiom-for-me-uz-keep', KEEP, COVER_UZ, 'uz',
-       'Men uchun mijoz manfaati birinchi o‘rinni egallaydi.'),
-    gp('numbers-first-place-idiom-in-her-life-uz-keep', KEEP, REFERENCE_UZ, 'uz',
-       'Uning hayotida bilim birinchi o‘rinni egallaydi.'),
-    gp('numbers-first-place-idiom-quality-for-us-uz-keep', KEEP, PLAN_UZ, 'uz',
-       'Sifat biz uchun birinchi o‘rinni egallaydi.'),
+    *removed(gp('numbers-first-place-idiom-for-me-uz-keep', KEEP, COVER_UZ, 'uz',
+                'Men uchun mijoz manfaati birinchi o‘rinni egallaydi.'),
+             ('birinchi',), 'numbers-first-place-present-for-teachers-by-a-names-upbringing-uz-blank', listed=True),
+    *removed(gp('numbers-first-place-idiom-in-her-life-uz-keep', KEEP, REFERENCE_UZ, 'uz',
+                'Uning hayotida bilim birinchi o‘rinni egallaydi.'),
+             ('birinchi',), 'numbers-first-place-present-in-her-own-life-by-a-pronoun-uz-blank', listed=True),
+    *removed(gp('numbers-first-place-idiom-quality-for-us-uz-keep', KEEP, PLAN_UZ, 'uz',
+                'Sifat biz uchun birinchi o‘rinni egallaydi.'),
+             ('birinchi',), 'numbers-first-place-present-for-us-by-a-pronoun-always-uz-blank', listed=True),
     # The idiom said with a place reads as the placing the same words make: the blank is the price of "Mahsulot
     # sifati viloyatda birinchi o‘rinni egallaydi" (re-check of round 2, below).
     gp('numbers-first-place-idiom-in-a-company-uz-accepted_false_blank', ACCEPTED, COVER_UZ, 'uz',
@@ -1946,8 +1973,9 @@ CASES += [
        pair='numbers-first-place-of-quality-in-a-region-uz-blank'),
 ]
 
-# ---- A possessive or a demonstrative before "first place" exempts nothing (must, from bdfb210): only a place of
-# work, study, residence or business (`SPOT_OF`) and a position at the company or as a job are no placing.
+# ---- A possessive or a demonstrative before "first place" exempts nothing (must, from bdfb210): only a position as
+# a job is no placing. Round 5 removed the exemptions of a place of work, study, residence or business and of a
+# position at the company: they are the placings c491da9 reads.
 CASES += [
     gp('numbers-her-first-place-at-a-science-fair-en-blank', BLANK, RECOMMENDATION_EN, 'en',
        'Her first place at the regional science fair shows her talent.', gone=('first',)),
@@ -1967,8 +1995,9 @@ CASES += [
          'evidence', 'Her first place at the regional science fair shows her talent.', gone=('first',)),
     gp('numbers-her-first-position-as-a-job-en-keep', KEEP, RECOMMENDATION_EN, 'en',
        'Her first position as a cashier taught her patience.'),
-    gp('numbers-their-first-place-of-business-en-keep', KEEP, COVER_EN, 'en',
-       'Their first place of business was a market stall.'),
+    *removed(gp('numbers-their-first-place-of-business-en-keep', KEEP, COVER_EN, 'en',
+                'Their first place of business was a market stall.'),
+             ('first',), 'numbers-her-first-place-of-study-an-olympiad-en-blank', listed=True),
 ]
 
 # ---- A title-case law name goes on in lower case through "of" and its noun phrase and through noun modifiers (must,
@@ -2469,14 +2498,16 @@ CASES += [
 # ---- The idiom's accepted blank is paid for by a placing the same words make (should, matrix): "birinchi", an
 # abstract subject among the first two words and a place. A need comes first as an interest does, and a contest the
 # idiom's "hayotida" subject is about places nothing (round 1's sweep, from 2ea06f3); the same idiom said at a
-# workplace is the placing's accepted price.
+# workplace is the placing's accepted price. Round 5 removed the idiom exemption: every such idiom is that price now.
 CASES += [
     gp('numbers-first-place-of-quality-in-a-region-uz-blank', BLANK, PLAN_UZ, 'uz',
        'Mahsulot sifati viloyatda birinchi o‘rinni egallaydi.', gone=('birinchi',)),
-    gp('numbers-first-place-idiom-customers-needs-uz-keep', KEEP, COVER_UZ, 'uz',
-       'Mijozlar ehtiyoji har doim birinchi o‘rinni egallaydi.'),
-    gp('numbers-first-place-idiom-preparing-for-an-olympiad-in-her-life-uz-keep', KEEP, REFERENCE_UZ, 'uz',
-       'Olimpiadaga tayyorgarlik uning hayotida birinchi o‘rinni egallaydi.'),
+    *removed(gp('numbers-first-place-idiom-customers-needs-uz-keep', KEEP, COVER_UZ, 'uz',
+                'Mijozlar ehtiyoji har doim birinchi o‘rinni egallaydi.'),
+             ('birinchi',), 'numbers-first-place-present-by-a-full-names-knowledge-uz-blank', listed=True),
+    *removed(gp('numbers-first-place-idiom-preparing-for-an-olympiad-in-her-life-uz-keep', KEEP, REFERENCE_UZ, 'uz',
+                'Olimpiadaga tayyorgarlik uning hayotida birinchi o‘rinni egallaydi.'),
+             ('birinchi',), 'numbers-first-place-at-an-olympiad-in-her-life-uz-blank', listed=True),
     gp('numbers-first-place-at-an-olympiad-in-her-life-uz-blank', BLANK, REFERENCE_UZ, 'uz',
        'Hayotida ilk bor olimpiadada birinchi o‘rinni egallaydi.', gone=('birinchi',)),
     gp('numbers-first-place-idiom-at-my-workplace-uz-accepted_false_blank', ACCEPTED, COVER_UZ, 'uz',
@@ -2500,10 +2531,11 @@ for word, sentence in (('manti', 'Manti sell best in winter.'), ('mahalla', 'Mah
 # Three exemptions of round 3 kept what c491da9 blanked: a position at the company held by a placing verb, the idiom
 # "birinchi o‘rinni egallaydi" with a person, a name or a product as its subject, and a technology token before a
 # school subject's or a curriculum's word. The leaks are pinned as blanks next to the keeps the exemptions were made
-# for.
+# for. Round 5 removed the three exemptions: the keeps are accepted false blanks those leaks pay for.
 
 # ---- A position at the company is a job only after a possessive or a demonstrative, never after a placing verb
-# (must, from bdfb210 and 800bc39); "first position as ..." stays a job as in c491da9.
+# (must, from bdfb210 and 800bc39); "first position as ..." stays a job as in c491da9. Round 5 removed the exemption
+# of a position at the company: after a possessive too it is the placing c491da9 reads.
 CASES += [
     gp('numbers-held-first-position-at-the-company-in-loan-sales-en-blank', BLANK, COVER_EN, 'en',
        'She held first position at the company in loan sales.', gone=('first',)),
@@ -2548,16 +2580,21 @@ CASES += [
     body('numbers-took-first-position-at-the-school-in-a-recommendation-en-blank', BLANK, 'pdf.xat.tavsiya',
          RECOMMENDATION_EN, 'en', 'evidence', 'She took first position at the school in mathematics.',
          gone=('first',)),
-    gp('numbers-her-first-position-at-the-bank-en-keep', KEEP, RECOMMENDATION_EN, 'en',
-       'Her first position at the bank was in the loans department.'),
-    gp('numbers-their-first-position-at-the-firm-en-keep', KEEP, RECOMMENDATION_EN, 'en',
-       'Their first position at the firm was an internship.'),
-    gp('numbers-this-first-position-at-the-company-en-keep', KEEP, COVER_EN, 'en',
-       'This first position at the company taught me discipline.'),
-    gp('numbers-that-first-position-at-the-store-en-keep', KEEP, COVER_EN, 'en',
-       'That first position at the store taught me patience.'),
-    gp('numbers-in-her-first-position-at-the-company-en-keep', KEEP, RECOMMENDATION_EN, 'en',
-       'In her first position at the company, she learned to listen to clients.'),
+    *removed(gp('numbers-her-first-position-at-the-bank-en-keep', KEEP, RECOMMENDATION_EN, 'en',
+                'Her first position at the bank was in the loans department.'),
+             ('first',), 'numbers-her-first-position-at-the-company-in-loan-sales-en-blank', listed=True),
+    *removed(gp('numbers-their-first-position-at-the-firm-en-keep', KEEP, RECOMMENDATION_EN, 'en',
+                'Their first position at the firm was an internship.'),
+             ('first',), 'numbers-their-first-position-at-the-bank-for-deposit-growth-en-blank', listed=True),
+    *removed(gp('numbers-this-first-position-at-the-company-en-keep', KEEP, COVER_EN, 'en',
+                'This first position at the company taught me discipline.'),
+             ('first',), 'numbers-kept-this-first-position-at-the-company-en-blank', listed=True),
+    *removed(gp('numbers-that-first-position-at-the-store-en-keep', KEEP, COVER_EN, 'en',
+                'That first position at the store taught me patience.'),
+             ('first',), 'numbers-maintained-that-first-position-at-the-bank-en-blank', listed=True),
+    *removed(gp('numbers-in-her-first-position-at-the-company-en-keep', KEEP, RECOMMENDATION_EN, 'en',
+                'In her first position at the company, she learned to listen to clients.'),
+             ('first',), 'numbers-in-loan-sales-her-first-position-at-the-company-en-blank', listed=True),
     gp('numbers-my-first-position-as-an-analyst-en-keep', KEEP, COVER_EN, 'en',
        'My first position as an analyst taught me to check every figure.'),
     gp('numbers-took-her-first-position-as-an-analyst-en-keep', KEEP, RECOMMENDATION_EN, 'en',
@@ -2573,6 +2610,7 @@ CASES += [
 # "birinchi", past an adverb of "always" and a "... uchun" or "... hayotida" (must, from 2ea06f3 and d4eeef4): a
 # person, a name or a possessed organisation or product as the subject, a genitive or an "our" before the abstract
 # noun ("Uning bilimi", "Mahsulotimiz sifati"), and "jihatidan", "bilan" or "bo‘yicha" before it make it a placing.
+# Round 5 removed the idiom exemption: with an abstract subject too it is the placing c491da9 reads.
 OFFER_UZ_FURNITURE = ('Mebel do‘konimiz uchun tijorat taklifi yozing, Toshkentda oshxona mebeli sotamiz, '
                       'chegirma 10 foiz.')
 ESSAY_UZ_EDUCATION = 'Ta’lim sifati mavzusida mustaqil ish yozib bering.'
@@ -2625,17 +2663,24 @@ CASES += [
     body('numbers-first-place-present-in-quality-in-an-offer-uz-blank', BLANK, 'pdf.biz.tijorat_taklifi',
          OFFER_UZ_FURNITURE, 'uz', 'advantages', 'Sifat jihatidan mahsulotimiz birinchi o‘rinni egallaydi.',
          gone=('birinchi',)),
-    gp('numbers-first-place-idiom-knowledge-for-a-name-uz-keep', KEEP, REFERENCE_UZ, 'uz',
-       'Malika uchun bilim birinchi o‘rinni egallaydi.'),
-    gp('numbers-first-place-idiom-demand-uz-keep', KEEP, PLAN_UZ, 'uz', 'Talab birinchi o‘rinni egallaydi.'),
-    gp('numbers-first-place-idiom-clients-demands-for-us-uz-keep', KEEP, PLAN_UZ, 'uz',
-       'Mijozlar talabi biz uchun birinchi o‘rinni egallaydi.'),
-    gp('numbers-first-place-idiom-safety-always-for-us-uz-keep', KEEP, PLAN_UZ, 'uz',
-       'Biz uchun xavfsizlik har doim birinchi o‘rinni egallaydi.'),
-    gp('numbers-first-place-idiom-childrens-safety-uz-keep', KEEP, PLAN_UZ, 'uz',
-       'Bolalar xavfsizligi birinchi o‘rinni egallaydi.'),
-    gp('numbers-first-place-idiom-family-in-her-life-uz-keep', KEEP, REFERENCE_UZ, 'uz',
-       'Oila uning hayotida birinchi o‘rinni egallaydi.'),
+    *removed(gp('numbers-first-place-idiom-knowledge-for-a-name-uz-keep', KEEP, REFERENCE_UZ, 'uz',
+                'Malika uchun bilim birinchi o‘rinni egallaydi.'),
+             ('birinchi',), 'numbers-first-place-present-for-a-class-by-a-name-uz-blank', listed=True),
+    *removed(gp('numbers-first-place-idiom-demand-uz-keep', KEEP, PLAN_UZ, 'uz', 'Talab birinchi o‘rinni egallaydi.'),
+             ('birinchi',), 'numbers-first-place-present-by-a-name-that-is-an-abstract-noun-uz-blank', listed=True),
+    *removed(gp('numbers-first-place-idiom-clients-demands-for-us-uz-keep', KEEP, PLAN_UZ, 'uz',
+                'Mijozlar talabi biz uchun birinchi o‘rinni egallaydi.'),
+             ('birinchi',), 'numbers-first-place-present-for-us-by-a-names-knowledge-uz-blank', listed=True),
+    *removed(gp('numbers-first-place-idiom-safety-always-for-us-uz-keep', KEEP, PLAN_UZ, 'uz',
+                'Biz uchun xavfsizlik har doim birinchi o‘rinni egallaydi.'),
+             ('birinchi',), 'numbers-first-place-present-for-us-by-a-pronoun-always-uz-blank', listed=True),
+    *removed(gp('numbers-first-place-idiom-childrens-safety-uz-keep', KEEP, PLAN_UZ, 'uz',
+                'Bolalar xavfsizligi birinchi o‘rinni egallaydi.'),
+             ('birinchi',), 'numbers-first-place-present-by-a-names-knowledge-without-the-genitive-uz-blank',
+             listed=True),
+    *removed(gp('numbers-first-place-idiom-family-in-her-life-uz-keep', KEEP, REFERENCE_UZ, 'uz',
+                'Oila uning hayotida birinchi o‘rinni egallaydi.'),
+             ('birinchi',), 'numbers-first-place-present-in-her-own-life-by-a-pronoun-uz-blank', listed=True),
     # The idiom said in a field ("sohasida", a locative) reads as the placing the same words make, as at a company or
     # a workplace above: the blank is the price of "Mahsulot sifati viloyatda birinchi o‘rinni egallaydi" (c491da9
     # blanks it too).
@@ -2655,7 +2700,8 @@ CASES += [
 
 # ---- A technology token is no class letter only before a device's or a medium's word, never a school subject's or
 # a curriculum's (must, from f5904a5): "3D texnologiya", "Texnologiya 3D dasturi asosida" and "Informatika, 5G dastur"
-# for the customer's "3-sinf" and "5-sinf" are invented classes; "3D modellash", "3D printer", "5G aloqa" stay.
+# for the customer's "3-sinf" and "5-sinf" are invented classes; "3D modellash", "3D printer", "5G aloqa" stayed until
+# round 5 removed the technology exemption: they are the classes c491da9 reads, the customer's own tokens stay.
 for number, letter in (('3', 'D'), ('4', 'D'), ('5', 'G'), ('4', 'G'), ('2', 'D')):
     brief = f'{number}-sinf texnologiya fanidan dars ishlanmasi yozing, mavzu: qog‘oz bilan ishlash.'
     token = number + letter
@@ -2681,32 +2727,41 @@ CASES += [
          'ru', 'subject', '3D технология', gone=('3D',)),
     fact('class-technology-shaped-letter-3d-before-programma-ru-blank', BLANK, 'pdf.dars_ishlanmasi', LESSON_RU_3,
          'ru', 'textbook', 'Технология, 3D программа', gone=('3D',)),
-    fact('class-technology-token-5g-before-tarmoq-uz-keep', KEEP, 'pdf.dars_ishlanmasi', LESSON_UZ_5_NETWORKS, 'uz',
-         'textbook', 'Informatika: 5G tarmoq'),
-    fact('class-technology-token-3d-before-modellash-uz-keep', KEEP, 'pdf.dars_ishlanmasi', LESSON_UZ_3_PAPER, 'uz',
-         'subject', '3D modellash'),
-    fact('class-technology-token-3d-before-printer-uz-keep', KEEP, 'pdf.dars_ishlanmasi', LESSON_UZ_3_PAPER, 'uz',
-         'textbook', 'Texnologiya: 3D printer'),
-    fact('class-technology-token-3d-before-grafika-uz-keep', KEEP, 'pdf.dars_ishlanmasi', LESSON_UZ_3_PAPER, 'uz',
-         'textbook', 'Texnologiya: 3D grafika asoslari'),
-    fact('class-technology-token-2d-before-animatsiya-uz-keep', KEEP, 'pdf.dars_ishlanmasi',
-         '2-sinf texnologiya fanidan dars ishlanmasi yozing, mavzu: multfilm.', 'uz', 'textbook',
-         'Texnologiya: 2D animatsiya'),
-    fact('class-technology-token-5g-before-aloqa-uz-keep', KEEP, 'pdf.dars_ishlanmasi', LESSON_UZ_5_NETWORKS, 'uz',
-         'subject', 'Informatika: 5G aloqa'),
-    fact('class-technology-token-3d-before-modelirovanie-ru-keep', KEEP, 'pdf.dars_ishlanmasi', LESSON_RU_3, 'ru',
-         'textbook', 'Технология: 3D моделирование'),
+    *removed(fact('class-technology-token-5g-before-tarmoq-uz-keep', KEEP, 'pdf.dars_ishlanmasi',
+                  LESSON_UZ_5_NETWORKS, 'uz', 'textbook', 'Informatika: 5G tarmoq'),
+             ('5G',), 'class-technology-shaped-letter-5g-before-dastur-uz-blank', listed=True),
+    *removed(fact('class-technology-token-3d-before-modellash-uz-keep', KEEP, 'pdf.dars_ishlanmasi',
+                  LESSON_UZ_3_PAPER, 'uz', 'subject', '3D modellash'),
+             ('3D',), 'class-technology-shaped-letter-3d-before-model-darsi-uz-blank', listed=True),
+    *removed(fact('class-technology-token-3d-before-printer-uz-keep', KEEP, 'pdf.dars_ishlanmasi',
+                  LESSON_UZ_3_PAPER, 'uz', 'textbook', 'Texnologiya: 3D printer'),
+             ('3D',), 'class-technology-shaped-letter-3d-before-printsiplari-uz-blank', listed=True),
+    *removed(fact('class-technology-token-3d-before-grafika-uz-keep', KEEP, 'pdf.dars_ishlanmasi',
+                  LESSON_UZ_3_PAPER, 'uz', 'textbook', 'Texnologiya: 3D grafika asoslari'),
+             ('3D',), 'class-technology-shaped-letter-5g-before-grafika-uz-blank', listed=True),
+    *removed(fact('class-technology-token-2d-before-animatsiya-uz-keep', KEEP, 'pdf.dars_ishlanmasi',
+                  '2-sinf texnologiya fanidan dars ishlanmasi yozing, mavzu: multfilm.', 'uz', 'textbook',
+                  'Texnologiya: 2D animatsiya'),
+             ('2D',), 'class-technology-shaped-letter-2d-before-videodars-uz-blank', listed=True),
+    *removed(fact('class-technology-token-5g-before-aloqa-uz-keep', KEEP, 'pdf.dars_ishlanmasi',
+                  LESSON_UZ_5_NETWORKS, 'uz', 'subject', 'Informatika: 5G aloqa'),
+             ('5G',), 'class-technology-shaped-letter-3d-before-aloqa-madaniyati-uz-blank', listed=True),
+    *removed(fact('class-technology-token-3d-before-modelirovanie-ru-keep', KEEP, 'pdf.dars_ishlanmasi', LESSON_RU_3,
+                  'ru', 'textbook', 'Технология: 3D моделирование'),
+             ('3D',), 'class-technology-shaped-letter-4k-before-modelirovanie-zadach-ru-blank', listed=True),
 ]
 
 # ---------------------------------------------------------------- the re-check of round 4 (narrow-r1), both ways
 # Round 4's narrowings still kept what c491da9 blanked: a position at the company after a possessive with any verb the
 # list left out, the idiom "birinchi o‘rinni egallaydi" with a name, a person's or an organisation's possessed noun or
 # a comparison's scope, a technology token before a curriculum word its stem collides with, and a place of study a
-# verb holds. The leaks are pinned as blanks next to the keeps the exemptions were made for.
+# verb holds. The leaks are pinned as blanks next to the keeps the exemptions were made for. Two narrowing rounds left
+# paraphrase leaks, so round 5 removed the four exemptions (the owner's tie-break: when a leak and a false blank cannot
+# both be avoided, blank): every keep they made is an accepted false blank c491da9 has too.
 
 # ---- A position at the company is a job only where the possessive or the demonstrative opens its sentence, past one
 # opening preposition, and no scope follows it (must, from 1bd1f8e): any verb, copula or noun before the possessive
-# makes it the placing the same words make.
+# makes it the placing the same words make. Round 5: there too.
 CASES += [
     gp(f'numbers-{slug}-en-blank', BLANK, brief, 'en', sentence, gone=gone)
     for slug, brief, sentence, gone in (
@@ -2791,14 +2846,18 @@ CASES += [
     body('numbers-kept-her-first-position-at-the-school-in-a-recommendation-en-blank', BLANK, 'pdf.xat.tavsiya',
          RECOMMENDATION_EN, 'en', 'evidence',
          'She kept her first position at the school in mathematics for three years.', gone=('first',)),
-    gp('numbers-her-first-position-at-the-store-in-customer-service-en-keep', KEEP, COVER_EN, 'en',
-       'Her first position at the store was in customer service.'),
-    gp('numbers-during-his-first-position-at-the-bank-en-keep', KEEP, RECOMMENDATION_EN, 'en',
-       'During his first position at the bank, he learned to read contracts.'),
-    gp('numbers-after-her-first-position-at-the-firm-en-keep', KEEP, RECOMMENDATION_EN, 'en',
-       'After her first position at the firm, she studied accounting.'),
-    gp('numbers-her-second-position-at-the-bank-en-keep', KEEP, RECOMMENDATION_EN, 'en',
-       'Her second position at the bank was in risk management.'),
+    *removed(gp('numbers-her-first-position-at-the-store-in-customer-service-en-keep', KEEP, COVER_EN, 'en',
+                'Her first position at the store was in customer service.'),
+             ('first',), 'numbers-her-first-position-at-the-company-in-loan-sales-en-blank'),
+    *removed(gp('numbers-during-his-first-position-at-the-bank-en-keep', KEEP, RECOMMENDATION_EN, 'en',
+                'During his first position at the bank, he learned to read contracts.'),
+             ('first',), 'numbers-in-loan-sales-her-first-position-at-the-company-en-blank'),
+    *removed(gp('numbers-after-her-first-position-at-the-firm-en-keep', KEEP, RECOMMENDATION_EN, 'en',
+                'After her first position at the firm, she studied accounting.'),
+             ('first',), 'numbers-with-record-deposits-her-first-position-at-the-bank-en-blank'),
+    *removed(gp('numbers-her-second-position-at-the-bank-en-keep', KEEP, RECOMMENDATION_EN, 'en',
+                'Her second position at the bank was in risk management.'),
+             ('second',), 'numbers-kept-her-second-position-at-the-company-en-blank'),
     # A verb before the possessive, or a place after the company, reads as the placing the same words make: the blanks
     # are the price of "She maintained her first position at the bank in deposits ..." and "Her first position at the
     # company in loan sales ..." (c491da9 blanks both too).
@@ -2815,7 +2874,7 @@ CASES += [
 
 # ---- A place of work, study or business is no placing only where its ordinal or the possessive before it opens the
 # sentence and no contest or ranking stands in it (should, from bdfb210): "She held first place of study in her
-# class" is a placing.
+# class" is a placing. Round 5 removed the exemption: a place of residence or of work is the placing c491da9 reads.
 CASES += [
     gp('numbers-held-first-place-of-study-in-her-class-en-blank', BLANK, RECOMMENDATION_EN, 'en',
        'She held first place of study in her class.', gone=('first',)),
@@ -2827,9 +2886,12 @@ CASES += [
        'Her first place of study: the regional olympiad, where she took the top prize.', gone=('first',)),
     gp('numbers-her-second-place-of-study-ranked-second-en-blank', BLANK, RECOMMENDATION_EN, 'en',
        'Her second place of study was ranked second in the region.', gone=('second',)),
-    gp('numbers-his-first-place-of-residence-en-keep', KEEP, RECOMMENDATION_EN, 'en',
-       'His first place of residence was a village.'),
-    gp('numbers-first-place-of-work-opening-a-line-en-keep', KEEP, COVER_EN, 'en', 'First place of work: a pharmacy.'),
+    *removed(gp('numbers-his-first-place-of-residence-en-keep', KEEP, RECOMMENDATION_EN, 'en',
+                'His first place of residence was a village.'),
+             ('first',), 'numbers-her-first-place-of-study-an-olympiad-en-blank'),
+    *removed(gp('numbers-first-place-of-work-opening-a-line-en-keep', KEEP, COVER_EN, 'en',
+                'First place of work: a pharmacy.'),
+             ('First',), 'numbers-held-first-place-of-study-in-a-cover-letter-en-blank'),
 ]
 
 # ---- "birinchi o‘rinni egallaydi" is the idiom only with an abstract noun as its subject: bare and alone, after a
@@ -2837,7 +2899,7 @@ CASES += [
 # "Bolalar xavfsizligi"), past a "... uchun" or "... hayotida" and an adverb of "always" (must, from 89970c9). A name
 # ("Adolat"), a quoted or a capitalised word, a person's or an organisation's possessed noun ("Malika bilimi",
 # "Do‘konimiz mahsulotlari sifati", "Kompaniya sifati") and a comparison's or a ranking's scope ("nisbatan",
-# "bo‘ylab", "ko‘ra", "orasidan") make it a placing.
+# "bo‘ylab", "ko‘ra", "orasidan") make it a placing. Round 5: so does every abstract subject.
 REFERENCE_UZ_ADOLAT = ('Karimova Adolat uchun tavsifnoma yozib bering, u 9-sinf o‘quvchisi, darslarda faol.')
 REFERENCE_UZ_ADOLAT_CYRILLIC = 'Каримова Адолат учун тавсифнома ёзиб беринг, у 9-синф ўқувчиси, дарсларда фаол.'
 CASES += [
@@ -2913,16 +2975,21 @@ CASES += [
     body('numbers-first-place-present-beside-competitors-in-an-offer-uz-blank', BLANK, 'pdf.biz.tijorat_taklifi',
          OFFER_UZ_FURNITURE, 'uz', 'advantages', 'Raqobatchilarga nisbatan mebel sifati birinchi o‘rinni egallaydi.',
          gone=('birinchi',)),
-    gp('numbers-first-place-idiom-trust-always-uz-keep', KEEP, PLAN_UZ, 'uz',
-       'Ishonch doimo birinchi o‘rinni egallaydi.'),
-    gp('numbers-first-place-idiom-clients-trust-always-uz-keep', KEEP, COVER_UZ, 'uz',
-       'Mijozlar ishonchi doimo birinchi o‘rinni egallaydi.'),
-    gp('numbers-first-place-idiom-buyers-interest-for-us-uz-keep', KEEP, OFFER_UZ_FURNITURE, 'uz',
-       'Xaridorlar manfaati biz uchun doimo birinchi o‘rinni egallaydi.'),
-    gp('numbers-first-place-idiom-exam-preparation-in-her-life-uz-keep', KEEP, REFERENCE_UZ, 'uz',
-       'Imtihonga tayyorgarlik uning hayotida birinchi o‘rinni egallaydi.'),
-    gp('numbers-first-place-idiom-quality-and-honesty-uz-keep', KEEP, OFFER_UZ_FURNITURE, 'uz',
-       'Sifat va halollik birinchi o‘rinni egallaydi.'),
+    *removed(gp('numbers-first-place-idiom-trust-always-uz-keep', KEEP, PLAN_UZ, 'uz',
+                'Ishonch doimo birinchi o‘rinni egallaydi.'),
+             ('birinchi',), 'numbers-first-place-present-always-by-a-name-that-is-an-abstract-noun-uz-blank'),
+    *removed(gp('numbers-first-place-idiom-clients-trust-always-uz-keep', KEEP, COVER_UZ, 'uz',
+                'Mijozlar ishonchi doimo birinchi o‘rinni egallaydi.'),
+             ('birinchi',), 'numbers-first-place-present-always-by-a-names-knowledge-uz-blank'),
+    *removed(gp('numbers-first-place-idiom-buyers-interest-for-us-uz-keep', KEEP, OFFER_UZ_FURNITURE, 'uz',
+                'Xaridorlar manfaati biz uchun doimo birinchi o‘rinni egallaydi.'),
+             ('birinchi',), 'numbers-first-place-present-for-us-by-a-names-knowledge-uz-blank'),
+    *removed(gp('numbers-first-place-idiom-exam-preparation-in-her-life-uz-keep', KEEP, REFERENCE_UZ, 'uz',
+                'Imtihonga tayyorgarlik uning hayotida birinchi o‘rinni egallaydi.'),
+             ('birinchi',), 'numbers-first-place-at-an-olympiad-in-her-life-uz-blank'),
+    *removed(gp('numbers-first-place-idiom-quality-and-honesty-uz-keep', KEEP, OFFER_UZ_FURNITURE, 'uz',
+                'Sifat va halollik birinchi o‘rinni egallaydi.'),
+             ('birinchi',), 'numbers-first-place-present-by-a-name-and-knowledge-uz-blank'),
     gp('numbers-first-place-present-by-a-name-and-knowledge-uz-blank', BLANK, REFERENCE_UZ, 'uz',
        'Malika va bilimi birinchi o‘rinni egallaydi.', gone=('birinchi',)),
     # A noun before the abstract noun that is no generic beneficiary reads as the owner a placing ranks: the blanks are
@@ -2939,7 +3006,8 @@ CASES += [
 # and the other D tokens before a model, a printer, graphics, an animation or a film; "3G" to "5G" before a network, the
 # internet or a phone; "4K" and "8K" before a video or a screen; "1C" before accounting. A curriculum word a stem
 # collides with ("monitoring", "printsiplari", "videodars", "kinodars", "model darsi", "связная речь", "графики
-# функций") and a school subject ("dizayn va texnologiya", "Design and Technology") name no technology.
+# функций") and a school subject ("dizayn va texnologiya", "Design and Technology") name no technology. Round 5
+# removed the technology exemption: before its own device's word too the token is the class c491da9 reads.
 LESSON_UZ_N = '{}-sinf matematika fanidan dars ishlanmasi yozing, mavzu: qo‘shish va ayirish.'
 TEST_UZ_MONITORING = '{}-sinf matematika fanidan choraklik monitoring testi tuzing, 10 ta savol.'
 LESSON_RU_N = 'Напишите план урока для {} класса по русскому языку, тема: {}.'
@@ -2988,10 +3056,12 @@ CASES += [
          LESSON_EN_DESIGN, 'en', 'subject', '3D Design and Technology', gone=('3D',)),
     fact('class-technology-shaped-letter-3d-before-design-en-blank', BLANK, 'pdf.dars_ishlanmasi', LESSON_EN_DESIGN,
          'en', 'textbook', '3D design', gone=('3D',)),
-    fact('class-technology-token-3d-before-printing-en-keep', KEEP, 'pdf.dars_ishlanmasi', LESSON_EN_DESIGN, 'en',
-         'subject', '3D printing'),
-    fact('class-technology-token-3d-before-modelling-en-keep', KEEP, 'pdf.dars_ishlanmasi', LESSON_EN_DESIGN, 'en',
-         'textbook', '3D modelling'),
+    *removed(fact('class-technology-token-3d-before-printing-en-keep', KEEP, 'pdf.dars_ishlanmasi', LESSON_EN_DESIGN,
+                  'en', 'subject', '3D printing'),
+             ('3D',), 'class-technology-shaped-letter-3d-before-design-en-blank'),
+    *removed(fact('class-technology-token-3d-before-modelling-en-keep', KEEP, 'pdf.dars_ishlanmasi', LESSON_EN_DESIGN,
+                  'en', 'textbook', '3D modelling'),
+             ('3D',), 'class-technology-shaped-letter-3d-before-design-and-technology-en-blank'),
     # A bare "model" or "dizayn" after "3D" reads as the class a curriculum word makes: the blanks are the price of "2D
     # model darsi" and "3D dizayn va texnologiya" (c491da9 blanks both too).
     fact('class-technology-token-3d-before-a-bare-model-uz-accepted_false_blank', ACCEPTED, 'pdf.dars_ishlanmasi',
