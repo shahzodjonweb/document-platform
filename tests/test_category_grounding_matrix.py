@@ -1939,11 +1939,11 @@ CASES += [
        'Uning hayotida bilim birinchi o‘rinni egallaydi.'),
     gp('numbers-first-place-idiom-quality-for-us-uz-keep', KEEP, PLAN_UZ, 'uz',
        'Sifat biz uchun birinchi o‘rinni egallaydi.'),
-    # The idiom said with a place reads as the placing the same words make: the blank is the price of "Jamoamiz
-    # kompaniyada ikkinchi o‘rinni egallab keladi".
+    # The idiom said with a place reads as the placing the same words make: the blank is the price of "Mahsulot
+    # sifati viloyatda birinchi o‘rinni egallaydi" (re-check of round 2, below).
     gp('numbers-first-place-idiom-in-a-company-uz-accepted_false_blank', ACCEPTED, COVER_UZ, 'uz',
        'Kompaniyamizda mijoz manfaati birinchi o‘rinni egallaydi.', gone=('birinchi',),
-       pair='numbers-second-place-present-continuous-in-a-company-uz-blank'),
+       pair='numbers-first-place-of-quality-in-a-region-uz-blank'),
 ]
 
 # ---- A possessive or a demonstrative before "first place" exempts nothing (must, from bdfb210): only a place of
@@ -2111,7 +2111,8 @@ CASES += [
           'The law on education and the act on media apply to schools.', gone=('media',)),
     guard('laws-the-customers-law-described-as-an-act-on-en-accepted_false_blank', ACCEPTED, EDU_EN, 'en',
           'The law on education is the main act on schooling.', gone=('schooling',),
-          pair='laws-an-invented-lower-case-act-on-beside-the-customers-law-en-blank'),    # The customer's law in lower case is a citation like its title, so a year they never gave goes with it as it
+          pair='laws-an-invented-lower-case-act-on-beside-the-customers-law-en-blank'),
+    # The customer's law in lower case is a citation like its title, so a year they never gave goes with it as it
     # does with "The Law on Education first appeared in 1992".
     guard('laws-an-invented-year-of-the-customers-lower-case-law-en-blank', BLANK, EDU_EN, 'en',
           'The law on education first appeared in 1992.', gone=('1992',)),
@@ -2206,6 +2207,226 @@ CASES += [
     gp('names-uzbek-parsed-given-name-sita-en-blank', BLANK, EN_NONE, 'en', 'Sita manages the store.', gone=('Sita',)),
     gp('names-yana-opening-an-uzbek-sentence-uz-keep', KEEP, UZ_NONE, 'uz', 'Yana bir muhim jihat bor.'),
 ]
+
+# ---------------------------------------------------------------- the re-check of round 2 (fix-r2), both ways
+# Round 2 left forms of four items open and let new false blanks in: each leak is pinned here as a blank beside the
+# keep it must not cost, and each false blank as a keep beside the leak it must not reopen.
+
+# ---- The customer's own law before a verb whose -s ends as a plural noun does, or before its possessive (must, item 6,
+# from f3253a7): "ensures", "lists", "consists", "implements" and "mentions" end a law's name in title case and in
+# lower case, so the customer's law sentences stay in English, Russian and Uzbek briefs; the same verbs after an
+# invented law still take it out.
+EDU_RU_EN = 'Напишите на английском самостоятельную работу о Законе об образовании.'
+EDU_UZC_EN = 'Менга инглиз тилида мустақил иш ёзиб беринг, мавзу: Таълим тўғрисидаги қонуннинг асосий қоидалари.'
+for slug, tail in (('ensures', 'ensures equal access to schooling'), ('lists', 'lists the rights of pupils'),
+                   ('consists', 'consists of eight chapters'), ('implements', 'implements the state programme'),
+                   ('mentions', 'mentions inclusive education')):
+    for shape, law, invented in (('title', 'The Law on Education', 'The Law on Media'),
+                                 ('lower', 'The law on education', 'The law on media')):
+        for brief_slug, brief, translated in (('en', EDU_EN, None), ('ru-to-en', EDU_RU_EN, True),
+                                              ('uz-to-en', EDU_UZ_EN, True)):
+            CASES.append(guard(f'laws-the-customers-{shape}-law-on-education-{slug}-{brief_slug}-keep', KEEP, brief,
+                               'en', f'{law} {tail}.', translated=translated))
+        CASES.append(guard(f'laws-an-invented-{shape}-law-on-media-{slug}-en-blank', BLANK, EDU_EN, 'en',
+                           f'{invented} {tail}.', gone=(invented.split()[-1],)))
+    CASES.append(guard(f'laws-the-customers-law-on-education-{slug}-uz-cyrillic-to-en-keep', KEEP, EDU_UZC_EN, 'en',
+                       f'The Law on Education {tail}.', translated=True))
+# Verbs no list names before a plural or a possessive object, and the name's own possessive.
+for slug, tail in (('secures', 'secures the right to study'), ('upholds', 'upholds students’ rights'),
+                   ('reinforces', 'reinforces parents’ responsibilities'), ('affirms', 'affirms pupils’ rights'),
+                   ('motivates', 'motivates teachers'), ('equips', 'equips schools with rights'),
+                   ('balances', 'balances pupils’ rights and duties'), ('functions', 'functions as a framework'),
+                   ('exists', 'exists to protect pupils'), ('measures', 'measures school performance'),
+                   ('features', 'features a chapter on teachers'), ('assists', 'assists schools in planning')):
+    CASES += [
+        guard(f'laws-the-customers-law-on-education-{slug}-en-keep', KEEP, EDU_EN, 'en', f'The Law on Education {tail}.'),
+        guard(f'laws-the-customers-lower-case-law-on-education-{slug}-ru-to-en-keep', KEEP, EDU_RU_EN, 'en',
+              f'The law on education {tail}.', translated=True),
+        guard(f'laws-an-invented-law-on-media-{slug}-en-blank', BLANK, EDU_EN, 'en', f'The Law on Media {tail}.',
+              gone=('Media',)),
+    ]
+ACCOUNTING_UZ_EN = ('Buxgalter uchun ingliz tilida lavozim yo‘riqnomasi yozing. U Buxgalteriya hisobi to‘g‘risidagi '
+                    'qonunni bilishi kerak.')
+for slug, sentence in (('ensures', 'The Law on Accounting ensures reliable reporting.'),
+                       ('consists', 'The Law on Accounting consists of several chapters.'),
+                       ('secures', 'The Law on Accounting secures transparent reporting.'),
+                       ('insists', 'The Law on Accounting insists on timely reporting.'),
+                       ('possessive', 'The Law on Accounting’s rules apply to all firms.')):
+    for brief_slug, brief, translated in (('en', ACCOUNTING_EN, None), ('ru-to-en', JOB_RU_EN_LAW, True),
+                                          ('uz-to-en', ACCOUNTING_UZ_EN, True)):
+        CASES.append(guard(f'laws-the-customers-law-on-accounting-{slug}-{brief_slug}-keep', KEEP, brief, 'en', sentence,
+                           translated=translated))
+CASES += [
+    guard('laws-the-customers-law-on-education-possessive-en-keep', KEEP, EDU_EN, 'en',
+          'The Law on Education’s main aim is quality.'),
+    guard('laws-an-invented-law-on-auditing-ensures-en-blank', BLANK, ACCOUNTING_EN, 'en',
+          'The Law on Auditing ensures reliable reporting.', gone=('Auditing',)),
+    guard('laws-an-invented-law-possessive-en-blank', BLANK, EDU_EN, 'en', 'The Law on Media’s main aim is press freedom.',
+          gone=('Media',)),
+    guard('laws-the-customers-title-words-then-higher-possessive-en-blank', BLANK, EDU_EN, 'en',
+          'The Law on Higher Education’s main aim is research.', gone=('Higher',)),
+    guard('laws-the-customers-lower-case-words-then-funding-before-ensures-en-blank', BLANK, EDU_EN, 'en',
+          'The law on education funding ensures teacher pay.', gone=('funding',)),
+    guard('laws-the-customers-lower-case-words-after-preschool-before-lists-en-blank', BLANK, EDU_EN, 'en',
+          'The law on preschool education lists the rights of children.', gone=('preschool',)),
+    guard('laws-an-invented-lower-case-law-on-food-supplements-en-blank', BLANK, EDU_EN, 'en',
+          'The law on food supplements applies to school canteens.', gone=('supplements',)),
+]
+
+# ---- A rejected line's name before an abbreviated role or the Uzbek "tomonidan" (must, item 2, from fc1c196): "VP",
+# "SVP" are roles, and "X tomonidan tayyorlandi" holds the X as "Prepared by X" does; a role-only line holds none of
+# its common words.
+for case_id, line in (('before-vp-of-finance', 'VP of Finance Grant Fuller'), ('before-vp-finance', 'VP Finance Grant Fuller'),
+                      ('after-vp-of-finance', 'Grant Fuller VP of Finance'),
+                      ('before-svp-of-sales', 'SVP of Sales Grant Fuller')):
+    CASES.append(body(f'held-rejected-author-{case_id}-en-blank', BLANK, 'pdf.biz.hisobot', REPORT_EN, 'en', 'summary',
+                      'Grant also cut costs.', gone=('Grant',), facts=(('author', line),)))
+CASES += [
+    body('held-rejected-author-before-tomonidan-uz-blank', BLANK, 'pdf.biz.hisobot', REPORT_UZ, 'uz', 'summary',
+         'Hikmat xarajatlarni kamaytirdi.', gone=('Hikmat',), facts=(('author', 'Hikmat Rahim tomonidan tayyorlandi'),)),
+    body('held-role-only-line-vp-of-finance-holds-no-common-word-en-keep', KEEP, 'pdf.biz.hisobot', REPORT_EN, 'en',
+         'summary', 'Finance costs fell.', facts=(('author', 'VP of Finance'),)),
+    body('held-role-only-line-moliya-bolimi-tomonidan-holds-no-common-word-uz-keep', KEEP, 'pdf.biz.hisobot',
+         REPORT_UZ, 'uz', 'summary', 'Moliya bo‘limi xarajatlarni kamaytirdi.',
+         facts=(('author', 'Moliya bo‘limi tomonidan tayyorlandi'),)),
+]
+
+# ---- Placings written as ordinal words, the paraphrases round 2 left (must, item 4): the Uzbek past copula "edi" and
+# "<ordinal> natija", a Russian ordinal with no verb or after a dash and "<ordinal> строчка", the English "was second"
+# closing its clause and "second runner-up"; an ordinal before its own noun stays.
+CASES += [
+    gp('numbers-second-with-edi-in-an-olympiad-uz-blank', BLANK, REFERENCE_UZ, 'uz', 'Viloyat olimpiadasida u ikkinchi edi.',
+       gone=('ikkinchi',)),
+    gp('numbers-third-with-edim-by-sales-uz-blank', BLANK, COVER_UZ, 'uz', 'Filialimizda sotuv bo‘yicha uchinchi edim.',
+       gone=('uchinchi',)),
+    gp('numbers-second-result-in-an-olympiad-uz-blank', BLANK, REFERENCE_UZ, 'uz', 'Olimpiadada ikkinchi natijani ko‘rsatdi.',
+       gone=('ikkinchi',)),
+    gp('numbers-third-result-by-trade-volume-uz-blank', BLANK, COVER_UZ, 'uz',
+       'Savdo hajmi bo‘yicha uchinchi natijani ko‘rsatdim.', gone=('uchinchi',)),
+    gp('numbers-second-step-of-a-podium-uz-blank', BLANK, REFERENCE_UZ, 'uz',
+       'Olimpiada g‘olibi bo‘lib, ikkinchi pog‘onaga ko‘tarildi.', gone=('ikkinchi',)),
+    gp('numbers-second-in-a-sellers-ranking-with-no-verb-ru-blank', BLANK, COVER_RU, 'ru',
+       'Она вторая в рейтинге продавцов банка.', gone=('вторая',)),
+    gp('numbers-third-by-sales-with-no-verb-ru-blank', BLANK, COVER_RU, 'ru', 'По продажам она третья в филиале.',
+       gone=('третья',)),
+    gp('numbers-third-by-sales-in-a-branch-with-no-verb-ru-blank', BLANK, COVER_RU, 'ru',
+       'Она третья по продажам в нашем филиале.', gone=('третья',)),
+    gp('numbers-third-line-of-a-sales-ranking-ru-blank', BLANK, COVER_RU, 'ru', 'Она заняла третью строчку рейтинга продаж.',
+       gone=('третью',)),
+    gp('numbers-third-seller-after-a-dash-ru-blank', BLANK, COVER_RU, 'ru', 'Она — третий продавец банка по объёму продаж.',
+       gone=('третий',)),
+    gp('numbers-third-among-a-regions-managers-ru-blank', BLANK, COVER_RU, 'ru',
+       'Она оказалась третьей среди всех менеджеров региона.', gone=('третьей',)),
+    gp('numbers-was-second-closing-its-clause-en-blank', BLANK, RECOMMENDATION_EN, 'en',
+       'At the regional olympiad she was second.', gone=('second',)),
+    gp('numbers-second-runner-up-en-blank', BLANK, RECOMMENDATION_EN, 'en', 'She was second runner-up at the olympiad.',
+       gone=('second',)),
+    gp('numbers-third-best-performer-in-a-sales-ranking-en-blank', BLANK, COVER_EN, 'en',
+       'Last year I was the third best performer in the sales ranking.', gone=('third',)),
+    gp('numbers-ranked-third-among-consultants-en-blank', BLANK, COVER_EN, 'en',
+       'I ranked third in sales among 40 consultants.', gone=('third',)),
+    gp('numbers-her-second-olympiad-with-edi-uz-keep', KEEP, REFERENCE_UZ, 'uz', 'Bu uning ikkinchi olimpiadasi edi.'),
+    gp('numbers-the-second-stage-of-an-olympiad-uz-keep', KEEP, REFERENCE_UZ, 'uz',
+       'Olimpiadaning ikkinchi bosqichi may oyida bo‘ldi.'),
+    gp('numbers-the-second-part-of-an-olympiad-ru-keep', KEEP, COVER_RU, 'ru', 'Вторая часть олимпиады прошла онлайн.'),
+    gp('numbers-second-to-none-at-an-olympiad-en-keep', KEEP, RECOMMENDATION_EN, 'en',
+       'At the olympiad she was second to none in effort.'),
+    gp('numbers-her-second-olympiad-en-keep', KEEP, RECOMMENDATION_EN, 'en', 'The regional olympiad was her second.'),
+]
+
+# ---- "In sales" and "savdo bo‘yicha" are a ranking's scope only beside a ranking (should, from 3167c90): a sales
+# letter's "comes first", "put the client first", "my first position in sales" and the job title "Savdo bo‘yicha
+# menejer" place nothing; a placing in sales still goes.
+CASES += [
+    gp('numbers-the-customer-comes-first-in-sales-en-keep', KEEP, COVER_EN, 'en', 'In sales, the customer always comes first.'),
+    gp('numbers-needs-come-first-in-sales-en-keep', KEEP, COVER_EN, 'en', 'Customer needs always come first in sales.'),
+    gp('numbers-trust-comes-first-for-sales-teams-en-keep', KEEP, COVER_EN, 'en', 'For sales teams, trust comes first.'),
+    gp('numbers-service-came-first-beside-sales-en-keep', KEEP, COVER_EN, 'en',
+       'I was responsible for sales, and service always came first.'),
+    gp('numbers-listening-comes-first-in-sales-en-keep', KEEP, COVER_EN, 'en',
+       'Listening comes first in sales, and I practise it daily.'),
+    gp('numbers-put-the-client-first-in-sales-en-keep', KEEP, COVER_EN, 'en', 'I always put the client first in sales.'),
+    gp('numbers-my-first-position-in-sales-en-keep', KEEP, COVER_EN, 'en', 'My first position in sales was at a phone shop.'),
+    gp('numbers-first-in-my-family-to-work-in-sales-en-keep', KEEP, COVER_EN, 'en', 'I was first in my family to work in sales.'),
+    gp('numbers-first-in-my-team-to-finish-sales-training-en-keep', KEEP, COVER_EN, 'en',
+       'I was first in my team to finish the training in sales.'),
+    gp('numbers-sales-manager-title-beside-first-in-priority-uz-keep', KEEP, COVER_UZ, 'uz',
+       'Savdo bo‘yicha menejer sifatida men uchun mijoz doim birinchi o‘rinda turadi.'),
+    gp('numbers-sales-work-beside-first-in-priority-uz-keep', KEEP, COVER_UZ, 'uz',
+       'Sotuv bo‘yicha ishda mijoz manfaati birinchi o‘rinda.'),
+    gp('numbers-first-in-sales-across-a-region-en-blank', BLANK, COVER_EN, 'en', 'I was first in sales across the whole region.',
+       gone=('first',)),
+    gp('numbers-first-in-sales-last-year-en-blank', BLANK, COVER_EN, 'en', 'I was first in sales last year.', gone=('first',)),
+    gp('numbers-came-first-in-a-branch-sales-ranking-en-blank', BLANK, COVER_EN, 'en',
+       'I came first in the branch sales ranking.', gone=('first',)),
+    gp('numbers-finished-the-year-third-in-sales-en-blank', BLANK, COVER_EN, 'en', 'I finished the year third in sales.',
+       gone=('third',)),
+    gp('numbers-first-by-sales-uz-blank', BLANK, COVER_UZ, 'uz', 'Savdo bo‘yicha birinchi bo‘ldim.', gone=('birinchi',)),
+]
+
+# ---- A lower-case law after an adjective and its law-name word (must, item 5): "the current labour law", "the Uzbek
+# labour law" cite a law as "the current civil code" does; a field ("labour law knowledge", "a degree in labour law")
+# cites none.
+JD_EN = 'Write a job description for an HR officer at our trading company.'
+CASES += [
+    guard('laws-lower-case-uzbek-labour-law-en-blank', BLANK, JD_EN, 'en', 'She must know the Uzbek labour law.',
+          gone=('labour law',)),
+    guard('laws-lower-case-current-labour-law-en-blank', BLANK, JD_EN, 'en',
+          'She applies the current labour law to every contract.', gone=('labour law',)),
+    guard('laws-a-degree-in-labour-law-en-keep', KEEP, JD_EN, 'en', 'She holds a degree in labour law.'),
+    guard('laws-her-current-labour-law-knowledge-en-keep', KEEP, JD_EN, 'en', 'Her current labour law knowledge is strong.'),
+]
+
+# ---- A code's identifier sense after an indefinite article or an item's possessive, before "to each", "per", "for
+# VAT" or "on each", or beside another identifier code (should, from 424c38a): no code is cited; "the tax code" alone,
+# "the new tax code" and "the tax code in each filing" still are. A sentence that denies "the law about this" cites
+# none either.
+CASES += [
+    guard('laws-a-budget-code-to-each-expense-en-keep', KEEP, JOB_EN, 'en', 'He assigns a budget code to each expense.'),
+    guard('laws-the-correct-tax-code-to-each-invoice-en-keep', KEEP, JOB_EN, 'en',
+          'He applies the correct tax code to each invoice.'),
+    guard('laws-the-tax-code-for-vat-on-each-line-en-keep', KEEP, JOB_EN, 'en',
+          'The accountant enters the tax code for VAT on each line.'),
+    guard('laws-each-items-customs-code-en-keep', KEEP, JOB_EN, 'en', 'The accountant checks each item’s customs code.'),
+    guard('laws-the-product-code-and-the-tax-code-en-keep', KEEP, JOB_EN, 'en',
+          'The accountant enters the product code and the tax code in the system.'),
+    guard('laws-the-tax-code-per-invoice-en-keep', KEEP, JOB_EN, 'en', 'He records one tax code per invoice.'),
+    guard('laws-lower-case-tax-code-in-each-filing-en-blank', BLANK, JOB_EN, 'en', 'He follows the tax code in each filing.',
+          gone=('tax code',)),
+    guard('laws-lower-case-the-countrys-tax-code-en-blank', BLANK, JOB_EN, 'en', 'He knows the country’s tax code well.',
+          gone=('tax code',)),
+    guard('laws-a-law-about-this-ru-keep', KEEP, COVER_RU, 'ru', 'Бухгалтер не нарушает закон об этом и никогда не спорит.'),
+]
+
+# ---- A held free first word is a given name, never a noun for people before a surname (should, from 8a3c061):
+# "Investor Karimov ..." and "Клиент Иванова ..." hold no "Investor" or "Клиент" across the paper; "Kira Sokolova ..."
+# still holds Kira.
+CASES += [
+    body('held-free-first-word-investor-uz-keep', KEEP, 'pdf.biz.hisobot', REPORT_UZ, 'uz', 'work_done',
+         'Investor bilan muzokaralar davom etadi.', parts=(('summary', {'body': 'Investor Karimov 500 mln so‘m kiritdi.'}),)),
+    body('held-free-first-word-klient-ru-keep', KEEP, 'pdf.biz.hisobot', REPORT_RU, 'ru', 'work_done', 'Клиент всегда прав.',
+         parts=(('summary', {'body': 'Клиент Иванова сделала крупный заказ.'}),)),
+    body('held-given-name-of-a-two-word-name-ru-to-en-blank', BLANK, 'pdf.biz.hisobot', REPORT_RU_EN, 'en', 'work_done',
+         'Kira also opened the new branch.', gone=('Kira',), parts=(('summary', {'body': 'Kira Sokolova led the finance team.'}),),
+         translated=True),
+]
+
+# ---- The idiom's accepted blank is paid for by a placing the same words make (should, matrix): "birinchi", an
+# abstract subject among the first two words and a place.
+CASES.append(gp('numbers-first-place-of-quality-in-a-region-uz-blank', BLANK, PLAN_UZ, 'uz',
+                'Mahsulot sifati viloyatda birinchi o‘rinni egallaydi.', gone=('birinchi',)))
+
+# ---- An English paper reads a Latin word against the Uzbek lexicon whole, never through an ending (should, item 1):
+# the given names the Uzbek lexicon parses ("Bogdan" bog+dan) or holds as a bare form ("Kira", "Dan", "Ida") are
+# names there; an Uzbek word a paper names its own things by stays.
+for name in ('Kira', 'Bogdan', 'Lina', 'Dan', 'Alma', 'Ida', 'Kara'):
+    CASES.append(body(f'names-uzbek-lexicon-given-name-{name.lower()}-ru-to-en-blank', BLANK, 'pdf.biz.hisobot',
+                      REPORT_RU_EN, 'en', 'summary', f'{name} opened the new branch in March.', gone=(name,),
+                      translated=True))
+for word, sentence in (('manti', 'Manti sell best in winter.'), ('mahalla', 'Mahalla committees support us.'),
+                       ('somsa', 'Somsa is our best seller.'), ('halim', 'Halim is served in winter.')):
+    CASES.append(gp(f'names-uzbek-word-{word}-opening-an-english-sentence-uz-to-en-keep', KEEP, PLAN_UZ_EN, 'en',
+                    sentence, translated=True))
 
 CASE_IDS = [case.id for case in CASES]
 
