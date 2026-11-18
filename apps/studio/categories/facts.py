@@ -2093,23 +2093,91 @@ ONLY_NAME_KINDS = (ORG_HEADS | ORG_AFTER | KIND_WORDS) - _folded([kind + 's' for
 LINE_PARTS = re.compile(r"[ \t ]*[|,()/][ \t ]*|[ \t ]+[–—-][ \t ]+")
 
 
+# A line's words, a hyphenated one whole ("Ota-onalar", "Vice-President").
+LINE_TOKEN = re.compile(WORD.pattern + r"(?:-" + WORD.pattern + r")*")
+# The words that make a role a kind of one beside it in a line, no one's name there (`_line_roles`): "Katta
+# o‘qituvchi", "Ijrochi direktor", "Senior Sales Manager", "Chief Financial Officer", "Vice President of Sales",
+# "Head of Human Resources".
+ROLE_MODIFIERS = _folded((
+    "katta kichik bosh yetakchi ijrochi texnik moliyaviy tijorat ilmiy muvaqqat "
+    "senior junior chief executive general deputy assistant associate regional national international global "
+    "sales marketing finance financial accounting accounts account operations operating technical technology "
+    "information human resources commercial product project customer service services quality research "
+    "development logistics procurement purchasing production administrative office branch store shop retail area "
+    "district communications public relations business strategy strategic digital brand key legal compliance risk "
+    "security training education academic admissions payroll credit investment budget analytics data engineering "
+    "design creative content media events export import supply chain warehouse division unit group "
+    "vice president managing founding interim acting").split())
+# A role's grammar words, part of it in a line: "Head of Sales", "Head of Sales and Marketing", "Head of the Department".
+ROLE_GRAMMAR = frozenset(('of', 'for', 'and', 'the'))
+
+
 def _role_word(word):
     """Whether a word is a role's, a job's or a document's (`ROLE_WORDS`, `RU_ROLE_WORDS`)."""
     return fold(word) in ROLE_WORDS or RU_ROLE_WORDS.fullmatch(normalised(word).casefold()) is not None
 
 
+# A Russian adjective in the nominative, which a role takes before it in a line: "Главный", "Финансовый директор".
+RU_ROLE_ADJECTIVE = re.compile(r"[а-яё]{3,}(?:ый|ий|ой|ая|яя|ое|ее)")
+
+
+def _possessive(token):
+    """Whether a line's Latin word ends in the Uzbek possessive a role or its modifier takes ("direktori", "raisi",
+    "boshlig‘i", "bo‘limi", "qo‘mitasi"), never an agent's -chi ("o‘qituvchi", "hisobchi")."""
+    folded = fold(token)
+    return len(folded) >= 4 and folded.endswith('i') and not folded.endswith('chi') \
+        and re.search('[а-яё]', token.casefold()) is None
+
+
+def _line_roles(tokens):
+    """Which words of a line's part (`LINE_TOKEN`) are its role's rather than someone's name.
+
+    A role's, a job's or a document's word (`_role_word`); the words an Uzbek possessive role takes before it, each
+    one's possessive taking the one before ("Maktab direktori", "Moliya bo‘limi boshlig‘i", never the "Hikmat Rahim"
+    of "Hikmat Rahim maktab direktori"); a modifier (`ROLE_MODIFIERS`) or a role's grammar word beside a role's word,
+    or a Russian adjective before one ("Katta o‘qituvchi", "Senior Sales Manager", "Head of", "Sales and Marketing",
+    "Финансовый директор"); the word a role's "of" or "for" names ("Head of Biology"); a word between two of them ("Head of the
+    Biology Department"); and every word before a "by" ("Prepared by", "Compiled and edited by").
+    """
+    marked = [_role_word(token) for token in tokens]
+    if 'by' in tokens:
+        last = len(tokens) - 1 - tokens[::-1].index('by')
+        marked[:last + 1] = [True] * (last + 1)
+    changed = True
+    while changed:
+        changed = False
+        for index, token in enumerate(tokens):
+            if marked[index]:
+                continue
+            left = index > 0 and marked[index - 1]
+            right = index + 1 < len(tokens) and marked[index + 1]
+            low = token.casefold()
+            if (right and _possessive(tokens[index + 1])) or (left and right) \
+                    or ((left or right) and (fold(token) in ROLE_MODIFIERS or token in ROLE_GRAMMAR)) \
+                    or (right and RU_ROLE_ADJECTIVE.fullmatch(low) is not None) \
+                    or (left and index >= 2 and tokens[index - 1] in ('of', 'for', 'the') and marked[index - 2]):
+                marked[index] = changed = True
+    return marked
+
+
 def _line_names(line):
-    """The words of a line fact that are someone's name: of each part of it (`LINE_PARTS`), the words after its last
-    role's, job's or document's word (`_role_word`), when they are only a name (`_only_name`). "Direktor | Hikmat"
-    gives Hikmat, "Direktor Hikmat Rahim" and "Bosh hisobchi Hikmat Rahim" Hikmat and Rahim, "Rahmat aka" Rahmat;
-    "Bosh Hisobchi", "Maktab Direktori", "Rezyume", "Head of Sales" give none."""
+    """The words of a line fact that are someone's name: of each part of it (`LINE_PARTS`), each run of capitalised
+    words that are not its role's (`_line_roles`) when the run is only a name (`_only_name`), before the role, after it
+    or with none. "Direktor | Hikmat" gives Hikmat, "Direktor Hikmat Rahim", "Hikmat Rahim kotib", "Hikmat Rahim
+    maktab direktori" and "Bosh hisobchi Hikmat Rahim" Hikmat and Rahim, "Head of Sales Grant Fuller", "Grant Fuller
+    Head of Sales" and "Prepared by Grant Fuller" Grant and Fuller, "Rahmat aka" Rahmat; "Bosh Hisobchi", "Maktab
+    Direktori", "Moliya bo‘limi boshlig‘i", "Rezyume", "Head of Sales", "Senior Sales Manager" give none."""
     found = []
     for part in LINE_PARTS.split(line):
-        words = WORD.findall(part)
-        roles = [index for index, word in enumerate(words) if _role_word(word)]
-        rest = words[roles[-1] + 1:] if roles else words
-        if rest and _only_name(' '.join(rest)):
-            found += [word for word in rest if not HONORIFICS.fullmatch(normalised(word))]
+        tokens = LINE_TOKEN.findall(part)
+        run = []
+        for token, role in list(zip(tokens, _line_roles(tokens))) + [('', True)]:
+            if not role and token[:1].isupper():
+                run.append(token)
+                continue
+            if run and _only_name(' '.join(run)):
+                found += [word for word in WORD.findall(' '.join(run)) if not HONORIFICS.fullmatch(normalised(word))]
+            run = []
     return found
 
 
