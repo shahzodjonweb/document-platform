@@ -297,7 +297,7 @@ RU_ORDINALS = (('перв', 1), ('втор', 2), ('трет', 3), ('четв[е�
                ('восьм', 8), ('девят', 9), ('десят', 10), ('одиннадцат', 11), ('двенадцат', 12), ('тринадцат', 13),
                ('четырнадцат', 14), ('пятнадцат', 15), ('шестнадцат', 16), ('семнадцат', 17), ('восемнадцат', 18),
                ('девятнадцат', 19), ('двадцат', 20), ('тридцат', 30))
-RU_ORDINAL_ENDING = r"(?:ый|ой|ий|ая|ое|ого|ому|ом|ую|ые|ых|ым|ыми|ей|ья|ье|ьего|ьему|ьем|ью|ьи|ьих)"
+RU_ORDINAL_ENDING = r"(?:ый|ой|ий|ая|ое|ого|ому|ом|ую|ые|ых|ым|ыми|ей|ья|ье|ьего|ьему|ьем|ью|ьими|ьим|ьи|ьих|ьей)"
 APOSTROPHE = "['‘’ʻʼ`´]"
 ORDINAL_WORD = (r"(?:(?:twenty|thirty)[ -])?(?:" + '|'.join(EN_ORDINALS) + ")"
                 r"|(?:(?:двадцать|тридцать)[ \u00a0])?(?:" + '|'.join(stem for stem, _ in RU_ORDINALS) + ")"
@@ -305,11 +305,19 @@ ORDINAL_WORD = (r"(?:(?:twenty|thirty)[ -])?(?:" + '|'.join(EN_ORDINALS) + ")"
                 r"|(?:(?:o" + APOSTROPHE + r"n|yigirma|o" + APOSTROPHE + r"ttiz)[ \u00a0])?[^\W\d_]+?i?nchi")
 GAP_ORDINAL = r"[  ]+"
 # An English ordinal, whose month a date writes capitalised (`_digits`).
-EN_ORDINAL = re.compile(r"(?:(?:twenty|thirty)[ -])?(?:" + '|'.join(EN_ORDINALS) + ")", re.IGNORECASE)
+EN_ORDINAL_WORD = r"(?:(?:twenty|thirty)[ -])?(?:" + '|'.join(EN_ORDINALS) + ")"
+EN_ORDINAL = re.compile(EN_ORDINAL_WORD, re.IGNORECASE)
 # A placing is read with what makes it one, never an idiom of the same words: a prize; a run of years; a Russian
 # "место" in any case but the prepositional of "на первом месте"; an Uzbek "o‘rin" bare, in the accusative or the
 # genitive, or "o‘ringa sazovor"; a place an English verb wins ("won first place", "took the second place", "came in
-# third place"). The forms an idiom shares are read where `ORDINAL_SPOT` and `ORDINAL_RANK` say.
+# third place"). The forms an idiom shares are read where `ORDINAL_SPOT` and `ORDINAL_RANK` say. "birinchi o‘rinni
+# egallaydi" is a placing whatever its subject: the idiom "comes first" ("Mijoz manfaati birinchi o‘rinni egallaydi") is
+# blanked with it, an accepted false blank (the owner's tie-break).
+# The people a Russian ordinal after a dash ranks (`ORDINAL_RANK`): "— третий продавец банка по объёму продаж".
+RU_RANKED_PEOPLE = r"продав|менеджер|сотрудни|консультант|ученик|ученица|студент|участни|кассир|агент"
+# The people an ordinal "-highest" or "-best" ranks (`ORDINAL_PLACE`).
+RANKED_PEOPLE = (r"seller|salesperson|salesman|saleswoman|earner|performer|student|pupil|scorer|employee|agent|manager"
+                 r"|worker|representative|rep|cashier|consultant|graduate|participant|competitor|candidate")
 PLACING_VERB = (r"(?:won|wins?|winning|took|takes?|taking|came|comes?|coming|finish(?:ed|es|ing)?|placed|earned"
                 r"|secured|got|gets|awarded|claimed|achieved|received|reached|shared|taken|given)")
 ORDINAL_PLACE = re.compile(
@@ -318,13 +326,25 @@ ORDINAL_PLACE = re.compile(
     rf"|{GAP_ORDINAL}(?:year|time|season)s?{GAP_ORDINAL}(?:in a row|running)"
     rf"|{GAP_ORDINAL}мест(?:о|а|у|ом)|{GAP_ORDINAL}(?:год|раз|сезон|месяц|квартал)\w*{GAP_ORDINAL}подряд"
     rf"|{GAP_ORDINAL}o{APOSTROPHE}rin(?:ni|i|ini|ning|ga(?={GAP_ORDINAL}sazovor))?|{GAP_ORDINAL}sovrin\w*"
+    # A diploma's or an award's degree: "ikkinchi darajali diplom", "second-degree diploma".
+    rf"|{GAP_ORDINAL}darajali{GAP_ORDINAL}(?:diplom|sertifikat|mukofot|faxriy{GAP_ORDINAL}yorliq|yorliq|sovrin)\w*"
+    rf"|[- ]degree{GAP_ORDINAL}(?:diploma|certificate|award|prize|honou?r)s?"
     rf"|{GAP_ORDINAL}(?:yil|marta|mavsum|chorak)\w*{GAP_ORDINAL}ketma-ket)"
     rf"(?![^\W\d_]))"
     rf"|(?<=ketma-ket )({ORDINAL_WORD})(?={GAP_ORDINAL}(?:yil|marta|mavsum|chorak)\w*(?![^\W\d_]))"
     rf"|(?<![^\W\d_]){PLACING_VERB}(?:{GAP_ORDINAL}(?:in|the|a|an))*{GAP_ORDINAL}({ORDINAL_WORD})"
     rf"(?={GAP_ORDINAL}places?(?![^\W\d_]))"
     # "ranked first", "placed second": a ranking's verb before the ordinal alone.
-    rf"|(?<![^\W\d_])(?:ranked|placed){GAP_ORDINAL}({ORDINAL_WORD})(?![^\W\d_])",
+    rf"|(?<![^\W\d_])(?:ranked|placed){GAP_ORDINAL}({ORDINAL_WORD})(?![^\W\d_])"
+    # A diploma's degree after it: "диплом второй степени", "a diploma of the second degree".
+    rf"|(?<![^\W\d_])диплом\w{{0,3}}{GAP_ORDINAL}({ORDINAL_WORD})(?={GAP_ORDINAL}степени(?![^\W\d_]))"
+    rf"|(?<![^\W\d_])(?:diploma|certificate)s?{GAP_ORDINAL}of{GAP_ORDINAL}(?:the{GAP_ORDINAL})?({ORDINAL_WORD})"
+    rf"(?={GAP_ORDINAL}degree(?![^\W\d_]))"
+    # A person ranked among others by an ordinal "-highest" or "-best": "the second highest seller", "the store’s
+    # second-highest earner", "the third-best student"; never "the second highest cost" (`ORDINAL_RANK`).
+    rf"|(?<![^\W\d_])({EN_ORDINAL_WORD})(?=[- ](?:highest|best|top)[- ](?:{RANKED_PEOPLE})s?(?![^\W\d_]))"
+    # A runner-up's rank: "second runner-up", "the first runner-up".
+    rf"|(?<![^\W\d_])({EN_ORDINAL_WORD})(?=[- ]runners?-up(?![^\W\d_]))",
     re.IGNORECASE)
 # A bare English "first place" or "first position": a placing ("First place, Regional Olympiad", "Her first place at
 # the olympiad", "held first position in regional sales") unless "the", "my", "a" or "an" stands before it ("The
@@ -333,6 +353,10 @@ ORDINAL_PLACE = re.compile(
 ORDINAL_SPOT = re.compile(rf"(?<![^\W\d_])({ORDINAL_WORD})({GAP_ORDINAL}|-)(place|places|position)(?![^\W\d_])",
                           re.IGNORECASE)
 SPOT_EXEMPT = re.compile(r"(?<![^\W\d_])(?:the|my|a|an)[  ]+$", re.IGNORECASE)
+# A job's position, with no contest's word in its sentence: "first position as a cashier". A position at the company
+# and a place of work, study or business are read as the placings the same words make ("His first position at the
+# company was ...", "Her first place of work was ..."): accepted false blanks, the owner's tie-break.
+POSITION_AS = re.compile(r"[  ]+as(?![^\W\d_])", re.IGNORECASE)
 # The forms an idiom shares, read only beside a contest's or a ranking's word in the sentence (`CONTEST`): Uzbek
 # "ikkinchi o‘ringa chiqdi", "ikkinchi o‘rinda bo‘ldi" (never "birinchi o‘rinda turadi", "birinchi o‘ringa
 # qo‘yiladi"), Russian "на первом месте в регионе" (never "на первом месте качество"), "came first", "finished second".
@@ -340,13 +364,83 @@ ORDINAL_RANK = re.compile(
     rf"(?<![^\W\d_])({ORDINAL_WORD})(?={GAP_ORDINAL}o{APOSTROPHE}rin(?:da|ga)(?![^\W\d_]))"
     rf"|(?<![^\W\d_])на{GAP_ORDINAL}({ORDINAL_WORD})(?={GAP_ORDINAL}месте(?![^\W\d_]))"
     rf"|(?<![^\W\d_])(?:came|comes?|coming|finish(?:ed|es|ing)?){GAP_ORDINAL}(?:in{GAP_ORDINAL})?({ORDINAL_WORD})"
-    rf"(?![^\W\d_])",
+    rf"(?![^\W\d_])"
+    # The contest between the verb and the ordinal closing its clause: "She finished the olympiad in second."
+    rf"|(?<![^\W\d_])finish(?:ed|es|ing)?{GAP_ORDINAL}the{GAP_ORDINAL}[^\W\d_]+(?:{GAP_ORDINAL}[^\W\d_]+)?"
+    rf"{GAP_ORDINAL}in{GAP_ORDINAL}({EN_ORDINAL_WORD})(?=[  ]*(?:[,.;:!?)]|$))"
+    # A placing said with "to be" or "to become", its past copula too: "olimpiadada uchinchi bo‘ldi", "viloyat
+    # olimpiadasida u ikkinchi edi", "стала второй по продажам".
+    rf"|(?<![^\W\d_])({ORDINAL_WORD})(?={GAP_ORDINAL}(?:bo{APOSTROPHE}l(?:di|dim|ding|dingiz|dik|dilar|gan\w*|adi)"
+    rf"|edi\w*)(?![^\W\d_]))"
+    # A result, a podium's step, a ranking's line or position held, never one's own ("birinchi natijasi"):
+    # "olimpiadada ikkinchi natijani ko‘rsatdi", "ikkinchi pog‘onaga ko‘tarildi", "заняла третью строчку рейтинга".
+    rf"|(?<![^\W\d_])({ORDINAL_WORD})(?={GAP_ORDINAL}(?:(?:natija|pog{APOSTROPHE}ona)(?:ni|ga|da|dan)?(?![^\W\d_])"
+    rf"|(?:строчк|позици)\w*))"
+    # A Russian ordinal with no verb after its subject or a dash, before what it places in: "Она вторая в рейтинге",
+    # "По продажам она третья в филиале", "Она — третий продавец банка по объёму продаж"; never the first of those
+    # who did something ("— первые из школы, кто поехал").
+    rf"|(?<![^\W\d_])(?:она|он|я|мы|они|вы|ты)[  ]+(?:[—–-][  ]+)?({ORDINAL_WORD})"
+    rf"(?={GAP_ORDINAL}(?:в|во|по|среди|из|на)(?![^\W\d_]))(?![^.!?\n]*,[  ]*(?:кто|котор|чтобы))"
+    rf"|(?<=[—–] )({ORDINAL_WORD})(?=(?:{GAP_ORDINAL}(?:{RU_RANKED_PEOPLE})\w*(?:{GAP_ORDINAL}[а-яё]+)?)?"
+    rf"{GAP_ORDINAL}(?:в|во|по|среди|из|на)(?![^\W\d_]))(?![^.!?\n]*,[  ]*(?:кто|котор|чтобы))"
+    # "bo‘lib" closing its clause or before a prize: "musobaqada ikkinchi bo‘lib, kumush medal oldi"; never "birinchi
+    # bo‘lib ro‘yxatdan o‘tdi" (the first to register).
+    rf"|(?<![^\W\d_])({ORDINAL_WORD})(?={GAP_ORDINAL}bo{APOSTROPHE}lib(?:[  ]*[,.;]|[  ]*$|{GAP_ORDINAL}(?:kumush|oltin"
+    rf"|bronza|medal|diplom|sovrin|mukofot|g{APOSTROPHE}olib|faxriy)\w*))"
+    # Never an ordinal with its noun after it: "это был первый опыт", "это была вторая олимпиада".
+    rf"|(?<![^\W\d_])(?:стал|стала|стали|был|была|были|оказал(?:ся|ась|ись)){GAP_ORDINAL}({ORDINAL_WORD})"
+    rf"(?=[  ]*(?:[,.;:!?)]|$)|{GAP_ORDINAL}(?:по|на|в|во|среди|из|с|со)(?![^\W\d_]))"
+    # "was second" closing its clause: "At the regional olympiad she was second."; never a present "winning is second".
+    rf"|(?<![^\W\d_])(?:was|were){GAP_ORDINAL}({EN_ORDINAL_WORD})(?=[  ]*(?:[,.;:!?)]|$))"
+    # An English ordinal before the contest it places in or a "best": "second in the regional ranking", "took second
+    # at the olympiad", "the second-best student"; never "the first in her family" or "first in line".
+    rf"|(?<![^\W\d_])(?<!the )({EN_ORDINAL_WORD})(?={GAP_ORDINAL}(?:in|at|among)(?![^\W\d_])"
+    rf"(?!{GAP_ORDINAL}line(?![^\W\d_])))"
+    rf"|(?<![^\W\d_])({EN_ORDINAL_WORD})(?=[- ](?:best|highest)(?![^\W\d_]))",
     re.IGNORECASE)
+# An Uzbek ordinal made a noun, a placing: "ikkinchilikni qo‘lga kiritdi" in the accusative always, any other case
+# beside a contest ("tuman birinchiligida" is also the district's championship).
+ORDINAL_NOUN = re.compile(rf"(?<![^\W\d_])((?:(?:o{APOSTROPHE}n|yigirma|o{APOSTROPHE}ttiz)[ \u00a0])?[^\W\d_]+?i?nchi)"
+                          r"(lik(?:ni|ka|ga|da|dan|ning|i|ini|ida|iga|idan|ining)?)(?![^\W\d_])", re.IGNORECASE)
+# A Russian collective of the best, a placing: "вошла в тройку лучших", "в пятёрку сильнейших". It is its own key
+# ("top:3"), never its count (`_Reader.ordinals`).
+COLLECTIVES = (('тройк', 3), ('четв[её]рк', 4), ('пят[её]рк', 5), ('шест[её]рк', 6), ('сем[её]рк', 7),
+               ('восьм[её]рк', 8), ('девятк', 9), ('десятк', 10), ('двадцатк', 20))
+COLLECTIVE = re.compile(r"(?<![^\W\d_])(" + '|'.join(stem for stem, _ in COLLECTIVES) + r")(?:а|у|е|ой|и)"
+                        r"(?=[  ]+(?:лучш|сильнейш|призёр|призер|победител|лидер)\w*)", re.IGNORECASE)
+# An Uzbek collective of the best, a placing: "eng yaxshi uchlikka kirdi", "g‘oliblar uchligidan joy oldi".
+UZ_COLLECTIVES = (('uch', 3), (f"to{APOSTROPHE}rt", 4), ('besh', 5), ('olti', 6), ('yetti', 7), ('sakkiz', 8),
+                  (f"o{APOSTROPHE}n(?:ta)?", 10))
+UZ_COLLECTIVE = re.compile(rf"(?<=[  ])(?:{'|'.join(stem for stem, _ in UZ_COLLECTIVES)})li[kg]\w*", re.IGNORECASE)
+UZ_COLLECTIVE_BEFORE = re.compile(rf"(?:(?<![^\W\d_])eng[  ]+(?:yaxshi|kuchli|ilg{APOSTROPHE}or)|(?<![^\W\d_])"
+                                  rf"(?:g{APOSTROPHE}oliblar|sovrindorlar|yetakchilar))[  ]+$", re.IGNORECASE)
+# A stem every ordinal and collective word the placings read holds (`_Reader.ordinals`): a text with none is not scanned.
+ORDINAL_HINT = re.compile(
+    r"nchi|first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|eleventh|twelfth|teenth|tieth"
+    r"|перв|втор|трет|четв|пят|шест|седьм|восьм|девят|десят|надцат|двадцат|тридцат|тройк|сем[её]рк"
+    rf"|(?:uch|to{APOSTROPHE}rt|besh|olti|yetti|sakkiz|o{APOSTROPHE}n(?:ta)?)li[kg]", re.IGNORECASE)
 CONTEST = re.compile(
     r"(?<![^\W\d_])(?:olimpiad\w*|tanlov\w*|musobaqa\w*|chempionat\w*|konkurs\w*|turnir\w*|reyting\w*"
-    r"|олимпиад\w*|конкурс\w*|соревновани\w*|чемпионат\w*|турнир\w*|рейтинг\w*|в[  ]+регионе|по[  ]+продажам"
-    r"|olympiads?|contests?|competitions?|championships?|tournaments?|rankings?|leagues?|regional[  ]+sales)",
+    r"|олимпиад\w*|конкурс\w*|соревновани\w*|чемпионат\w*|турнир\w*|рейтинг\w*|регион\w*"
+    r"|по[  ]+(?:объ[её]му[  ]+)?продаж\w*"
+    r"|olympiads?|contests?|competitions?|championships?|tournaments?|rankings?|leagues?|regional[  ]+sales"
+    r"|sales[  ]+races?"
+    # A district's or a city's championship ("Tuman birinchiligida"), and a ranking by sales ("Sotuv bo‘yicha", "Savdo
+    # hajmi bo‘yicha"), as "по продажам" is; never the job a sales scope names ("Savdo bo‘yicha menejer", "Sotuv
+    # bo‘yicha ishda").
+    r"|birinchilig\w*|(?:sotuv|savdo)\w*(?:[  ]+[^\W\d_]+)?[  ]+bo['‘’ʻʼ`´]yicha(?![  ]+(?:menejer|mutaxassis"
+    r"|konsultant|maslahatchi|bo['‘’ʻʼ`´]lim|xodim|direktor|boshli|rahbar|ish|agent|vakil|operator|mudir)))",
     re.IGNORECASE)
+# The English sales scope (`_contest`): a ranking beside any ordinal but "first" ("I was second in sales", "third in
+# the company for sales"); beside "first" only with a ranking's word ("first in sales across the region") or as "was
+# first in sales" closing its clause or before its time ("I was first in sales last year"), never in "comes first in
+# sales", "put the client first in sales" or "my first position in sales".
+EN_SALES = re.compile(r"(?<![^\W\d_])(?:in|for)[  ]+sales(?![^\W\d_])", re.IGNORECASE)
+EN_RANKING = re.compile(r"(?<![^\W\d_])(?:rank\w*|among|across|regions?|regional|nationwide|branch(?:es)?|chain"
+                        r"|colleagues|peers)(?![^\W\d_])", re.IGNORECASE)
+FIRST_IN_SALES = re.compile(r"(?<![^\W\d_])(?:was|were|am|is|finished|ended|came)[  ]+first[  ]+(?:in|for)[  ]+sales"
+                            r"(?=[  ]*(?:[,.;:!?]|$)|[  ]+(?:last|this|that|every|each|in|for|across|among|at|of"
+                            r"|during|over)(?![^\W\d_]))", re.IGNORECASE)
 ORDINAL_DATE = re.compile(rf"(?<![^\W\d_])(?:the[ \u00a0]+)?({ORDINAL_WORD})(?:[ \u00a0]+of)?[ \u00a0]+" + MONTH,
                           re.IGNORECASE)
 
@@ -624,25 +718,51 @@ class _Reader:
 
     def ordinals(self):
         """The ordinals that are figures as a placing or a run's count (`ORDINAL_PLACE`, `ORDINAL_SPOT`,
-        `ORDINAL_RANK`); a date's day is read with the dates (`ORDINAL_DATE`, `_digits`)."""
+        `ORDINAL_RANK`); a date's day is read with the dates (`ORDINAL_DATE`, `_digits`). A text with no ordinal's or
+        collective's stem in it (`ORDINAL_HINT`) is not scanned: each reading starts at every word."""
         text = self.text
+        if ORDINAL_HINT.search(text) is None:
+            return
         found = [match for match in ORDINAL_PLACE.finditer(text)]
         for match in ORDINAL_SPOT.finditer(text):
             before = text[:match.start()]
             # "a first-place finish" is a placing whatever stands before it.
-            if before[-7:].casefold().endswith('in the ') or (not _contest(text, match.start()) and match.group(2) != '-'
-                                                              and (SPOT_EXEMPT.search(before[-8:]) or (
-                    match.group(3).casefold() == 'position' and re.match(
-                        r"[  ]+as(?![^\W\d_])", text[match.end():], re.IGNORECASE)))):
+            first = _ordinal_value(match.group(1)) == 1
+            if before[-7:].casefold().endswith('in the ') or (
+                    not _contest(text, match.start(), first) and match.group(2) != '-' and (
+                        SPOT_EXEMPT.search(before[-8:]) or (match.group(3).casefold() == 'position'
+                                                            and POSITION_AS.match(text, match.end())))):
                 continue
             found.append(match)
-        found += [match for match in ORDINAL_RANK.finditer(text) if _contest(text, match.start())]
+        found += [match for match in ORDINAL_RANK.finditer(text) if _contest(text, match.start(), _ordinal_value(
+            next(group for group in match.groups() if group is not None)) == 1)]
         for match in found:
             group = next(number for number in range(1, (match.re.groups or 0) + 1)
                          if match.group(number) is not None and _ordinal_value(match.group(number)) is not None)
             value = _ordinal_value(match.group(group))
             if self.free(*match.span(group)):
                 self.add(*match.span(group), 'spelled', str(value), [{str(value)}])
+        # A noun made of an ordinal and a collective of the best are read whole: "____ qo‘lga kiritdi", "в ____ лучших".
+        for match in ORDINAL_NOUN.finditer(text):
+            value = _ordinal_value(match.group(1))
+            if value is not None and self.free(*match.span()) and (
+                    match.group(2).casefold() == 'likni' or _contest(text, match.start())):
+                self.add(*match.span(), 'spelled', str(value), [{str(value)}])
+        # A collective is a key of its own on both sides ("top:3"): being among the top three is not finishing third,
+        # so the customer's "вошла в тройку лучших" or "eng yaxshi uchlikka kirdi" grounds the paper's same collective
+        # in Russian or Uzbek, never its "3 года", "третье место" or "uchinchi o‘rin"; and the customer's bare "3" (a
+        # top three in other words too: "среди трёх лучших", "the top three") grounds no "тройку лучших".
+        for match in COLLECTIVE.finditer(text):
+            value = next(value for stem, value in COLLECTIVES if re.fullmatch(stem, match.group(1).casefold()))
+            if self.free(*match.span()):
+                self.add(*match.span(), 'spelled', f'top:{value}', [{f'top:{value}'}])
+        for match in UZ_COLLECTIVE.finditer(text):
+            if not UZ_COLLECTIVE_BEFORE.search(text, max(0, match.start() - 24), match.start()):
+                continue
+            word = match.group(0).casefold()
+            value = next(value for stem, value in UZ_COLLECTIVES if re.match(stem + 'li[kg]', word))
+            if self.free(*match.span()):
+                self.add(*match.span(), 'spelled', f'top:{value}', [{f'top:{value}'}])
 
     def spelled(self):
         """The cardinal numbers written as words (`SPELLED`), outside every number and address already read.
@@ -819,11 +939,24 @@ class _Reader:
         self.add(start, end, 'phone', digits, [keys], extra)
 
 
-def _contest(text, at):
-    """Whether the sentence `at` stands in names a contest or a ranking (`CONTEST`): "olimpiadasida", "в регионе"."""
+def _sentence_span(text, at):
+    """(start, end) of the sentence `at` stands in."""
     start = max(text.rfind(mark, 0, at) for mark in '.!?\n') + 1
     ends = [found for found in (text.find(mark, at) for mark in '.!?\n') if found != -1]
-    return CONTEST.search(text, start, min(ends) if ends else len(text)) is not None
+    return start, min(ends) if ends else len(text)
+
+
+def _contest(text, at, first=False):
+    """Whether the sentence `at` stands in names a contest or a ranking (`CONTEST`): "olimpiadasida", "в регионе"; or
+    the English sales scope (`EN_SALES`), beside "first" (`first`) only with a ranking's word or as "was first in
+    sales" (`EN_RANKING`, `FIRST_IN_SALES`)."""
+    start, end = _sentence_span(text, at)
+    if CONTEST.search(text, start, end) is not None:
+        return True
+    if EN_SALES.search(text, start, end) is None:
+        return False
+    return not first or EN_RANKING.search(text, start, end) is not None \
+        or FIRST_IN_SALES.search(text, start, end) is not None
 
 
 @functools.lru_cache(maxsize=8192)

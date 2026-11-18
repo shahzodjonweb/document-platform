@@ -71,14 +71,25 @@ More limits, said as plainly:
   included). A given name, a surname, a place or a brand of words/names.txt
   is never a common word, even one that is also a word ("Umid", "Grace",
   "Надежда"): a false blank where it is the word ("Umid qilamanki"), never an
-  invention. Its sections are read by the paper's language, so an English
-  given name refuses no Uzbek word in an Uzbek paper ("Joy ijarasi"). A common word the lexicon lacks is held too: a false blank
+  invention, in a paper of any language: an English given name that is an
+  Uzbek word ("Tom yopish") is blanked in an Uzbek paper too, since "Tom yangi
+  filialni ochdi" names an invented person in the same words. An English
+  paper still reads a Latin word against the Uzbek lexicon too ("Tandir
+  bread"), refusing only the few names it parses ("Yana", `EN_PAPER_NAMES`).
+  A common word the lexicon lacks is held too: a false blank
   ("Sinergiya ..."), counted on held-out prose in the commit that grew it. A
   name that is an everyday word and is left out of names.txt ("Yangi",
   "Xalq", "Hikmat") still passes alone.
 - `guard` removes any sentence with a strong legal stem (kodeks, farmon,
   Konstitutsiya ...) the customer did not give, even one that cites nothing
   specific ("U ko‘plab farmonlar chiqargan"), and a part may come back empty.
+  A code or a law in lower case is a citation by what names it ("the civil
+  code", "the new tax code", "tax code requirements", "the law on state
+  duty", "закон о бухгалтерском учёте"), never as a field ("tax law", "labour
+  law knowledge"), "the code of conduct" or a code's identifier "of" an item
+  ("the tax code of each supplier"). Its identifier with no "of" ("the
+  customs code to each item") and a lower-case "act on" something ("the main
+  act on schooling") are read as citations: accepted false blanks.
 - A quotation is read by its marks (`QUOTE`): one written with none, an
   attribution only ("Filip Kotler ta’kidlaganidek, marketing — bu ..."), is
   not told from the model's own words and is not checked.
@@ -747,17 +758,18 @@ def _strip_addresses(text, trusted):
 CLASS_LETTER = re.compile(r"""(?<!\d)(\d{1,2})([ \u00a0]?-?[ \u00a0]?[«"“'‘]?)([A-ZА-ЯЁ])([»"”'’]?)(?![^\W\d_]|\.)""")
 # The same in the customer's words, where a full stop may end it ("... программист 1С.").
 CLASS_TOKEN = re.compile(r"""(?<!\d)(\d{1,2})([ \u00a0]?-?[ \u00a0]?[«"“'‘]?)([A-ZА-ЯЁ])([»"”'’]?)(?![^\W\d_])""")
-CLASS_WORD = re.compile(r"sinf\w*|класс\w*|class(?:es)?|grades?|years?", re.IGNORECASE)
+# The Uzbek Cyrillic "синф" is the customer's too ("7-синф математика ...").
+CLASS_WORD = re.compile(r"sinf\w*|синф\w*|класс\w*|class(?:es)?|grades?|years?", re.IGNORECASE)
 # A pupil's word, beside which a number and a letter are a class: "7B o‘quvchisi", "an 11A student", "ученик 9Б".
 PUPIL_WORD = re.compile(r"o['‘’ʻʼ`]?quvchi\w*|ученик\w*|ученица\w*|учащ\w*|школьни\w*|students?|pupils?"
                         r"|schoolchild\w*", re.IGNORECASE)
 # A class's label, whose value a number and a letter are a class as: "Sinf: 7B", "Class: 7B", "Класс: 7Б".
 CLASS_LABEL = re.compile(r"(?<![^\W\d_])(?:sinf\w*|класс\w*|class|grade|year)[  ]*:[  ]*$", re.IGNORECASE)
-# A number the customer wrote as their class: "7-sinf", "7 «В» класса", "в 7-м классе", "grade 11", "Year 7".
+# A number the customer wrote as their class: "7-sinf", "7-синф", "7 «В» класса", "в 7-м классе", "grade 11", "Year 7".
 CLASS_NUMBER = re.compile(
     r"(?<!\d)(\d{1,2})[  ]*-?[  ]*(?:[«\"“'‘]?[^\W\d_]{1,2}[»\"”'’]?[  ]*-?[  ]*)?"
-    r"(?:sinf|класс|class|grade)"
-    r"|(?<![^\W\d_])(?:sinf\w*|класс\w*|class|grade|year)[  ]*№?[  ]*(\d{1,2})(?!\d)", re.IGNORECASE)
+    r"(?:sinf|синф|класс|class|grade)"
+    r"|(?<![^\W\d_])(?:sinf\w*|синф\w*|класс\w*|class|grade|year)[  ]*№?[  ]*(\d{1,2})(?!\d)", re.IGNORECASE)
 # The Cyrillic capitals a Latin one looks like: the customer's "1С" is the paper's "1C" where no class is written.
 LOOKALIKES = str.maketrans('АВСЕКМНОРТХ', 'ABCEKMHOPTX')
 # The fields that hold a grade or a class: there a number and a letter anywhere ("7B", "Sinf: 7B", "7B, matematika")
@@ -999,12 +1011,103 @@ def _sentences(text):
     return spans
 
 
+# A code or a law written in lower case is cited by what names it (`_lower_cited`): a code after the name of one,
+# adjectives or a determiner before it or none ("the civil code", "the new tax code", "the Uzbek tax code", "tax code
+# requirements"), a law after "the" (or a possessive) and the name of one, adjectives between ("Uzbekistan's labour
+# law", "the current labour law", "the Uzbek labour law"), a code of or on one ("the code on administrative
+# offences"), and a law on something, the country passed over ("the law on state duty", "the law of the Republic of
+# Uzbekistan on ...", "закон о бухгалтерском учёте"). Never a field ("tax law", "their labour law knowledge"), a code's
+# identifier ("the tax code of each supplier", "the tax code number", "a budget code", "each item's customs code",
+# "the tax code for VAT on each line", "the customs code to each item", "the product code and the tax code"), "the
+# code of conduct", "the law of gravity", "the law on this point", "закон спроса", "закон об этом" nor "закон о том,
+# что ...". The identifier with nothing to tell it ("the customs code to imported items") is read as the code: an
+# accepted false blank.
+LOWER_DETERMINER = re.compile(r"the|this|that|its|their|our|his|her|my|your|[^\W\d_]+'s")
+LOWER_STEMS = {'code': re.compile(r"code"), 'law': re.compile(r"law")}
+LOWER_LAW_ON = re.compile(
+    r"(?:[ \t\u00a0]+(?:of|the|o'zbekiston\w*|respublika\w*|uzbekistan|republic|республики|узбекистан))*[ \t\u00a0]+"
+    r"[«\"“„]?(?:on|о|об)[ \t\u00a0]+(?!(?:том|тех|чем|то|этом|этой|этих|этого|нём|нем|ней|них|чём|котор\w*"
+    r"|this|that|these|those|it|its|them|which|whom|whose|paper"
+    r"|record|time|top|average|behalf|purpose|hold|demand|board|the[ \t\u00a0]+(?:books|ground|whole|other|one|contrary"
+    r"|surface|face|record|table|way))(?![^\W\d_]))[^\W\d_]", re.IGNORECASE)
+LOWER_LAW = re.compile(r"law|закон|закона|закону|законом|законе")
+LOWER_CODE_OF = re.compile(r"[ \t\u00a0]+(?:of|on)[ \t\u00a0]+(?:the[ \t\u00a0]+)?([^\W\d_]+)", re.IGNORECASE)
+# The words a code's identifier sense takes after it ("the tax code number"), and the determiners before what a code's
+# identifier is of ("the tax code of each supplier"); a jurisdiction after "of" makes it the code ("of the country").
+CODE_IDENTIFIER = re.compile(r"[ \t\u00a0]+(?:numbers?|digits?|fields?|box|boxes|columns?|entry|entries|values?"
+                             r"|lists?|tables?)(?![^\W\d_])", re.IGNORECASE)
+# What a code's identifier sense is given to after it: "a budget code to each expense", "the tax code for VAT on each
+# line", "one tax code per invoice"; never "the tax code in each filing".
+CODE_PER_ITEM = re.compile(
+    r"[ \t\u00a0]+(?:(?:to|for|on)[ \t\u00a0]+(?:each|every)[ \t\u00a0]+(?:[^\W\d_]+[ \t\u00a0]+)?(?:items?|lines?"
+    r"|invoices?|products?|goods?|expenses?|transactions?|entr(?:y|ies)|documents?|suppliers?|purchases?|sales?"
+    r"|orders?|receipts?|articles?|positions?|payments?|accounts?)|per[ \t\u00a0]+[^\W\d_]+|for[ \t\u00a0]+VAT)"
+    r"(?![^\W\d_])", re.IGNORECASE)
+# Another code beside it whose word is no law's name: "the product code and the tax code", "the tax code and the
+# item code".
+CODE_BESIDE_AFTER = re.compile(r"[ \t\u00a0]+(?:and|or)[ \t\u00a0]+(?:(?:the|a|an|its|their)[ \t\u00a0]+)?"
+                               r"([^\W\d_]+)[ \t\u00a0]+codes?(?![^\W\d_])", re.IGNORECASE)
+CODE_BESIDE_BEFORE = re.compile(r"(?<![^\W\d_])([^\W\d_]+)[ \t\u00a0]+codes?[ \t\u00a0]+(?:and|or)[ \t\u00a0]+"
+                                r"(?:(?:the|a|an|its|their)[ \t\u00a0]+)?$", re.IGNORECASE)
+# The adjectives that may stand between a determiner and a law's name word: "the current labour law", "the Uzbek tax
+# code", "the new civil code".
+LOWER_ADJECTIVE = re.compile(r"new|old|current|existing|present|relevant|applicable|modern|recent|latest|amended"
+                             r"|revised|updated|whole|entire|main|basic|general|own|domestic|local|federal|uzbek"
+                             r"|russian|kazakh|[a-z]+(?:al|ian|ese|ish|ic|ive|ent|ant|ary)")
+CODE_OF_ITEM = re.compile(r"[ \t\u00a0]+of[ \t\u00a0]+(?:(?:the|each|every|a|an|any|its|their|this|that)[ \t\u00a0]+)?"
+                          r"([^\W\d_]+)", re.IGNORECASE)
+JURISDICTION = re.compile(r"country|state|nation|republic|uzbekistan|kazakhstan|russia|federation", re.IGNORECASE)
+# The nouns a law field stands before ("labour law knowledge", "a tax law firm"): a field, never a law cited.
+LAW_FIELD_HEAD = re.compile(r"[ \t\u00a0]+(?:knowledge|firms?|degrees?|courses?|students?|schools?|faculty|departments?"
+                            r"|experts?|expertise|practice|background|studies|exams?|training|clinic|offices?"
+                            r"|textbooks?|lecturers?|teachers?|professors?|graduates?|careers?|specialists?"
+                            r"|consultants?|consultancy|advice|skills?)(?![^\W\d_])", re.IGNORECASE)
+
+
+def _lower_cited(text, concept, match):
+    """Whether a weak stem of a code or a law that is no title (`_concepts`) is cited by what names it
+    (`LOWER_DETERMINER`, `LOWER_LAW_ON`): "the civil code", "the law on state duty", "закон о бухгалтерском учёте"."""
+    if concept not in LOWER_STEMS:
+        return False
+    stem = match.group(0).casefold()
+    if concept == 'law' and LOWER_LAW.fullmatch(stem) and LOWER_LAW_ON.match(text, match.end()):
+        return True
+    if not LOWER_STEMS[concept].fullmatch(stem):
+        return False
+    named = LOWER_CODE_OF.match(text, match.end()) if concept == 'code' else None
+    if named is not None and _law_name(named.group(1)) is not None:
+        return True
+    before = re.findall(r"[^\W\d_]+(?:'s)?", text[max(0, match.start() - 60):match.start()])
+    if not before or _law_name(before[-1]) is None:
+        return False
+    # The word before the law's name word and its adjectives ("the current labour law", "a correct tax code").
+    at = len(before) - 2
+    while at >= 0 and len(before) - 2 - at < 2 and LOWER_ADJECTIVE.fullmatch(normalised(before[at]).casefold()):
+        at -= 1
+    opener = normalised(before[at]).casefold() if at >= 0 else ''
+    if concept == 'code':
+        # "the new tax code", "tax code requirements"; never "the tax code number", "the tax code of each supplier",
+        # "a budget code", "each item's customs code", "the tax code for VAT on each line" or "the product code and
+        # the tax code".
+        item = CODE_OF_ITEM.match(text, match.end())
+        owner = re.fullmatch(r"(.+)'s", opener)
+        beside = CODE_BESIDE_AFTER.match(text, match.end()) \
+            or CODE_BESIDE_BEFORE.search(text, max(0, match.start() - 80), text.rfind(before[-1], 0, match.start()))
+        return CODE_IDENTIFIER.match(text, match.end()) is None and CODE_PER_ITEM.match(text, match.end()) is None \
+            and opener not in ('a', 'an') and (owner is None or JURISDICTION.fullmatch(owner.group(1)) is not None) \
+            and (beside is None or _law_name(beside.group(1)) is not None) and (
+                item is None or _law_name(item.group(1)) is not None
+                or JURISDICTION.fullmatch(item.group(1)) is not None
+                or LAW_COUNTRY.fullmatch(normalised(item.group(1)).casefold()) is not None)
+    return LOWER_DETERMINER.fullmatch(opener) is not None and LAW_FIELD_HEAD.match(text, match.end()) is None
+
+
 def _concepts(sentence):
     """The legal things `sentence` cites, or an empty set when it cites none (a weak stem with no mark beside it).
 
     A weak stem cites with a strong one, a number or a date beside it (NUMBER_MARK, `DATED`) or a word mark
     anywhere (WORD_MARK), a LOOSE one in the plural only with the first two; with an issuer (ISSUER) only in the
-    singular and near it.
+    singular and near it. A code or a law in lower case cites by what names it (`_lower_cited`).
     """
     text = normalised(sentence)
     found, weak, dated = set(), [], False
@@ -1013,7 +1116,8 @@ def _concepts(sentence):
             if strong == LOOSE and match.group(0).startswith('Положени') and _starts(text, match.start()):
                 continue  # "Положение в экономике ...": a situation; «Положение о …» is read by its title above
             # A weak stem capitalised inside a sentence is a title ("Mehnat Kodeksi", "Labour Code", "Закон о …").
-            if strong is True or (match.group(0)[0].isupper() and not _starts(text, match.start())):
+            if strong is True or (match.group(0)[0].isupper() and not _starts(text, match.start())) \
+                    or _lower_cited(text, concept, match):
                 found.add(concept)
             else:
                 weak.append((concept, match, strong))
@@ -1104,6 +1208,10 @@ LAW_OF_REACH = 6
 # A law or a code with no name before its stem ("the Law of the Republic of Uzbekistan on state duty", "the Law on
 # personal data", "the Code of professional ethics") is named by every word after its "of" or "on" up to a word that
 # goes on the sentence, a conjunction or a mark, at most this many, its own grammar words (`LAW_OF_GRAMMAR`) passed.
+# A name, a title's or one in lower case, ends at a word that cannot continue it (`_goes_on`: "The Law on Education
+# guarantees ...", "the Law on education guarantees free schooling", "... well"); "of" and its noun phrase and a noun
+# modifier go on it ("The Law on Education of adults", "the Law on Accounting standards for banks"), so they must be
+# the customer's words too.
 LAW_OF_UNNAMED_REACH = 8
 LAW_OF_GRAMMAR = re.compile(r"of|the|a|an")
 LAW_OF_STOP = re.compile(
@@ -1196,6 +1304,9 @@ def _law_names(sentence):
         elif len(name) > 1 and _starts(sentence, name[0][0]) and not _law_name(name[0][1]) \
                 and (name[1][1][0].isupper() or _law_subject(name[0][1])):
             name = name[1:]
+        elif len(name) == 1 and _starts(sentence, name[0][0]) and not _law_name(name[0][1]) \
+                and _law_subject(name[0][1]) and _named_after(tokens, at, word):
+            name = []  # a duty's verb right before a stem its name follows: "Соблюдает закон о бухгалтерском учёте"
         index = at + 1
         while word(index) and LAW_COUNTRY.fullmatch(normalised(tokens[index][1]).casefold()):
             index += 1
@@ -1208,34 +1319,159 @@ def _law_names(sentence):
             # "of" or "on" is its name, so an invented subject in lower case is the customer's or the sentence goes.
             unnamed = not any(_letters(text) >= 2 and not LAW_COUNTRY.fullmatch(normalised(text).casefold())
                               for _, text in name)
+            # The words read after the "of" or "on" of an unnamed stem.
+            after = 0
             while word(index) and taken < (LAW_OF_UNNAMED_REACH if unnamed else LAW_OF_REACH):
-                token = tokens[index][1]
+                start, token = tokens[index]
+                # A word of LAW_NAMES in the possessive is the name's last: "The Law on Accounting’s rules",
+                # "Education’s main aim"; any other possessive is inside a name ("the Law on Teachers’ Status").
+                owner = re.fullmatch(r"(.+?)['‘’ʻʼ`´]s", token)
+                last = owner is not None and _law_name(owner.group(1)) is not None
+                token = owner.group(1) if last else token
                 low = normalised(token).casefold()
                 if not taken and (LAW_COUNTRY.fullmatch(low) or LAW_OF.fullmatch(low)):
                     index += 1
                     continue
                 if LAW_AND.fullmatch(low):
                     break
+                if unnamed and not re.search('[а-яё]', low) and not token[0].isupper() \
+                        and not LAW_OF_GRAMMAR.fullmatch(low) and after and _goes_on(sentence, tokens, index, word):
+                    break  # the name ends where the sentence goes on: "The Law on Education guarantees ..."
                 if re.search('[а-яё]', low):
                     if LAW_OF_CASE.fullmatch(low) is None:
                         break
-                    name.append(tokens[index])
+                    name.append((start, token))
                 elif token[0].isupper() or _law_name(token) or LAW_KIND.fullmatch(low):
-                    name.append(tokens[index])
+                    name.append((start, token))
+                    after += 1
                 elif LAW_OF_STOP.fullmatch(low):
                     break  # a word that goes on the sentence ends the name
                 elif unnamed:
                     if not LAW_OF_GRAMMAR.fullmatch(low):
-                        name.append(tokens[index])
+                        name.append((start, token))
+                        after += 1
                 elif not taken and not (word(index + 1) and normalised(tokens[index + 1][1]).casefold() == 'of'):
                     # After a named stem, a first word that is no name word begins one only before its own "of"
                     # ("the Labour Code on working hours" names the Labour Code; never "... of Uzbekistan applies
                     # to land workers" or "... protects consumer interests").
                     break
+                if last:
+                    break
                 index, taken = index + 1, taken + 1
         found += [(start, text) for start, text in name if _letters(text) >= 2
                   and not LAW_COUNTRY.fullmatch(normalised(text).casefold())]
     return list(dict.fromkeys(found))
+
+
+# The words that go on a sentence after an unnamed law's name and are no word of it (`_goes_on`): adverbs and the
+# past forms that end in no -ed.
+LAW_NAME_END = re.compile(
+    r"well|daily|together|again|still|already|often|always|never|now|then|today|just|once|soon|yet|here|there|very"
+    r"|much|more|most|further|became|become|becomes|began|came|grew|held|laid|led|left|put|rose|stood|won|brought"
+    r"|built|fell|got|sent|spent|paid|ran|saw|showed|shown|told|understood|wrote|written|went|gone|done|seen|known"
+    # Sentence and conjunctive adverbs: "The law on education thus protects pupils", "... itself is short".
+    r"|thus|therefore|however|itself|hence|moreover|furthermore|nevertheless|nonetheless|accordingly|consequently"
+    r"|indeed|instead|otherwise|meanwhile|first|later|alone")
+# The verbs a law's sentence goes on with, read as verbs before anything ("protects buyers", "consists of", "remains
+# in force"), where a plural noun of the name would be read the same way ("standards defines", "adults regulates").
+LAW_VERBS = frozenset((
+    "guarantee define establish protect regulate govern grant introduce outline specify contain include describe "
+    "determine prohibit provide require cover give apply ensure allow oblige forbid permit lay aim seek tend help "
+    "remain consist play create make take mean say support promote list name stipulate envisage declare recognise "
+    "recognize prescribe enshrine empower entitle restrict ban punish penalise penalize impose exempt mandate direct "
+    "supervise affect concern address deal treat extend expand amend replace cancel abolish set settle fix lead bring "
+    "belong refer come enter go stand exist operate function serve reflect underline stress emphasise emphasize "
+    "require obligate safeguard secure strengthen improve raise reduce cut lower boost encourage enable prevent stop "
+    "regard view consider classify divide distinguish separate combine unite link connect relate correspond comply "
+    "conform contradict violate breach override supersede precede follow complement supplement implement enforce "
+    "enact adopt pass approve sign ratify publish issue release open close begin start end finish continue keep "
+    "need want try deserve offer present propose suggest recommend advise warn tell show prove confirm explain "
+    "clarify interpret answer solve shape form build develop design plan organise organize manage run handle "
+    "cover touch reach hit leave miss lose win gain earn pay cost spend save invest "
+    # The verbs whose -s ends as a plural noun does ("ensures", "mentions", "assists", `LAW_NAME_NOUN`) or that take a
+    # plural object ("upholds students’ rights", "motivates teachers").
+    "mention feature enhance insist assure measure assist advance influence finance structure balance uphold "
+    "reinforce affirm motivate equip free target").split())
+# The plural nouns a law is named by: "requirements", "relations", "securities", "procedures". Such a word whose base
+# is one of LAW_VERBS ("ensures", "lists", "consists", "functions", "supplements") is the verb unless what follows
+# ends the name's noun phrase (`_goes_on`).
+LAW_NAME_NOUN = re.compile(r"[a-z]+(?:ments|tions|sions|ities|ances|ences|ships|nesses|isms|ists|ures)")
+# What only a verb's object opens, never the next word of a law's name: a determiner ("ensures the right", "features a
+# chapter"); a possessive ("upholds students’ rights") is read by its mark (`_object_follows`).
+LAW_OBJECT = re.compile(r"the|a|an|its|their|his|her|our|your|every|both|several|numerous|various")
+# The words after which a verb's -s like a plural noun is still the verb: "functions as", "exists to", "insists on".
+LAW_VERB_AFTER = re.compile(r"to|as|on|upon")
+
+
+def _object_follows(sentence, tokens, index, word):
+    """Whether the word after `index` opens a verb's object: a determiner (`LAW_OBJECT`) or a possessive ("students’",
+    "children’s")."""
+    if not word(index + 1):
+        return False
+    start, text = tokens[index + 1]
+    low = normalised(text).casefold()
+    after = sentence[start + len(text):start + len(text) + 1]
+    return LAW_OBJECT.fullmatch(low) is not None or low.endswith("'s") \
+        or (low.endswith('s') and after in "'’ʼ" and after != '')
+
+
+def _goes_on(sentence, tokens, index, word):
+    """Whether a lower-case word after an unnamed law's first name word goes on the sentence rather than the name
+    (`_law_names`): an adverb ("well", "daily", "carefully"), a past form ("adopted", "became") or a verb's -s before
+    what it governs ("guarantees free schooling", "defines the rights", "ensures equal access", "upholds students’
+    rights"), its base an English word (words/en.txt). A plural noun the name ends with ("accounting requirements",
+    "state fees for ...", "food supplements applies ...") and a compound's part ("state-owned") are words of it."""
+    low = normalised(tokens[index][1]).casefold()
+    if not low.isascii() or sentence[tokens[index][0] - 1:tokens[index][0]] == '-':
+        return False
+    words = _lexicon()['en'][0]
+    if LAW_NAME_END.fullmatch(low):
+        return True
+    if low.endswith('ly') and len(low) > 5 and (low[:-2] in words or low[:-3] + 'y' in words):
+        return True
+    if low.endswith('ed') and len(low) > 4 and (low[:-2] in words or low[:-1] in words
+                                                 or (low[-3] == low[-4] and low[:-3] in words)):
+        return True
+    if not low.endswith('s') or low.endswith('ss'):
+        return False
+    bases = _s_bases(low)
+    if any(base in words or base in LAW_VERBS for base in bases) and _object_follows(sentence, tokens, index, word):
+        return True  # "features a chapter", "balances pupils’ rights"
+    following = normalised(tokens[index + 1][1]).casefold() if word(index + 1) else None
+    if any(base in LAW_VERBS for base in bases):
+        if not LAW_NAME_NOUN.fullmatch(low):
+            return True
+        # "ensures equal access", "consists of", "functions as"; never "food supplements." or "state functions of".
+        return following is not None and not LAW_AND.fullmatch(following) \
+            and (following != 'of' or 'consist' in bases) \
+            and (LAW_VERB_AFTER.fullmatch(following) is not None or LAW_OF_STOP.fullmatch(following) is None) \
+            and not any(base in LAW_VERBS for base in _s_bases(following) if following.endswith('s'))
+    if LAW_NAME_NOUN.fullmatch(low):
+        return False
+    if following is None or not any(base in words for base in bases):
+        return False
+    if following == 'to':
+        return True  # "aims to", "seeks to", "tends to"
+    if LAW_AND.fullmatch(following) or following == 'of' or LAW_OF_STOP.fullmatch(following):
+        return False
+    # A verb's -s after it makes this one the name's plural noun: "The Law on Education standards defines ...".
+    return not (following.endswith('s') and not following.endswith('ss') and following.isascii()
+                and not LAW_NAME_NOUN.fullmatch(following) and any(base in words for base in _s_bases(following)))
+
+
+def _s_bases(low):
+    """The bases an English word's -s may come from: "defines" define, "guarantees" guarantee, "applies" apply."""
+    return [low[:-1]] + ([low[:-2]] if low.endswith('es') else []) + ([low[:-3] + 'y'] if low.endswith('ies') else [])
+
+
+def _named_after(tokens, at, word):
+    """Whether a code's or a law's name follows its stem at `at`, after its "of", "on", "об" or "о" (`_law_names`)."""
+    index = at + 1
+    while word(index) and LAW_COUNTRY.fullmatch(normalised(tokens[index][1]).casefold()):
+        index += 1
+    if index < len(tokens) and tokens[index][1] in '«"“„':
+        index += 1
+    return word(index) and LAW_OF.fullmatch(normalised(tokens[index][1]).casefold()) is not None and word(index + 1)
 
 
 def _law_head(sentence, tokens, at, word):
@@ -1289,6 +1525,23 @@ def _law_name_known(word, trusted):
     return trusted.allowed.known(word) or trusted.person(word, True)
 
 
+# The noun a law's name word stands before in one language and not in another: the Russian "о бухгалтерском учёте"
+# and the Uzbek "Buxgalteriya hisobi" of the English "on Accounting". It is the name's, read as the word before it is
+# (`_legal_known`), so the customer's "Buxgalteriya hisobi to‘g‘risidagi qonun" or "Law on Accounting" is a Russian
+# paper's "закон о бухгалтерском учёте" whether or not the message's language could be told. Only the head noun's own
+# forms are: a word built on its stem ("hisobotlari", "hisobchilari", "hisobvaraqlari", "учётчиках", "учётности")
+# names another law and must be the customer's word.
+LAW_NAME_HEADS = {LAW_NAMES.index(r"buxgalteriya|бухгалтерск|accounting"):
+                  re.compile(r"уч[её]т(?:а|у|ом|е)?|hisob(?:i|ini|iga|ida|idan|ining)?")}
+
+
+def _law_head_noun(before, word):
+    """Whether `word` is the head noun of the law name word `before` stands for (`LAW_NAME_HEADS`)."""
+    forms = _law_name(before)
+    head = LAW_NAME_HEADS.get(LAW_NAME_FORMS.index(forms)) if forms is not None else None
+    return head is not None and head.fullmatch(normalised(word).casefold()) is not None
+
+
 def _legal_known(sentence, concepts, trusted, translated, *, names=True):
     """Whether a legal sentence cites only what the customer gave: its kinds of act, numbers and the code's name;
     with `names`, every other capitalised word of it too (a person, a ministry, a date's issuer)."""
@@ -1305,8 +1558,9 @@ def _legal_known(sentence, concepts, trusted, translated, *, names=True):
     # Its other words in lower case ("арбитражному", "iqtisodiyot", "javobgarlik") are the customer's too: as they
     # wrote them, or in a translated paper in the spellings a translation gives a name. A translated code's words
     # not of LAW_NAMES cannot be told from an invented one's, so they go: a false removal, never an invention.
-    plain = [word for _, word in words if not word[0].isupper() and _law_name(word) is None
-             and not LAW_KIND.fullmatch(normalised(word).casefold())]
+    plain = [word for index, (_, word) in enumerate(words) if not word[0].isupper() and _law_name(word) is None
+             and not LAW_KIND.fullmatch(normalised(word).casefold())
+             and not (index and _law_head_noun(words[index - 1][1], word))]
     if not all(trusted.person(word, True) if translated else trusted.words.known(word) for word in plain):
         return False
     named = [(start, word) for start, word in words if word[0].isupper()]
@@ -1579,75 +1833,64 @@ def _lexicon():
     return found
 
 
-# The languages of words/names.txt's sections (`_name_forms`): a section's header names it. Places and brands are
-# every language's.
-NAME_SECTIONS = (('uzbek', 'uz'), ('russian', 'ru'), ('english', 'en'), ('places', 'any'), ('brands', 'any'))
-
-
 @functools.cache
 def _name_forms():
-    """{language: (its names of words/names.txt folded, their forms with a case ending folded)}, read once per process.
+    """(the names of words/names.txt folded, their forms with a case ending folded), read once per process.
 
-    A section's language is its header's (`NAME_SECTIONS`): an English given name ("Joy", "Tom", "Sara") is an
-    English paper's name, never one that refuses an Uzbek word in an Uzbek paper (`common`)."""
-    found, language, place = {}, 'any', False
+    Every section refuses its words in a paper of any language (`common`): a Russian given name ("Larisa") is as
+    realistic an invented person in an English or an Uzbek paper as in a Russian one, and an English given name that
+    is an Uzbek word ("Tom", "Sara", "Joy", "Kim") as realistic in an Uzbek paper as the word itself."""
+    names, forms, place = set(), set(), False
     for line in (WORDS / 'names.txt').read_text('utf-8').splitlines():
         line = line.strip()
-        if line.startswith('# ----'):
-            header = line.casefold()
-            language = next((code for word, code in NAME_SECTIONS if word in header), 'any')
-            place = 'places' in header
+        if line.startswith('#'):
+            place = place if not line.startswith('# ----') else 'places' in line.casefold()
             continue
-        if not line or line.startswith('#'):
+        if not line:
             continue
-        names, forms = found.setdefault(language, (set(), set()))
         name = fold(line)
         names.add(name)
         forms.update(name + ending for ending in NAME_CASES + (PLACE_PEOPLE if place else ()))
         forms.update(name[:-1] + ending for ending in RU_A_CASES) if name.endswith('a') else \
             forms.update(name + ending for ending in RU_CASES)
-    return {language: (frozenset(names), frozenset(forms - names)) for language, (names, forms) in found.items()}
+    return frozenset(names), frozenset(forms - names)
 
 
-def _named(low, languages=None):
-    """Whether a word (lower case) is a name of words/names.txt, whole or with a case ending (`_name_forms`), of the
-    sections of `languages` (every section's when None).
+def _named(low):
+    """Whether a word (lower case) is a name of words/names.txt, whole or with a case ending (`_name_forms`).
 
     The name itself is one even where it is also a common word ("Umid", "Grace", "Надежда"); a form of it with an
     ending only where the language has no such word ("Malikaga", never "Umidi", "Shirinlik", "Ширина").
     """
-    sections = _name_forms()
-    chosen = [sections[language] for language in (languages or sections) if language in sections]
+    names, forms = _name_forms()
     possessive = re.fullmatch(r"(.{2,}?)(?:'s|s')", low)
-    folded = fold(low)
-    if any(folded in names or (possessive is not None and fold(possessive.group(1)) in names)
-           for names, _ in chosen):
+    if fold(low) in names or (possessive is not None and fold(possessive.group(1)) in names):
         return True
-    if not any(folded in forms for _, forms in chosen):
+    if fold(low) not in forms:
         return False
     return not any(low in _lexicon()[language][0] for language in SUFFIXES)
 
 
-def _refusing(language, cyrillic):
-    """The sections of words/names.txt whose names are never a common word in a paper of `language` (`common`): its
-    own, the Uzbek names any paper here may hold, the places and the brands; with no language, every section."""
-    if language not in ('uz', 'ru', 'en'):
-        return None
-    return {language, 'uz', 'any'} | ({'ru'} if cyrillic else set())
+# Given names an English paper may hold that the Uzbek lexicon reads as words, whole ("yana" again, "dan", "ida") or
+# as a verb's stem ("kira", "lina", "alma", "kara", "lana"): refused there only (`common`), never in an Uzbek paper's
+# "Yana bir ...". A parse with an ending ("sita" sit+a, "Bogdan" bog+dan) is no Uzbek word in an English paper at all.
+EN_PAPER_NAMES = frozenset(('yana', 'sita', 'dan', 'ida', 'kira', 'lina', 'alma', 'kara', 'lana'))
 
 
 def common(word, language=None):
     """Whether a capitalised word is a common word of Uzbek, Russian or English rather than a name: one of the
     lexicon's (words/*.txt) with or without an ending, a number word, a plural or a Russian verb (no name is one:
     "O‘quvchilar", "Соблюдает"), and never a given name, a surname, a place or a brand of words/names.txt
-    (`_named`), even one that is also a common word: the owner's tie-break, a blank before a leak.
+    (`_named`), even one that is also a common word, in a paper of any language: the owner's tie-break, a blank
+    before a leak. An Uzbek paper's "Tom yopish ishlari" is blanked as its "Tom yangi filialni ochdi" must be.
 
-    `language` is the paper's: there a name of another language's section refuses only that language's words
-    (`_refusing`), so an Uzbek paper's "Joy ijarasi", "Tom yopish" and "Sara navli" are Uzbek words while an English
-    paper's "Joy", "Tom" and "Sara" are names; with no language every name refuses every word."""
+    `language` is the paper's. A Latin word is read against the Uzbek and the English lexicons in any paper, so an
+    English paper's "Tandir bread", "Bozor prices" and "Kurash clubs" are words; there an Uzbek word is read whole, as
+    a stem or a compound, never through an ending ("Bogdan" is no bog+dan), and the given names the Uzbek lexicon
+    holds (`EN_PAPER_NAMES`: "Yana", "Kira", "Dan") are names, where no sentence opens with the Uzbek "yana" (again)."""
     low = normalised(word).casefold()
     cyrillic = re.search('[а-яё]', low) is not None
-    if _named(low, _refusing(language, cyrillic)):
+    if _named(low) or (language == 'en' and low in EN_PAPER_NAMES):
         return False
     if numbers._spelled_role(low, False) is not None or numbers.ORDINAL.fullmatch(low):
         return True
@@ -1658,22 +1901,24 @@ def common(word, language=None):
         return True
     if re.fullmatch(r"[A-Z]{2,}s", word) or re.fullmatch(r"[IVXLC]+", word):
         return True  # an acronym's plural ("SOPs", "CVs"; an organisation's name is no plural), a roman numeral
-    for language in (('ru',) if cyrillic else ('uz', 'en')):
-        if _named(low, (language,)):
-            continue  # a name of the lexicon's own language is never one of its common words
-        words, stems = _lexicon()[language]
+    for lexicon in (('ru',) if cyrillic else ('uz', 'en')):
+        words, stems = _lexicon()[lexicon]
         if low in words or low in stems:
             return True
-        endings = SUFFIXES[language]
-        if len(low) > 3 and low[:3] in words and low[3:] in SHORT_ENDINGS[language]:
+        if lexicon == 'uz' and language == 'en':
+            if DERIVED[lexicon].fullmatch(low):
+                return True
+            continue  # an English paper's Uzbek word is whole, never parsed through an ending
+        endings = SUFFIXES[lexicon]
+        if len(low) > 3 and low[:3] in words and low[3:] in SHORT_ENDINGS[lexicon]:
             return True
         for cut in range(LEXICON_BASE, len(low)):
             base = low[:cut]
-            if low[cut:] in endings and (base in words or base in stems or (language == 'en' and (
+            if low[cut:] in endings and (base in words or base in stems or (lexicon == 'en' and (
                     base + 'e' in words or (low[cut:] in ('es', 'ed') and base.endswith('i')
                                             and base[:-1] + 'y' in words)))):
                 return True  # "Trading" of "trade", "Complies" of "comply"
-        if DERIVED[language].fullmatch(low):
+        if DERIVED[lexicon].fullmatch(low):
             return True
     return False
 
@@ -1750,6 +1995,34 @@ def _holdable(text, run, bad):
     return found
 
 
+# The words a sentence opens with before a name, no given name of it: "Today Larisa Ivanova ...", "Hozirda ...".
+NAME_OPENERS = _folded((
+    "today now currently yesterday tomorrow then here there also since still later meanwhile recently formerly "
+    "hozirda hozir bugun kecha ertaga keyin so‘ng avval endi shuningdek ayni "
+    "сейчас сегодня теперь затем также ещё вчера завтра ранее").split())
+
+
+# The nouns for people a sentence names someone by before a surname, no given name of it: "Investor Karimov ...",
+# "Клиент Иванова ...", "Buyer Smith ..." (`_free_given_name`).
+PEOPLE_NOUNS = _folded((
+    "investor investorlar klient xaridor buyurtmachi homiy ta’minotchi yetkazuvchi ijarachi muassis ta’sischi aksioner "
+    "aksiyador bemor buyer supplier vendor sponsor donor contractor shareholder founder owner tenant landlord patient "
+    "инвестор клиент клиентка покупатель покупательница заказчик заказчица поставщик спонсор партнёр партнер "
+    "учредитель владелец владелица арендатор акционер пациент пациентка").split())
+
+
+def _free_given_name(run, bad):
+    """Whether a run's free first word, blanked with the rest of it (`_names`'s `strict`), is a given name to hold
+    wherever it stands: only right before a word shaped as a surname ("Hikmat Rahimov ..." gives hikmat), never a role
+    word, a role's modifier, a noun for people or an opener ("Bosh Hisobchi Nodira Karimova", "Investor Karimov",
+    "Клиент Иванова", "Today Larisa Ivanova", "Главный Бухгалтер ...": "Bosh ofis ...", "Investor bilan ...",
+    "Клиент всегда прав", "Today the firm ...", "Главный офис ..." elsewhere stay)."""
+    first = run[0][2]
+    return len(run) > 1 and 1 in bad and _surname(run[1][2]) and not _role_word(first) \
+        and fold(first) not in ROLE_MODIFIERS and fold(first) not in NAME_OPENERS and fold(first) not in PEOPLE_NOUNS \
+        and RU_ROLE_ADJECTIVE.fullmatch(normalised(first).casefold()) is None and not first.casefold().endswith('ly')
+
+
 def _quoted(text, run):
     """Whether a run stands in quotation marks of its own: «Baraka», "Oqtosh"."""
     before = text[:run[0][0]].rstrip(' \t\u00a0')
@@ -1787,7 +2060,10 @@ def _names(text, trusted, codes, translated=False, *, strict=False, orgs=False, 
     is held too, so "Artelda ishlaganman." is not left when the employer
     "Artel" was just blanked. `blanked`, a `Named`, receives the words of each
     run blanked here that name someone (`_holdable`): a person's beside a
-    surname, an organisation's shaped or quoted, never a common word.
+    surname, the free first word of a two-word name blanked whole included
+    ("Hikmat Rahimov ..." gives hikmat too, `_free_given_name`), an
+    organisation's shaped or quoted, never a common word alone, a role's word
+    or an opener ("Bosh Hisobchi Nodira Karimova ..." never holds Bosh).
     """
     spans = []
     # A paper's grounded part names the customer's code in its own language (`_legal_words`).
@@ -1800,6 +2076,8 @@ def _names(text, trusted, codes, translated=False, *, strict=False, orgs=False, 
         if strict and bad:
             if first_free and bad[0] != 0 and _letters(run[0][2]) >= 2 and not trusted.person(run[0][2], translated):
                 bad.insert(0, 0)
+                if blanked is not None and _free_given_name(run, bad):
+                    blanked.add(fold(run[0][2]))
             taken = set(bad)
             for position in bad:
                 for step in (-1, 1):
@@ -2091,6 +2369,8 @@ NO_PEOPLE = frozenset(('enclosures', 'attachments', 'statements', 'key_dates', '
 EN_ROLE_WORDS = EN_ROLES + (
     "dean accountant cashier secretary engineer lawyer economist specialist deputy supervisor coordinator "
     "administrator advisor adviser consultant inspector instructor tutor lecturer professor head vice "
+    # A vice president's abbreviations: "VP of Finance", "SVP of Sales".
+    "vp svp evp avp "
     "cv resume certificate certificates diploma transcript passport letter copy copies reference portfolio essay "
     "enclosure enclosures attachment attachments").split()
 RU_ROLE_WORDS = re.compile(
@@ -2106,23 +2386,128 @@ ONLY_NAME_KINDS = (ORG_HEADS | ORG_AFTER | KIND_WORDS) - _folded([kind + 's' for
 LINE_PARTS = re.compile(r"[ \t ]*[|,()/][ \t ]*|[ \t ]+[–—-][ \t ]+")
 
 
+# The Uzbek verbs a line's preparer follows ("Hisobotni tayyorladi Hikmat Rahim", "Tuzdi Hikmat Rahim").
+LINE_PREPARED = re.compile(r"(?:tayyorla|tuz|yoz|imzola)(?:di|gan)")
+# A line's words, a hyphenated one whole ("Ota-onalar", "Vice-President").
+LINE_TOKEN = re.compile(WORD.pattern + r"(?:-" + WORD.pattern + r")*")
+# The words that make a role a kind of one beside it in a line, no one's name there (`_line_roles`): "Katta
+# o‘qituvchi", "Ijrochi direktor", "Senior Sales Manager", "Chief Financial Officer", "Vice President of Sales",
+# "Head of Human Resources".
+ROLE_MODIFIERS = _folded((
+    "katta kichik bosh yetakchi ijrochi texnik moliyaviy tijorat ilmiy muvaqqat "
+    "senior junior chief executive general deputy assistant associate regional national international global "
+    "sales marketing finance financial accounting accounts account operations operating technical technology "
+    "information human resources commercial product project customer service services quality research "
+    "development logistics procurement purchasing production administrative office branch store shop retail area "
+    "district communications public relations business strategy strategic digital brand key legal compliance risk "
+    "security training education academic admissions payroll credit investment budget analytics data engineering "
+    "design creative content media events export import supply chain warehouse division unit group "
+    "vice president managing founding interim acting").split())
+# A role's grammar words, part of it in a line: "Head of Sales", "Head of Sales and Marketing", "Head of the Department".
+ROLE_GRAMMAR = frozenset(('of', 'for', 'and', 'the'))
+# The words a unit's name ends with in a line, no one's name: "Planning Office", "Retail Network", "Sales Team".
+LINE_UNITS = _folded("office department division unit group team service network committee board council".split())
+
+
 def _role_word(word):
     """Whether a word is a role's, a job's or a document's (`ROLE_WORDS`, `RU_ROLE_WORDS`)."""
     return fold(word) in ROLE_WORDS or RU_ROLE_WORDS.fullmatch(normalised(word).casefold()) is not None
 
 
+# A Russian adjective in the nominative, which a role takes before it in a line: "Главный", "Финансовый директор".
+RU_ROLE_ADJECTIVE = re.compile(r"[а-яё]{3,}(?:ый|ий|ой|ая|яя|ое|ее)")
+
+
+def _possessive(token):
+    """Whether a line's Latin word ends in the Uzbek possessive a role or its modifier takes ("direktori", "raisi",
+    "boshlig‘i", "bo‘limi", "qo‘mitasi"), never an agent's -chi ("o‘qituvchi", "hisobchi")."""
+    folded = fold(token)
+    return len(folded) >= 4 and folded.endswith('i') and not folded.endswith('chi') \
+        and re.search('[а-яё]', token.casefold()) is None
+
+
+def _line_roles(tokens):
+    """Which words of a line's part (`LINE_TOKEN`) are its role's rather than someone's name.
+
+    A role's, a job's or a document's word (`_role_word`); the words an Uzbek possessive role takes before it, each
+    one's possessive taking the one before ("Maktab direktori", "Moliya bo‘limi boshlig‘i", never the "Hikmat Rahim"
+    of "Hikmat Rahim maktab direktori"); a modifier (`ROLE_MODIFIERS`) or a role's grammar word beside a role's word,
+    or a Russian adjective before one ("Katta o‘qituvchi", "Senior Sales Manager", "Head of", "Sales and Marketing",
+    "Финансовый директор"); the word a role's "of" or "for" names ("Head of Biology"); a word between two of them ("Head of the
+    Biology Department"); every word before a "by" ("Prepared by", "Compiled and edited by"), and the Uzbek "tomonidan"
+    with every word after it and the lower-case ones before it ("... tomonidan tayyorlandi"); a unit's word ending the
+    part (`LINE_UNITS`: "Planning Office"); and a common word right before a role's word that opens the part or
+    follows a role's word, a lower-case word or a modifier ("Kitchen Manager", "Quality Control Manager", "Social
+    Media Manager", "Ishlab Chiqarish Menejeri"), never one after a capitalised word ("Gul Sabr kotiba").
+    """
+    # A hyphenated role is one by any of its parts: "Vice-President", "Bosh-hisobchi".
+    marked = [_role_word(token) or ('-' in token and any(_role_word(part) for part in token.split('-')))
+              for token in tokens]
+    if 'by' in tokens:
+        last = len(tokens) - 1 - tokens[::-1].index('by')
+        marked[:last + 1] = [True] * (last + 1)
+    if 'tomonidan' in tokens:
+        # The Uzbek "by" follows its agent: "Hikmat Rahim tomonidan tayyorlandi". It and what follows are the line's
+        # role, and so are the lower-case words right before it ("Moliya bo‘limi tomonidan ..."), so the
+        # capitalised run before them is a name only when it stands right before "tomonidan".
+        first = tokens.index('tomonidan')
+        marked[first:] = [True] * (len(tokens) - first)
+        index = first - 1
+        while index >= 0 and not tokens[index][:1].isupper():
+            marked[index] = True
+            index -= 1
+    # An Uzbek line led by its verb of preparing ("Hisobotni tayyorladi Hikmat Rahim") holds the run after the verb,
+    # as "Prepared by" does, when that run ends the part.
+    verbs = [index for index, token in enumerate(tokens) if LINE_PREPARED.fullmatch(normalised(token).casefold())]
+    if verbs and verbs[-1] + 1 < len(tokens) and all(token[:1].isupper() for token in tokens[verbs[-1] + 1:]):
+        marked[:verbs[-1] + 1] = [True] * (verbs[-1] + 1)
+    if tokens and tokens[-1][:1].isupper() and fold(tokens[-1]) in LINE_UNITS:
+        marked[-1] = True
+    changed = True
+    while changed:
+        changed = False
+        for index, token in enumerate(tokens):
+            if marked[index]:
+                continue
+            left = index > 0 and marked[index - 1]
+            right = index + 1 < len(tokens) and marked[index + 1]
+            low = token.casefold()
+            if (right and _possessive(tokens[index + 1])) or (left and right) \
+                    or ((left or right) and (fold(token) in ROLE_MODIFIERS or token in ROLE_GRAMMAR)) \
+                    or (right and RU_ROLE_ADJECTIVE.fullmatch(low) is not None) \
+                    or (left and index >= 2 and tokens[index - 1] in ('of', 'for', 'the') and marked[index - 2]) \
+                    or (right and token[:1].isupper() and common(token) and (
+                        index == 0 or marked[index - 1] or not tokens[index - 1][:1].isupper()
+                        or fold(tokens[index - 1]) in ROLE_MODIFIERS)):
+                marked[index] = changed = True
+    return marked
+
+
 def _line_names(line):
-    """The words of a line fact that are someone's name: of each part of it (`LINE_PARTS`), the words after its last
-    role's, job's or document's word (`_role_word`), when they are only a name (`_only_name`). "Direktor | Hikmat"
-    gives Hikmat, "Direktor Hikmat Rahim" and "Bosh hisobchi Hikmat Rahim" Hikmat and Rahim, "Rahmat aka" Rahmat;
-    "Bosh Hisobchi", "Maktab Direktori", "Rezyume", "Head of Sales" give none."""
+    """The words of a line fact that are someone's name: of each part of it (`LINE_PARTS`), each run of capitalised
+    words that are not its role's (`_line_roles`) when the run is only a name (`_only_name`), before the role, after it
+    or with none. "Direktor | Hikmat" gives Hikmat, "Direktor Hikmat Rahim", "Hikmat Rahim kotib", "Hikmat Rahim
+    maktab direktori" and "Bosh hisobchi Hikmat Rahim" Hikmat and Rahim, "Head of Sales Grant Fuller", "Grant Fuller
+    Head of Sales", "VP of Finance Grant Fuller", "Prepared by Grant Fuller" Grant and Fuller, "Hikmat Rahim tomonidan
+    tayyorlandi" Hikmat and Rahim, "Rahmat aka" Rahmat; "Bosh Hisobchi", "Maktab
+    Direktori", "Moliya bo‘limi boshlig‘i", "Rezyume", "Head of Sales", "Senior Sales Manager" give none."""
     found = []
     for part in LINE_PARTS.split(line):
-        words = WORD.findall(part)
-        roles = [index for index, word in enumerate(words) if _role_word(word)]
-        rest = words[roles[-1] + 1:] if roles else words
-        if rest and _only_name(' '.join(rest)):
-            found += [word for word in rest if not HONORIFICS.fullmatch(normalised(word))]
+        tokens = LINE_TOKEN.findall(part)
+        roles = _line_roles(tokens)
+        if not any(roles):
+            # No role in it: a part that is only a name ("Hikmat Rahim"), never the words of "Founders and Investors".
+            if part.strip() and _only_name(part.strip()):
+                found += [word for word in WORD.findall(part) if not HONORIFICS.fullmatch(normalised(word))]
+            continue
+        run = []
+        for token, role in list(zip(tokens, roles)) + [('', True)]:
+            if not role and token[:1].isupper():
+                run.append(token)
+                continue
+            if run and _only_name(' '.join(run)):
+                found += [word for word in WORD.findall(' '.join(run)) if not HONORIFICS.fullmatch(normalised(word))]
+            run = []
     return found
 
 

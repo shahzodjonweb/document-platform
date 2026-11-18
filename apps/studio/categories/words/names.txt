@@ -6,11 +6,11 @@
 # tie-break, a blank before a leak. Words used as brands that are a language's everyday words ("Yangi", "Xalq",
 # "Oila", "Prime") are left out: a paper opens with them every day, and such a name is held where its kind, legal form
 # or quotation marks follow it.
-# Each section is read in its language, named in its header (facts.NAME_SECTIONS): in a paper of another language a
-# name of it refuses only its own language's words, so an English given name ("joy", "tom", "sara") is an English
-# paper's name and never refuses an Uzbek word ("Joy ijarasi", "Tom yopish") in an Uzbek paper. The Uzbek names, the
-# places and the brands refuse in every paper. A name that is a word of its own paper's language ("Asal", "Baker",
-# "Black") is still held there: an accepted false blank, named in tests/test_category_grounding_matrix.py.
+# Every section refuses its words in a paper of any language: a Russian given name ("larisa") is a realistic invented
+# person in an English or an Uzbek paper, and an English given name that is an Uzbek word ("tom", "sara", "joy", "kim")
+# in an Uzbek paper, where "Tom yangi filialni ochdi" and "Tom yopish ishlari" open in the same word. Each such word
+# blanked where it is the word ("Tom yopish", "Asal", "Baker", "Black") is an accepted false blank, named in
+# tests/test_category_grounding_matrix.py beside the leak it pays for.
 #
 # ---- Uzbek given names, male
 abbos
