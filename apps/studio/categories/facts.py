@@ -1926,6 +1926,24 @@ def _holdable(text, run, bad):
     return found
 
 
+# The words a sentence opens with before a name, no given name of it: "Today Larisa Ivanova ...", "Hozirda ...".
+NAME_OPENERS = _folded((
+    "today now currently yesterday tomorrow then here there also since still later meanwhile recently formerly "
+    "hozirda hozir bugun kecha ertaga keyin so‘ng avval endi shuningdek ayni "
+    "сейчас сегодня теперь затем также ещё вчера завтра ранее").split())
+
+
+def _free_given_name(run, bad):
+    """Whether a run's free first word, blanked with the rest of it (`_names`'s `strict`), is a given name to hold
+    wherever it stands: only right before a word shaped as a surname ("Hikmat Rahimov ..." gives hikmat), never a role
+    word, a role's modifier or an opener ("Bosh Hisobchi Nodira Karimova", "Today Larisa Ivanova", "Главный
+    Бухгалтер ...": "Bosh ofis ...", "Today the firm ...", "Главный офис ..." elsewhere stay)."""
+    first = run[0][2]
+    return len(run) > 1 and 1 in bad and _surname(run[1][2]) and not _role_word(first) \
+        and fold(first) not in ROLE_MODIFIERS and fold(first) not in NAME_OPENERS \
+        and RU_ROLE_ADJECTIVE.fullmatch(normalised(first).casefold()) is None and not first.casefold().endswith('ly')
+
+
 def _quoted(text, run):
     """Whether a run stands in quotation marks of its own: «Baraka», "Oqtosh"."""
     before = text[:run[0][0]].rstrip(' \t\u00a0')
@@ -1963,18 +1981,24 @@ def _names(text, trusted, codes, translated=False, *, strict=False, orgs=False, 
     is held too, so "Artelda ishlaganman." is not left when the employer
     "Artel" was just blanked. `blanked`, a `Named`, receives the words of each
     run blanked here that name someone (`_holdable`): a person's beside a
-    surname, the free first word of one blanked whole included ("Hikmat
-    Rahimov ..." gives hikmat too), an organisation's shaped or quoted, never
-    a common word alone.
+    surname, the free first word of a two-word name blanked whole included
+    ("Hikmat Rahimov ..." gives hikmat too, `_free_given_name`), an
+    organisation's shaped or quoted, never a common word alone, a role's word
+    or an opener ("Bosh Hisobchi Nodira Karimova ..." never holds Bosh).
     """
     spans = []
     # A paper's grounded part names the customer's code in its own language (`_legal_words`).
     legal = _legal_words(text, trusted) if orgs else ()
     for run, bad, first_free in _unknown_runs(text, trusted, translated, strict=strict, orgs=orgs, invented=invented,
                                               legal=legal, lone=lone, language=language):
+        if blanked is not None:
+            for word in _holdable(text, run, bad):
+                blanked.add(word)
         if strict and bad:
             if first_free and bad[0] != 0 and _letters(run[0][2]) >= 2 and not trusted.person(run[0][2], translated):
                 bad.insert(0, 0)
+                if blanked is not None and _free_given_name(run, bad):
+                    blanked.add(fold(run[0][2]))
             taken = set(bad)
             for position in bad:
                 for step in (-1, 1):
@@ -1983,11 +2007,6 @@ def _names(text, trusted, codes, translated=False, *, strict=False, orgs=False, 
                         taken.add(near)
                         near += step
             bad = sorted(taken)
-        if blanked is not None:
-            # Read once the run is blanked whole: a person's free first word goes with the surname beside it
-            # ("Larisa Ivanova ...", then "Larisa also ..."), so a later lone reference is held too.
-            for word in _holdable(text, run, bad):
-                blanked.add(word)
         group = []
         for position in bad:
             if group and position != group[-1] + 1:
