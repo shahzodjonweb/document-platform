@@ -3221,6 +3221,152 @@ CASES += [
           'Бухгалтер руководствуется Законом о бухгалтерском учёте.', translated=True),
 ]
 
+# ---------------------------------------------------------------- the re-check of round 6 (drop-r2), both ways
+# Round 6 left two readings that kept what c491da9 blanks: the customer's placing in a form only this branch reads gave
+# its bare figure, and a translated paper's accounting law exempted its head noun with an unread tail after it.
+
+# ---- The customer's placing in a form c491da9 never read gives a key of its own (must, from 21147ba, 3167c90 and
+# fdea722): "U olimpiadada birinchi bo‘ldi", "I was first in sales", "Она стала третьей" ground the paper's placing,
+# never its "1 yil", "1-sinf", "1%", "grade 1" or "3 года". Being first at an olympiad is no year of experience.
+PLACING_LETTERS = {'ru': 'Напишите рекомендательное письмо для ученицы Малики Кодировой. ',
+                   'en': 'Please write a recommendation letter for my student Malika Qodirova. ',
+                   'uz': 'O‘quvchim Qodirova Malika uchun tavsiyanoma yozing. '}
+PLACING_FIGURES = {
+    'ru': (('a-year-of-experience', 'Опыт работы — {n} год.'), ('a-class', 'Она учится в {n} классе.'),
+           ('a-percent', 'Продажи выросли на {n}%.'), ('a-club', 'Она открыла {n} кружок.')),
+    'en': (('a-year-of-experience', 'I have {n} year of experience.'), ('a-branch', 'We opened {n} new branch.'),
+           ('a-percent', 'Sales grew by {n}%.'), ('a-grade', 'She is in grade {n}.')),
+    'uz': (('a-year', 'U {n} yil to‘garakka qatnashgan.'), ('a-class', 'U {n}-sinfda o‘qiydi.'),
+           ('a-percent', 'Savdo {n}% ga oshdi.'), ('branches', 'Kompaniya {n} ta filial ochdi.')),
+}
+for locale, slug, said, figure in (
+        ('ru', 'became-first-in-the-region', 'Он стал первым в регионе по продажам.', '1'),
+        ('ru', 'became-first-at-an-olympiad', 'Она стала первой на городской олимпиаде.', '1'),
+        ('ru', 'first-in-a-class-ranking', 'Она первая в рейтинге класса.', '1'),
+        ('ru', 'first-pupil-after-a-dash', 'Она — первая ученица школы по итогам олимпиады.', '1'),
+        ('ru', 'first-degree-diploma', 'Она получила диплом первой степени.', '1'),
+        ('ru', 'first-line-of-a-ranking', 'Она заняла первую строчку рейтинга.', '1'),
+        ('ru', 'first-place-by-region', 'Она была на первом месте по региону.', '1'),
+        ('ru', 'first-place-by-sales-volume', 'Она была на первом месте по объёму продаж.', '1'),
+        ('ru', 'turned-out-first', 'Она оказалась первой среди участников олимпиады.', '1'),
+        ('ru', 'finished-with-third-place', 'Она закончила олимпиаду с третьим местом.', '3'),
+        ('ru', 'became-third', 'Она стала третьей на олимпиаде.', '3'),
+        ('ru', 'became-fifth', 'Он стал пятым в рейтинге школы.', '5'),
+        ('ru', 'held-third-position', 'Она занимала третьей позицией в рейтинге.', '3'),
+        ('en', 'first-in-sales', 'I was first in sales last year.', '1'),
+        ('en', 'was-first-at-an-olympiad', 'At the regional olympiad she was first.', '1'),
+        ('en', 'took-first-at-an-olympiad', 'She took first at the city olympiad.', '1'),
+        ('en', 'first-in-a-ranking', 'She was first in the regional ranking.', '1'),
+        ('en', 'finished-in-first', 'She finished the olympiad in first.', '1'),
+        ('en', 'first-degree-diploma', 'She received a first-degree diploma.', '1'),
+        ('en', 'diploma-of-the-first-degree', 'She got a diploma of the first degree.', '1'),
+        ('en', 'first-runner-up', 'She was named first runner-up.', '1'),
+        ('en', 'first-best-student', 'She was the first-best student in the olympiad.', '1'),
+        ('en', 'came-out-first-among', 'She came out first among the olympiad participants.', '1'),
+        ('uz', 'became-first-at-an-olympiad', 'U olimpiadada birinchi bo‘ldi.', '1'),
+        ('uz', 'was-first-with-edi', 'Viloyat olimpiadasida u birinchi edi.', '1'),
+        ('uz', 'showed-the-first-result', 'Olimpiadada birinchi natijani ko‘rsatdi.', '1'),
+        ('uz', 'rose-to-the-first-step', 'Musobaqada birinchi pog‘onaga ko‘tarildi.', '1'),
+        ('uz', 'first-degree-diploma', 'U birinchi darajali diplom oldi.', '1'),
+        ('uz', 'first-with-bolib-and-a-medal', 'Musobaqada birinchi bo‘lib, oltin medal oldi.', '1'),
+        ('uz', 'won-the-first-ness', 'U tanlovda birinchilikni qo‘lga kiritdi.', '1'),
+        ('uz', 'first-by-sales', 'Sotuv bo‘yicha birinchi o‘rinda.', '1'),
+        ('uz', 'first-by-trade-volume', 'Savdo hajmi bo‘yicha birinchi o‘ringa chiqdi.', '1'),
+        ('uz', 'had-been-first', 'Tanlovda birinchi bo‘lgan.', '1')):
+    for row_slug, sentence in PLACING_FIGURES[locale]:
+        CASES.append(gp(f'numbers-the-customers-placing-{slug}-grounds-no-{row_slug}-{locale}-blank', BLANK,
+                        PLACING_LETTERS[locale] + said, locale, sentence.format(n=figure), gone=(figure,)))
+for locale, slug, said, sentence, figure in (
+        ('ru', 'finished-with-third-place', 'Она закончила олимпиаду с третьим местом.', 'Опыт работы — 3 года.', '3'),
+        ('en', 'first-in-sales', 'I was first in sales last year.', 'I have 1 year of experience.', '1'),
+        ('uz', 'became-first-at-an-olympiad', 'U olimpiadada birinchi bo‘ldi.', 'U 1 yil to‘garakka qatnashgan.', '1')):
+    CASES.append(body(f'numbers-the-customers-placing-{slug}-grounds-no-figure-in-a-references-achievements-{locale}'
+                      '-blank', BLANK, 'pdf.xat.tavsifnoma', PLACING_LETTERS[locale] + said, locale, 'achievements',
+                      sentence, gone=(figure,)))
+    if locale != 'ru':
+        CASES.append(fact(f'numbers-the-customers-placing-{slug}-grounds-no-figure-in-a-references-role-{locale}-blank',
+                          BLANK, 'pdf.xat.tavsifnoma', PLACING_LETTERS[locale] + said, locale, 'subject_role',
+                          sentence, gone=(figure,)))
+# The customer's placing still grounds the paper's, restated in their words or in another placing's.
+CASES += [
+    gp('numbers-the-customers-placing-became-first-restated-uz-keep', KEEP,
+       PLACING_LETTERS['uz'] + 'U olimpiadada birinchi bo‘ldi.', 'uz', 'U olimpiadada birinchi bo‘ldi.'),
+    gp('numbers-the-customers-placing-became-first-as-first-place-uz-keep', KEEP,
+       PLACING_LETTERS['uz'] + 'U olimpiadada birinchi bo‘ldi.', 'uz', 'U olimpiadada birinchi o‘rinni egalladi.'),
+    body('numbers-the-customers-placing-became-first-in-a-references-achievements-uz-keep', KEEP, 'pdf.xat.tavsifnoma',
+         PLACING_LETTERS['uz'] + 'U olimpiadada birinchi bo‘ldi.', 'uz', 'achievements',
+         'U olimpiadada birinchi bo‘ldi.'),
+    gp('numbers-the-customers-placing-won-the-first-ness-restated-uz-keep', KEEP,
+       PLACING_LETTERS['uz'] + 'U tanlovda birinchilikni qo‘lga kiritdi.', 'uz',
+       'U tanlovda birinchilikni qo‘lga kiritdi.'),
+    gp('numbers-the-customers-placing-first-degree-diploma-restated-uz-keep', KEEP,
+       PLACING_LETTERS['uz'] + 'U birinchi darajali diplom oldi.', 'uz', 'U birinchi darajali diplom oldi.'),
+    gp('numbers-the-customers-placing-first-in-sales-restated-en-keep', KEEP,
+       PLACING_LETTERS['en'] + 'I was first in sales last year.', 'en', 'Last year I was first in sales.'),
+    gp('numbers-the-customers-placing-took-first-at-an-olympiad-as-first-place-en-keep', KEEP,
+       PLACING_LETTERS['en'] + 'She took first at the city olympiad.', 'en',
+       'She won first place at the city olympiad.'),
+    gp('numbers-the-customers-placing-first-degree-diploma-restated-en-keep', KEEP,
+       PLACING_LETTERS['en'] + 'She received a first-degree diploma.', 'en', 'She received a first-degree diploma.'),
+    gp('numbers-the-customers-placing-became-third-restated-ru-keep', KEEP,
+       PLACING_LETTERS['ru'] + 'Она стала третьей на олимпиаде.', 'ru', 'Она стала третьей на олимпиаде.'),
+    gp('numbers-the-customers-placing-became-third-as-third-place-ru-keep', KEEP,
+       PLACING_LETTERS['ru'] + 'Она стала третьей на олимпиаде.', 'ru', 'Она заняла третье место на олимпиаде.'),
+    gp('numbers-the-customers-placing-finished-with-third-place-as-third-place-ru-keep', KEEP,
+       PLACING_LETTERS['ru'] + 'Она закончила олимпиаду с третьим местом.', 'ru',
+       'Она заняла третье место на олимпиаде.'),
+    gp('numbers-the-customers-placing-became-first-ru-to-uz-keep', KEEP,
+       'Напишите характеристику на узбекском для Малики Кодировой, она стала первой на олимпиаде.', 'uz',
+       'U olimpiadada birinchi bo‘ldi.'),
+    # A placing c491da9 read gives its figure as there: the customer's "1-o‘rinni egallagan" grounds "birinchi
+    # bo‘ldi", and their "first place" the paper's "1st place".
+    gp('numbers-the-customers-digit-placing-as-became-first-uz-keep', KEEP,
+       'Qodirova Malika uchun tavsifnoma yozing, u olimpiadada 1-o‘rinni egallagan.', 'uz',
+       'U olimpiadada birinchi bo‘ldi.'),
+    gp('numbers-the-customers-first-place-as-a-digit-placing-en-keep', KEEP,
+       PLACING_LETTERS['en'] + 'She won first place at the city olympiad.', 'en',
+       'She won 1st place at the city olympiad.'),
+]
+
+# ---- A translated paper's accounting law exempts its head noun only where its name ends there (must, from 424c38a
+# and 0bdb620): "... о бухгалтерском учёте." or "... учёте» регулирует ...". After "и", a comma or a preposition
+# ("... учёте и аудите", "... учёте, аудите и налогах", "... учёте в банках", "... учёте для банков") the name goes on
+# past what `_law_names` reads, so the head is the customer's word or the sentence goes, as in c491da9.
+for slug, sentence, gone in (
+        ('and-audit', 'Бухгалтер соблюдает Закон о бухгалтерском учёте и аудите.', ('аудите',)),
+        ('in-banks', 'Бухгалтер соблюдает Закон о бухгалтерском учёте в банках.', ('банках',)),
+        ('audit-and-taxes', 'Бухгалтер соблюдает Закон о бухгалтерском учёте, аудите и налогах.',
+         ('аудите', 'налогах')),
+        ('of-the-republic-and-audit', 'Бухгалтер соблюдает Закон Республики Узбекистан о бухгалтерском учёте и '
+         'аудите.', ('аудите',)),
+        ('for-banks', 'Бухгалтер соблюдает Закон о бухгалтерском учёте для банков.', ('банков',)),
+        ('in-bankruptcy', 'Бухгалтер соблюдает Закон о бухгалтерском учёте при банкротстве.', ('банкротстве',)),
+        ('reporting-and-audit', 'Бухгалтер соблюдает Закон о бухгалтерском учёте, отчётности и аудите.',
+         ('отчётности', 'аудите')),
+        ('and-auditing', 'Бухгалтер соблюдает Закон о бухгалтерском учёте и аудиторской деятельности.',
+         ('аудиторской',)),
+        ('and-financial-reporting', 'Бухгалтер обязан знать Закон о бухгалтерском учёте и финансовой отчётности.',
+         ('финансовой',))):
+    for brief, direction in ((ACCOUNTING_EN_RU, 'en-to-ru'), (ACCOUNTING_UZ_RU, 'uz-to-ru')):
+        CASES += [
+            guard(f'laws-an-accounting-law-head-before-{slug}-{direction}-blank', BLANK, brief, 'ru', sentence,
+                  gone=gone, translated=True),
+            body(f'laws-an-accounting-law-head-before-{slug}-in-a-qualification-{direction}-blank', BLANK,
+                 'pdf.biz.lavozim_yoriqnomasi', brief, 'ru', 'qualification', sentence, gone=gone),
+        ]
+# The customer's law named alone stays: its name ends at the head before the sentence's end (the keeps above), a verb
+# or its date.
+ACCOUNTING_EN_RU_DATED = ('Write a job description for an accountant in Russian. He must know the Law on Accounting '
+                          'of 13 April 2016.')
+CASES += [
+    guard('laws-the-customers-law-on-accounting-before-a-verb-en-to-ru-keep', KEEP, ACCOUNTING_EN_RU, 'ru',
+          'Бухгалтер знает, что Закон о бухгалтерском учёте устанавливает правила.', translated=True),
+    guard('laws-the-customers-law-on-accounting-before-a-verb-uz-to-ru-keep', KEEP, ACCOUNTING_UZ_RU, 'ru',
+          'Бухгалтер знает, что Закон о бухгалтерском учёте устанавливает правила.', translated=True),
+    guard('laws-the-customers-law-on-accounting-before-its-date-en-to-ru-keep', KEEP, ACCOUNTING_EN_RU_DATED, 'ru',
+          'Бухгалтер соблюдает Закон о бухгалтерском учёте от 13 апреля 2016 года.', translated=True),
+]
+
 CASE_IDS = [case.id for case in CASES]
 
 
