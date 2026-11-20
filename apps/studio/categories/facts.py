@@ -1717,16 +1717,20 @@ LAW_NAME_PREPOSITION = re.compile(
     r"|of|on")
 # The words a conjunction takes before what it joins: "а также аудите", "and also Auditing", "as well as".
 LAW_NAME_FILLER = re.compile(r"также|тоже|ещё|еще|also|as|well")
+# An English article after "and" or a comma, passed over before what follows is read (`_name_ends`).
+LAW_ARTICLE = re.compile(r"the|a|an")
 
 
 def _name_ends(sentence, tokens, index, why, word):
     """Whether the name `_law_names` read after a stem's "о", "об", "of" or "on", up to the token at `index` where the
     reading stopped (`why`), ends there: at the sentence's or its clause's end, the law's date or number, a verb ("...
     учёте регулирует", "... Accounting applies"), or past a comma, a semicolon or a conjunction before a word that
-    cannot go on it ("..., бухгалтер ведёт книги", "...; ведёт книги", "... и умеет вести книги", "..., the accountant
-    keeps the books"). Never where the
-    reading reached its end, nor before a preposition ("... учёте в банках", "... in Banks") or a word that may go on
-    the name ("... учёте и аудите", "... Accounting, Auditing and Taxes", "... о защите прав инвесторов")."""
+    cannot go on it ("..., бухгалтер ведёт книги", "...; ведёт книги", "... и умеет вести книги"). An English article
+    after them is passed over: what follows "and the" may go on the name unless it is another law ("... and the
+    Auditing of Banks", never "... and the Labour Code"), and after a comma a capitalised word may ("..., the Auditing
+    of Banks"), never a clause's subject ("..., the accountant keeps the books"). Never where the reading reached its
+    end, nor before a preposition ("... учёте в банках", "... in Banks") or a word that may go on the name ("... учёте и
+    аудите", "... Accounting, Auditing and Taxes", "... о защите прав инвесторов")."""
     if why == 'reach':
         return False
     if why == 'goes':
@@ -1744,11 +1748,36 @@ def _name_ends(sentence, tokens, index, why, word):
         return RU_LAW_VERB.fullmatch(low) is not None  # any other word may be the name's ("... о защите прав ...")
     if token not in ',;' and not LAW_AND.fullmatch(low):
         return any(stem.fullmatch(token) for stem in NAMED_STEMS)  # another law, read on its own; a mark goes on
-    at = index + 1
+    at, conjoined = index + 1, token not in ',;'
     while at < len(tokens) and (LAW_AND.fullmatch(normalised(tokens[at][1]).casefold())
                                 or LAW_NAME_FILLER.fullmatch(normalised(tokens[at][1]).casefold())):
+        conjoined = conjoined or LAW_AND.fullmatch(normalised(tokens[at][1]).casefold()) is not None
         at += 1
+    if at + 1 < len(tokens) and LAW_ARTICLE.fullmatch(tokens[at][1].casefold()) and WORD.fullmatch(tokens[at + 1][1]):
+        at += 1
+        if _another_law(tokens, at):
+            return True
+        return not (conjoined or tokens[at][1][0].isupper())
     return at >= len(tokens) or not _may_go_on(tokens[at][1])
+
+
+def _another_law(tokens, at):
+    """Whether the words from `at` name another law, read on its own (`_name_ends`): capitalised words up to its stem
+    ("the Labour Code", "the Tax Code"), or a part of it before its "of" ("the rules of the Labour Code")."""
+    index = at
+    if index + 1 < len(tokens) and LAW_PART.fullmatch(normalised(tokens[index][1]).casefold()) \
+            and tokens[index + 1][1].casefold() == 'of':
+        index += 2
+        if index < len(tokens) and LAW_ARTICLE.fullmatch(tokens[index][1].casefold()):
+            index += 1
+    while index < len(tokens) and index < at + 6:
+        text = tokens[index][1]
+        if any(stem.fullmatch(text) for stem in NAMED_STEMS):
+            return True
+        if not WORD.fullmatch(text) or not text[0].isupper():
+            return False
+        index += 1
+    return False
 
 
 def _may_go_on(text):
