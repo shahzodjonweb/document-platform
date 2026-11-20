@@ -1341,6 +1341,14 @@ def _law_names(sentence):
                 if LAW_AND.fullmatch(low):
                     why = 'and'
                     break
+                owner = re.fullmatch(r"(.+?)['‘’ʻʼ`´]s", token)
+                if owner is not None and _law_name(owner.group(1)) is not None \
+                        and _owns_part(sentence, tokens, index, word):
+                    # A word of LAW_NAMES in the possessive before a part of the law it ends: "The Law on
+                    # Accounting’s rules apply ...", "The Law on Education’s main aim is ...".
+                    name.append((tokens[index][0], owner.group(1)))
+                    why = 'goes'
+                    break
                 if unnamed and not re.search('[а-яё]', low) and not token[0].isupper() and not _law_name(token) \
                         and not LAW_OF_GRAMMAR.fullmatch(low) and after and _goes_on(sentence, tokens, index, word):
                     why = 'goes'
@@ -1496,6 +1504,32 @@ def _goes_on(sentence, tokens, index, word):
             and not any(base in LAW_VERBS for base in _s_bases(following) if following.endswith('s'))
     # "relies on", "focuses on", "centres on"; never before a noun ("funds allocation").
     return any(base in words for base in bases) and LAW_VERB_AFTER.fullmatch(following) is not None
+
+
+# The parts of a law its name's possessive owns, and the words before them (`_owns_part`): "the Law on Accounting’s
+# rules", "the Law on Education’s main aim".
+LAW_PART = re.compile(r"rules?|provisions?|norms?|requirements?|aims?|goals?|purposes?|scope|text|articles?"
+                      r"|chapters?|principles?|objectives?|spirit|wording|intent")
+LAW_PART_ADJECTIVE = re.compile(r"main|key|basic|general|central|core|chief|primary|principal|new|current|whole")
+
+
+def _owns_part(sentence, tokens, index, word):
+    """Whether the possessive at `index` owns a part of its law (`LAW_PART`, one of `LAW_PART_ADJECTIVE` before it)
+    that ends a sentence's clause or goes on with a verb or a stop word ("The Law on Accounting’s rules apply to all
+    firms", "The Law on Education’s main aim is quality"), so it ends the law's name. Never another noun ("the Law on
+    Accounting’s banking supplement", "the Law on Education’s vocational annex"), nor a part before a comma, a
+    conjunction or a preposition ("rules, standards and annexes", "rules for banks"): what follows may go on the
+    name and is read as its."""
+    at = index + 1
+    if word(at) and LAW_PART_ADJECTIVE.fullmatch(normalised(tokens[at][1]).casefold()):
+        at += 1
+    if not (word(at) and LAW_PART.fullmatch(normalised(tokens[at][1]).casefold())):
+        return False
+    if at + 1 >= len(tokens) or tokens[at + 1][1] in ';:)!?':
+        return True
+    following = normalised(tokens[at + 1][1]).casefold() if word(at + 1) else None
+    return following is not None and LAW_OF_STOP.fullmatch(following) is not None \
+        and LAW_NAME_PREPOSITION.fullmatch(following) is None
 
 
 def _named_after(tokens, at, word):

@@ -3616,14 +3616,17 @@ assert all(sum(case.id == keep for case in CASES) == 1 for keep in PAID), 'every
 
 
 # ---- Round 10 (the keeps eb8b05c has, restored where no leak comes back): an unnamed law's name ends where the
-# sentence goes on with a word and nothing of a name can follow it (`facts._goes_on`), so the customer's law before a
-# verb or an adverb is theirs again, their own words under their own brief. The leaks the round-8 removal closed stay
+# sentence goes on with a word and nothing of a name can follow it (`facts._goes_on`), and at a LAW_NAMES word's
+# possessive before a part of the law that goes on with a verb (`facts._owns_part`: "The Law on Accounting’s rules
+# apply ..."), so the customer's law before a verb, an adverb or its rules is theirs again, their own words under
+# their own brief. The leaks the round-8 removal closed stay
 # blank: a modifier before a noun ("tax related offences", "family friendly workplaces"), a verb's -s before a
 # preposition or at the end ("grants for students"). Each restored keep's accepted id stays (the core list names it),
 # with the same word before a comma, where a list may go on the name ("the Law on state funded, private and public
 # schools"): the tie-break the restored reading keeps, paid for by the same blank.
 RESTORED = {keep for keep, (_, pair) in PAID.items()
-            if pair in (GOES_ON_S, GOES_ON_S_LOWER, GOES_ON_ED, GOES_ON_LY, GOES_ON_LY_LOWER)}
+            if pair in (GOES_ON_S, GOES_ON_S_LOWER, GOES_ON_ED, GOES_ON_LY, GOES_ON_LY_LOWER)
+            or 'possessive' in pair}
 # The same words where a name may go on after them stay the name's (must, restore-r10 r1): eb8b05c ended the name
 # at each of them.
 for slug, brief, sentence, gone in (
@@ -3640,7 +3643,11 @@ for slug, brief, sentence, gone in (
         ('education-of-the-disabled', EDU_EN, 'Teachers follow the Law on Education of the disabled.', ('disabled',)),
         ('education-deprived-of', EDU_RU_EN, 'He follows the Law on Education deprived of funding.', ('deprived',)),
         ('family-friendly-measures', FAMILY_LAW_EN, 'Parents follow the Law on family friendly measures.',
-         ('measures',))):
+         ('measures',)),
+        ('accountings-rules-for-banks', ACCOUNTING_EN, 'He follows the Law on Accounting’s rules for banks.',
+         ('banks',)),
+        ('accountings-rules-and-annexes', ACCOUNTING_EN, 'He follows the Law on Accounting’s rules and annexes.',
+         ('annexes',))):
     CASES.append(guard(f'laws-an-invented-tail-after-the-customers-law-{slug}-en-blank', BLANK, brief, 'en', sentence,
                        gone=gone))
 ASIDE = {'en': ', in practice', 'ru': ', как известно'}
