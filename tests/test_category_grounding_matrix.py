@@ -4176,6 +4176,276 @@ CASES += [
        'The Law on Education changed schools.', gone=('changed',), pair=FUNDED_SCHOOLS_GREW),
 ]
 
+# ---------------------------------------------------------------- the re-check of round 11 (pr77-r2), both ways
+# Round 11 left four readings that keep what eb8b05c (in production) or c491da9 blanks, each pinned here as blanks
+# under the briefs the re-check used, with the keeps eb8b05c has for the same readings.
+
+# ---- Past "и", "and", a comma or a semicolon after a law's name, the words that open no clause are passed over before
+# what follows is judged (p1, p4, p5): a particle, a parenthetical word or an adverb ("и особенно аудите", "а именно
+# аудите", ", то есть аудите", ", т. е. аудите", ", как и об аудите", "и лишь налогообложении", "and even auditing",
+# ", i.e. Auditing") and an English determiner ("and its auditing rules", "and every auditing standard"); "as well as"
+# joins as "and" does. The tip judged the first word after the conjunction alone and ended the name there, so an
+# opening verb or preposition was dropped, or a translated paper's head noun "учёте" passed as the customer's, and the
+# invented tail went unread; c491da9 holds the opening word or the head noun and blanks.
+FILLER_TAILS_RU = (
+    ('and-especially-audit', 'Соблюдает Закон о бухгалтерском учёте и особенно аудите.', ('аудите',)),
+    ('namely-audit', 'Знает Закон о бухгалтерском учёте, а именно аудите.', ('аудите',)),
+    ('that-is-audit', 'Применяет Закон о бухгалтерском учёте, то есть аудите.', ('аудите',)),
+    ('ie-audit', 'Руководствуется Законом о бухгалтерском учёте, т. е. аудите.', ('аудите',)),
+    ('as-about-audit', 'Согласно Закону о бухгалтерском учёте, как и об аудите, бухгалтер ведёт книги.', ('аудите',)),
+    ('and-of-course-audit', 'Изучает Закон о бухгалтерском учёте и конечно аудите.', ('аудите',)),
+    ('and-accordingly-audit', 'Соблюдает Закон о бухгалтерском учёте и соответственно аудите.', ('аудите',)),
+    ('and-naturally-audit', 'Знает Закон о бухгалтерском учёте и разумеется аудите.', ('аудите',)),
+    ('and-only-audit', 'Применяет Закон о бухгалтерском учёте и только аудите.', ('аудите',)),
+    ('and-just-taxation', 'Соблюдает Закон о бухгалтерском учёте и лишь налогообложении.', ('налогообложении',)),
+    ('and-a-little-audit', 'Знает Закон о бухгалтерском учёте и немного аудите.', ('аудите',)),
+    ('and-sometimes-audit', 'Соблюдает Закон о бухгалтерском учёте и иногда аудите.', ('аудите',)),
+    ('and-necessarily-audit', 'Соблюдает Закон о бухгалтерском учёте и обязательно аудите.', ('аудите',)),
+    ('and-once-more-audit', 'Соблюдает Закон о бухгалтерском учёте и ещё раз аудите.', ('аудите',)),
+    ('of-course-in-commas-audit', 'Соблюдает Закон о бухгалтерском учёте, конечно, аудите.', ('аудите',)))
+for direction, brief in RUSSIAN_ACCOUNTING:
+    for slug, sentence, gone in FILLER_TAILS_RU:
+        CASES += [
+            guard(f'laws-a-tail-past-a-filler-after-a-named-law-{slug}-{direction}-blank', BLANK, brief, 'ru', sentence,
+                  gone=gone, translated=direction != 'ru'),
+            gp(f'laws-a-tail-past-a-filler-after-a-named-law-{slug}-in-a-grounded-part-{direction}-blank', BLANK,
+               brief, 'ru', sentence, gone=gone),
+        ]
+    CASES.append(body(f'laws-a-tail-past-a-filler-after-a-named-law-and-especially-audit-in-a-qualification-{direction}'
+                      f'-blank', BLANK, 'pdf.biz.lavozim_yoriqnomasi', brief, 'ru', 'qualification',
+                      FILLER_TAILS_RU[0][1], gone=('аудите',)))
+# A translated paper's head noun "учёте" after a subject, no opening word: only the head noun decides.
+ACCOUNTING_UZC_RU = ('Бухгалтер учун рус тилида лавозим йўриқномаси ёзинг. У Бухгалтерия ҳисоби тўғрисидаги қонунни '
+                     'билиши керак.')
+for slug, sentence, gone in (
+        ('and-especially-audit', 'Бухгалтер соблюдает Закон о бухгалтерском учёте и особенно аудите.', ('аудите',)),
+        ('namely-audit', 'Бухгалтер обязан знать Закон о бухгалтерском учёте, а именно аудите.', ('аудите',)),
+        ('as-about-audit', 'Работник применяет Закон о бухгалтерском учёте, как и об аудите.', ('аудите',)),
+        ('and-just-taxation', 'Он хорошо знает Закон о бухгалтерском учёте и лишь налогообложении.',
+         ('налогообложении',)),
+        ('ie-audit', 'Бухгалтер соблюдает Закон о бухгалтерском учёте, т. е. аудите.', ('аудите',))):
+    for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING_UZ_RU),
+                             ('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU)):
+        CASES += [
+            guard(f'laws-a-translated-head-noun-before-a-filler-and-a-tail-{slug}-{direction}-blank', BLANK, brief,
+                  'ru', sentence, gone=gone, translated=True),
+            gp(f'laws-a-translated-head-noun-before-a-filler-and-a-tail-{slug}-in-a-grounded-part-{direction}-blank',
+               BLANK, brief, 'ru', sentence, gone=gone),
+        ]
+    CASES.append(body(f'laws-a-translated-head-noun-before-a-filler-and-a-tail-{slug}-in-a-qualification-en-to-ru'
+                      f'-blank', BLANK, 'pdf.biz.lavozim_yoriqnomasi', ACCOUNTING_EN_RU, 'ru', 'qualification',
+                      sentence, gone=gone))
+JOB_EN_KNOWS_ACCOUNTING = 'Write a job description for an accountant. He must know the Law on Accounting.'
+FILLER_TAILS_EN = (
+    ('as-well-as-auditing', 'Under Law on Accounting as well as auditing.', ('auditing',)),
+    ('as-well-as-auditing-capitalised', 'Per Law on Accounting as well as Auditing, reports are filed.', ('Auditing',)),
+    ('as-well-as-on-auditing', 'Under Law on Accounting as well as on auditing, reports are filed.',
+     ('auditing',)),
+    ('and-even-auditing', 'Under Law on Accounting and even auditing.', ('auditing',)),
+    ('and-only-auditing', 'Per Law on Accounting and only auditing, reports are filed.', ('auditing',)),
+    ('and-so-auditing', 'Under Law on Accounting and so auditing, reports are filed.', ('auditing',)),
+    ('and-not-only-auditing', 'Per Law on Accounting and not only auditing, reports are filed.', ('auditing',)),
+    ('and-its-auditing-rules', 'Under Law on Accounting and its auditing rules, reports are filed.', ('auditing',)),
+    ('and-every-auditing-standard', 'Per Law on Accounting and every auditing standard, reports are filed.',
+     ('auditing',)),
+    ('and-all-auditing-rules', 'Under Law on Accounting and all auditing rules, reports are filed.', ('auditing',)),
+    ('comma-ie-auditing', 'Under Law on Accounting, i.e. auditing, reports are filed.', ('auditing',)),
+    ('ie-auditing', 'Per Law on Accounting i.e. auditing, reports are filed.', ('auditing',)),
+    ('comma-that-is-auditing', 'Under Law on Accounting, that is, auditing, reports are filed.', ('auditing',)),
+    ('comma-even-auditing', 'Per Law on Accounting, even auditing, reports are filed.', ('auditing',)))
+for direction, brief, translated in (('en', JOB_EN_KNOWS_ACCOUNTING, False), ('ru-to-en', JOB_RU_EN_LAW, True),
+                                     ('uz-to-en', ACCOUNTING_UZ_EN, True)):
+    for slug, sentence, gone in FILLER_TAILS_EN:
+        CASES += [
+            guard(f'laws-a-tail-past-a-filler-after-a-named-law-{slug}-{direction}-blank', BLANK, brief, 'en', sentence,
+                  gone=gone, translated=translated),
+            gp(f'laws-a-tail-past-a-filler-after-a-named-law-{slug}-in-a-grounded-part-{direction}-blank', BLANK,
+               brief, 'en', sentence, gone=gone),
+        ]
+    CASES.append(body(f'laws-a-tail-past-a-filler-after-a-named-law-as-well-as-auditing-in-a-qualification-{direction}'
+                      f'-blank', BLANK, 'pdf.biz.lavozim_yoriqnomasi', brief, 'en', 'qualification',
+                      FILLER_TAILS_EN[0][1], gone=('auditing',)))
+# eb8b05c keeps the customer's law before a word past the conjunction or the comma that cannot go on its name: another
+# object, a clause's subject or verb, another law of theirs, "и т. д.", "and so on".
+for slug, sentence in (
+        ('and-the-cash-procedure', 'Знает Закон о бухгалтерском учёте и порядок ведения кассовых операций.'),
+        ('and-the-rules-of-bookkeeping', 'Знает Закон о бухгалтерском учёте и правила ведения книг.'),
+        ('and-the-method-of-reporting', 'Знает Закон о бухгалтерском учёте и методику составления отчётности.'),
+        ('and-the-basics-of-taxation', 'Знает Закон о бухгалтерском учёте и основы налогообложения.'),
+        ('and-keeps-books', 'Знает Закон о бухгалтерском учёте и ведёт книги.'),
+        ('and-so-on', 'Знает Закон о бухгалтерском учёте и т. д.'),
+        ('and-so-forth', 'Знает Закон о бухгалтерском учёте и так далее.'),
+        ('comma-and-the-accountant', 'Соблюдает Закон о бухгалтерском учёте, а бухгалтер ведёт книги.'),
+        ('comma-as-a-rule', 'Согласно Закону о бухгалтерском учёте, как правило, отчёты сдаются ежегодно.'),
+        ('comma-it-is-required', 'Согласно Закону о бухгалтерском учёте, это обязательно.'),
+        ('comma-the-chief-accountant', 'Согласно Закону о бухгалтерском учёте, главный бухгалтер ведёт книги.')):
+    for direction, brief in RUSSIAN_ACCOUNTING:
+        CASES.append(guard(f'laws-the-customers-law-before-a-word-that-cannot-go-on-it-{slug}-{direction}-keep', KEEP,
+                           brief, 'ru', sentence))
+CASES.append(guard('laws-the-customers-law-before-their-other-legislation-ru-keep', KEEP,
+                   JOB_RU_KNOWS_ACCOUNTING + ' Также законодательство о налогах.', 'ru',
+                   'Знает Закон о бухгалтерском учёте и законодательство о налогах.'))
+for slug, sentence in (('a-subject-keeps-books', 'Бухгалтер соблюдает Закон о бухгалтерском учёте и умеет вести '
+                                                 'книги.'),
+                       ('a-subject-and-the-rules', 'Бухгалтер соблюдает Закон о бухгалтерском учёте, а также правила '
+                                                   'ведения книг.')):
+    for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING_UZ_RU)):
+        CASES.append(guard(f'laws-the-customers-translated-law-before-a-word-that-cannot-go-on-it-{slug}-{direction}'
+                           f'-keep', KEEP, brief, 'ru', sentence, translated=True))
+for slug, sentence in (('comma-its-rules-apply', 'Under Law on Accounting, its rules apply to all firms.'),
+                       ('comma-every-firm-keeps', 'Under Law on Accounting, every firm keeps its books.'),
+                       ('comma-all-firms-keep', 'Under Law on Accounting, all firms keep books.'),
+                       ('comma-this-applies', 'Under Law on Accounting, this applies to all firms.'),
+                       ('comma-he-keeps', 'Under Law on Accounting, he keeps the books.'),
+                       ('and-so-on', 'Follows the Law on Accounting and so on.'),
+                       ('and-applies-it', 'Follows the Law on Accounting and applies it daily.'),
+                       ('and-this-applies', 'Knows the Law on Accounting and this applies to all firms.')):
+    for direction, brief in (('en', JOB_EN_KNOWS_ACCOUNTING), ('ru-to-en', JOB_RU_EN_LAW),
+                             ('uz-to-en', ACCOUNTING_UZ_EN)):
+        CASES.append(guard(f'laws-the-customers-law-before-a-word-that-cannot-go-on-it-{slug}-{direction}-keep', KEEP,
+                           brief, 'en', sentence))
+
+# eb8b05c's keeps the census of round 11 found blanked (p6), restored where no leak comes back: a clause after a comma
+# whose lower-case subject goes on with an auxiliary or a modal ("..., teachers must protect pupils", "..., books are
+# kept daily"), and an adverb right after the law's name before the sentence's end ("... учёте хорошо."). A list after
+# the comma and a tail after the adverb still blank.
+TEACHER_EN = 'Write a job description for a teacher. He must know the Law on Education.'
+CASES += [
+    guard('laws-the-customers-law-before-a-comma-and-a-clause-teachers-must-protect-en-keep', KEEP, TEACHER_EN, 'en',
+          'Under Law on Education, teachers must protect pupils.'),
+    guard('laws-a-tail-past-a-comma-after-a-named-law-a-list-before-a-verb-en-blank', BLANK, JOB_EN_KNOWS_ACCOUNTING,
+          'en', 'Under Law on Accounting, auditing and taxes are covered.', gone=('auditing', 'taxes')),
+]
+for direction, brief in (('en', JOB_EN_KNOWS_ACCOUNTING), ('ru-to-en', JOB_RU_EN_LAW), ('uz-to-en', ACCOUNTING_UZ_EN)):
+    CASES.append(guard(f'laws-the-customers-law-before-a-comma-and-a-clause-books-are-kept-{direction}-keep', KEEP,
+                       brief, 'en', 'Under Law on Accounting, books are kept daily.'))
+for direction, brief in RUSSIAN_ACCOUNTING:
+    CASES += [
+        guard(f'laws-the-customers-law-before-an-adverb-at-the-end-{direction}-keep', KEEP, brief, 'ru',
+              'Знает Закон о бухгалтерском учёте хорошо.'),
+        guard(f'laws-a-tail-past-an-adverb-after-a-named-law-in-banks-{direction}-blank', BLANK, brief, 'ru',
+              'Соблюдает Закон о бухгалтерском учёте строго в банках.', gone=('банках',), translated=direction != 'ru'),
+        guard(f'laws-a-tail-past-an-adverb-after-a-named-law-and-audit-{direction}-blank', BLANK, brief, 'ru',
+              'Соблюдает Закон о бухгалтерском учёте хорошо и аудите.', gone=('аудите',), translated=direction != 'ru'),
+    ]
+for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING_UZ_RU)):
+    CASES += [
+        guard(f'laws-the-customers-translated-law-before-an-adverb-at-the-end-{direction}-keep', KEEP, brief, 'ru',
+              'Бухгалтер знает Закон о бухгалтерском учёте хорошо.', translated=True),
+        guard(f'laws-a-translated-head-noun-before-an-adverb-and-a-tail-{direction}-blank', BLANK, brief, 'ru',
+              'Бухгалтер знает Закон о бухгалтерском учёте особенно аудите.', gone=('аудите',), translated=True),
+    ]
+
+# ---- After a law's date or number, its name ends only at the sentence's or its clause's end, a verb, or past "и" or a
+# comma where it cannot go on (p1, p4): "Соблюдает Закон о бухгалтерском учёте от 13 апреля 2016 года и аудите", "... №
+# 404 в банках", "Under Law on Accounting of 13 April 2016 and Auditing" name more than the customer's law; the tip
+# ended the name at the date and c491da9 blanks.
+JOB_RU_KNOWS_ACCOUNTING_DATED = ('Составьте должностную инструкцию бухгалтера. Он должен знать Закон о бухгалтерском '
+                                 'учёте от 13 апреля 2016 года № 404.')
+ACCOUNTING_EN_RU_NUMBERED = ('Write a job description for an accountant in Russian. He must know the Law on Accounting '
+                             'of 13 April 2016 No. 404.')
+ACCOUNTING_UZ_RU_NUMBERED = ('Buxgalter uchun rus tilida lavozim yo‘riqnomasi yozing. U 2016 yil 13 apreldagi '
+                             '404-sonli Buxgalteriya hisobi to‘g‘risidagi qonunni bilishi kerak.')
+JOB_EN_KNOWS_ACCOUNTING_DATED = ('Write a job description for an accountant. He must know the Law on Accounting of 13 '
+                                 'April 2016 No. 404.')
+DATED_TAILS_RU = (
+    ('and-audit', 'Соблюдает Закон о бухгалтерском учёте от 13 апреля 2016 года и аудите.', ('аудите',)),
+    ('audit-and-taxes', 'Знает Закон о бухгалтерском учёте от 13 апреля 2016 года, аудите и налогах.',
+     ('аудите', 'налогах')),
+    ('number-and-audit', 'Руководствуется Законом о бухгалтерском учёте № 404 и аудите.', ('аудите',)),
+    ('number-in-banks', 'Применяет Закон о бухгалтерском учёте № 404 в банках.', ('банках',)),
+    ('in-banks', 'Согласно Закону о бухгалтерском учёте от 13 апреля 2016 года в банках отчёты сдаются.', ('банках',)),
+    ('and-about-audit', 'Изучает Закон о бухгалтерском учёте от 13 апреля 2016 года и об аудите.', ('аудите',)),
+    ('number-and-especially-audit', 'Соблюдает Закон о бухгалтерском учёте № 404 и особенно аудите.', ('аудите',)))
+for direction, brief in (('ru', JOB_RU_KNOWS_ACCOUNTING_DATED), ('en-to-ru', ACCOUNTING_EN_RU_NUMBERED)):
+    for slug, sentence, gone in DATED_TAILS_RU:
+        CASES += [
+            guard(f'laws-a-tail-after-a-named-laws-date-{slug}-{direction}-blank', BLANK, brief, 'ru', sentence,
+                  gone=gone, translated=direction != 'ru'),
+            gp(f'laws-a-tail-after-a-named-laws-date-{slug}-in-a-grounded-part-{direction}-blank', BLANK, brief, 'ru',
+               sentence, gone=gone),
+        ]
+    CASES.append(body(f'laws-a-tail-after-a-named-laws-date-and-audit-in-a-qualification-{direction}-blank', BLANK,
+                      'pdf.biz.lavozim_yoriqnomasi', brief, 'ru', 'qualification', DATED_TAILS_RU[0][1],
+                      gone=('аудите',)))
+for slug, sentence, gone in (
+        ('and-audit', 'Бухгалтер соблюдает Закон о бухгалтерском учёте от 13 апреля 2016 года и аудите.', ('аудите',)),
+        ('number-audit-and-taxes', 'Бухгалтер соблюдает Закон о бухгалтерском учёте № 404, аудите и налогах.',
+         ('аудите', 'налогах')),
+        ('in-banks', 'Работник применяет Закон о бухгалтерском учёте от 13 апреля 2016 года в банках.', ('банках',))):
+    for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU_NUMBERED), ('uz-to-ru', ACCOUNTING_UZ_RU_NUMBERED)):
+        CASES.append(guard(f'laws-a-translated-head-noun-before-a-date-and-a-tail-{slug}-{direction}-blank', BLANK,
+                           brief, 'ru', sentence, gone=gone, translated=True))
+for slug, sentence, gone in (
+        ('and-auditing', 'Under Law on Accounting of 13 April 2016 and auditing, reports are filed.', ('auditing',)),
+        ('for-banks', 'Per Law on Accounting of 13 April 2016 for banks, reports are filed.', ('banks',)),
+        ('number-and-auditing', 'Under Law on Accounting of 13 April 2016 No. 404 and auditing, reports are filed.',
+         ('auditing',))):
+    CASES += [
+        guard(f'laws-a-tail-after-a-named-laws-date-{slug}-en-blank', BLANK, JOB_EN_KNOWS_ACCOUNTING_DATED, 'en',
+              sentence, gone=gone, translated=False),
+        gp(f'laws-a-tail-after-a-named-laws-date-{slug}-in-a-grounded-part-en-blank', BLANK,
+           JOB_EN_KNOWS_ACCOUNTING_DATED, 'en', sentence, gone=gone),
+    ]
+# A genitive tail after the law's number names more than the customer's law, as it does right after the name.
+NUMBER_GENITIVE_TAIL = 'laws-a-genitive-tail-after-a-named-laws-number-before-a-clause-verb-ru-blank'
+CASES.append(guard(NUMBER_GENITIVE_TAIL, BLANK, JOB_RU_KNOWS_ACCOUNTING_DATED, 'ru',
+                   'Согласно Закону о бухгалтерском учёте № 404 банков регулируется отчётность.', gone=('банков',)))
+# eb8b05c keeps the customer's law and its date before the sentence's end, a verb, or a clause past "и" or a comma.
+for slug, sentence in (('at-the-end', 'Знает Закон о бухгалтерском учёте от 13 апреля 2016 года.'),
+                       ('and-can-keep-books', 'Знает Закон о бухгалтерском учёте от 13 апреля 2016 года и умеет вести '
+                                              'книги.'),
+                       ('number-comma-a-clause', 'Соблюдает Закон о бухгалтерском учёте № 404, бухгалтер ведёт книги.'),
+                       ('a-verb', 'Закон о бухгалтерском учёте от 13 апреля 2016 года регулирует учёт.')):
+    for direction, brief in (('ru', JOB_RU_KNOWS_ACCOUNTING_DATED), ('en-to-ru', ACCOUNTING_EN_RU_NUMBERED)):
+        CASES.append(guard(f'laws-the-customers-law-and-its-date-{slug}-{direction}-keep', KEEP, brief, 'ru',
+                           sentence))
+for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU_NUMBERED), ('uz-to-ru', ACCOUNTING_UZ_RU_NUMBERED)):
+    CASES.append(guard(f'laws-the-customers-translated-law-and-its-date-at-the-end-{direction}-keep', KEEP, brief, 'ru',
+                       'Бухгалтер соблюдает Закон о бухгалтерском учёте от 13 апреля 2016 года.', translated=True))
+for slug, sentence in (('comma-a-clause', 'Under Law on Accounting of 13 April 2016, the accountant keeps the books.'),
+                       ('number-at-the-end', 'Follows the Law on Accounting of 13 April 2016 No. 404.'),
+                       ('and-applies-it', 'Follows the Law on Accounting of 13 April 2016 and applies it daily.')):
+    CASES.append(guard(f'laws-the-customers-law-and-its-date-{slug}-en-keep', KEEP, JOB_EN_KNOWS_ACCOUNTING_DATED, 'en',
+                       sentence))
+
+# ---- A placing only the placings read since see, its Uzbek ordinal with its apostrophe left unread, gives the
+# customer's side its place key alone (the sweep's 146 lines versus eb8b05c, p2): c491da9 read the ordinal's number word
+# alone as a bare figure, so their "to‘rtinchi natijani ko‘rsatdi" grounded the paper's "4 yil", "4-sinf" or "4 года";
+# eb8b05c stopped reading there and failed the job. The owner's decision: c491da9's numbers change for these texts only
+# (tests/test_category_numbers_parity.py names them).
+SECOND_PLACINGS = (('result', 'Tuman olimpiadasida {o} natijani ko{a}rsatdi.'),
+                   ('step', 'Musobaqada {o} pog{a}onaga ko{a}tarildi.'),
+                   ('degree-diploma', 'U {o} darajali diplom oldi.'),
+                   ('sales-place', 'Savdo hajmi bo{a}yicha {o} o{a}ringa chiqdi.'),
+                   ('became', 'Olimpiadada {o} bo{a}ldi.'),
+                   ('ranks-in-sales', 'Savdo bo{a}yicha {o} o{a}rinda turadi.'))
+SECOND_ORDINALS = (('fourth', 'to{a}rtinchi', 4), ('ninth', 'to{a}qqizinchi', 9), ('tenth', 'o{a}ninchi', 10),
+                   ('fourteenth', 'o{a}n to{a}rtinchi', 14), ('twenty-ninth', 'yigirma to{a}qqizinchi', 29))
+for form, template in SECOND_PLACINGS:
+    for slug, ordinal, n in SECOND_ORDINALS:
+        said = PLACING_LETTERS['uz'] + template.format(o=ordinal.format(a='‘'), a='‘')
+        CASES.append(gp(f'numbers-a-customers-second-reading-{form}-placing-{slug}-grounds-no-years-uz-blank', BLANK,
+                        said, 'uz', f'U {n} yil to‘garakka qatnashgan.', gone=(str(n),)))
+    for sign, a in (('ascii', "'"), ('right-quote', '’'), ('backtick', '`')):
+        said = PLACING_LETTERS['uz'] + template.format(o=f'to{a}rtinchi', a=a)
+        CASES.append(gp(f'numbers-a-customers-second-reading-{form}-placing-fourth-{sign}-grounds-no-years-uz-blank',
+                        BLANK, said, 'uz', 'U 4 yil to‘garakka qatnashgan.', gone=('4',)))
+    said = PLACING_LETTERS['uz'] + template.format(o='to‘rtinchi', a='‘')
+    CASES += [
+        gp(f'numbers-a-customers-second-reading-{form}-placing-grounds-no-grade-uz-blank', BLANK, said, 'uz',
+           'U 4-sinfda o‘qiydi.', gone=('4',)),
+        gp(f'numbers-a-customers-second-reading-{form}-placing-grounds-no-projects-uz-blank', BLANK, said, 'uz',
+           'U 4 ta loyihada qatnashdi.', gone=('4',)),
+        gp(f'numbers-a-customers-second-reading-{form}-placing-grounds-no-years-uz-to-ru-blank', BLANK, said, 'ru',
+           'Опыт работы — 4 года.', gone=('4',)),
+        gp(f'numbers-a-customers-second-reading-{form}-placing-grounds-no-years-uz-to-en-blank', BLANK, said, 'en',
+           'I have 4 years of experience.', gone=('4',)),
+        body(f'numbers-a-customers-second-reading-{form}-placing-grounds-no-years-in-references-achievements-uz-blank',
+             BLANK, 'pdf.xat.tavsifnoma', said, 'uz', 'achievements', 'U 4 yil matematika to‘garagiga qatnashgan.',
+             gone=('4',)),
+    ]
+
 CASE_IDS = [case.id for case in CASES]
 
 
@@ -4424,6 +4694,33 @@ def test_what_a_change_reads_back(change):
     leaked = [word for word in change.gone if _shows(_strings(made), word)]
     assert not leaked, f'{leaked} reached the paper after the change: {found!r}'
 
+
+
+# An earlier version's fact of a figure's kind or of no field is held by its figures alone (`facts._figures_only`), read
+# out of its sentence (the re-check of round 11, p7): the first reading leaves the apostrophe ordinal of its placing
+# unread ("to‘rtinchi" of "to‘rtinchi o‘rinni egalladi"), and read alone that word is the bare "4" the sentence never
+# gives, so the revised paper's "4 yil" passed; c491da9 and eb8b05c stopped reading there and failed the job.
+HELD_PLACINGS = [
+    (f'numbers-an-earlier-versions-{slug}-in-{fact}-grounds-no-years-in-{kind}-uz-blank', entry, part, label, held, n)
+    for kind, entry, part in (('references', 'pdf.xat.tavsifnoma', 'achievements'), ('reports', 'pdf.biz.hisobot',
+                                                                                     'summary'))
+    for label, fact in (('', 'a-fact-of-no-field'), ('note', 'a-note-fact'), ('achievements', 'an-achievements-fact'),
+                        ('date', 'a-date-fact'))
+    for slug, held, n in (('fourth-place', 'Viloyat olimpiadasida to‘rtinchi o‘rinni egalladi.', 4),
+                          ('tenth-place', 'Tanlovda o‘ninchi o‘rinda.', 10))]
+
+
+@pytest.mark.parametrize('id, entry, part, label, held, n', HELD_PLACINGS, ids=[row[0] for row in HELD_PLACINGS])
+def test_an_earlier_versions_placing_grounds_no_bare_figure(id, entry, part, label, held, n):
+    brief = PLACING_LETTERS['uz'].strip()
+    data = _draft(entry, brief, 'uz')
+    before = _answer(data, sections={'facts': {'items': [{'label': label, 'text': held, 'value': ''}],
+                                               'layout': 'list'}})
+    data['revision'] = {'before': before, 'request': 'Matnni qisqartiring.', 'original_prompt': brief}
+    assert str(n) not in facts.trusted(data).values, f'the earlier placing gives the bare figure {n}'
+    line = f'U {n} yil matematika to‘garagiga qatnashgan.'
+    made, _ = finish.apply(data, _answer(data, sections={part: {'body': line}}), file_names=[], codes=[])
+    assert not _shows(_strings(made), f'{n} yil'), f'the earlier placing grounded the invented "{n} yil"'
 
 # ---------------------------------------------------------------- a deck's cover lines (round 3 of the convergence)
 
