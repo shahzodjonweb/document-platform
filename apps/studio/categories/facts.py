@@ -1757,12 +1757,12 @@ LAW_JOINED_DETERMINER = re.compile(LAW_ARTICLE.pattern + r"|its|their|his|her|ou
 def _name_ends(sentence, tokens, index, why, word):
     """Whether the name `_law_names` read after a stem's "о", "об", "of" or "on", up to the token at `index` where the
     reading stopped (`why`), ends there: at the sentence's or its clause's end, the law's date or number, a verb ("...
-    учёте регулирует", "... Accounting applies"), or past a comma, a semicolon or a conjunction before a word that
-    cannot go on it (`_joined_ends`: "..., бухгалтер ведёт книги", "...; ведёт книги", "... и умеет вести книги"), the
-    words that open no clause passed over ("... учёте и особенно аудите", "... Accounting and even auditing" go on).
-    Never where the reading reached its end, nor before a preposition ("... учёте в банках", "... in Banks") or a word
-    that may go on the name ("... учёте и аудите", "... Accounting, Auditing and Taxes", "... о защите прав
-    инвесторов")."""
+    учёте регулирует", "... Accounting applies"), or past a comma, a semicolon, a conjunction, "as well as" or "i.e."
+    before a word that cannot go on it (`_joined_ends`: "..., бухгалтер ведёт книги", "...; ведёт книги", "... и умеет
+    вести книги"), the words that open no clause passed over ("... учёте и особенно аудите", "... Accounting as well
+    as auditing" go on). Never where the reading reached its end, nor before a preposition ("... учёте в банках", "...
+    in Banks") or a word that may go on the name ("... учёте и аудите", "... Accounting, Auditing and Taxes", "... о
+    защите прав инвесторов")."""
     if why == 'reach':
         return False
     if why == 'goes':
@@ -1775,6 +1775,9 @@ def _name_ends(sentence, tokens, index, why, word):
     token = tokens[index][1]
     low = normalised(token).casefold()
     if why == 'stop':
+        following = [normalised(text).casefold() for _, text in tokens[index + 1:index + 3]]
+        if (low == 'as' and following == ['well', 'as']) or (low == 'i' and following[:1] == ['e']):
+            return _joined_ends(tokens, index, low == 'as')  # "as well as" joins as "and" does, "i.e." as a comma
         return LAW_NAME_PREPOSITION.fullmatch(low) is None  # a verb, a pronoun, a conjunction of a clause
     if why == 'word':
         return RU_LAW_VERB.fullmatch(low) is not None  # any other word may be the name's ("... о защите прав ...")
