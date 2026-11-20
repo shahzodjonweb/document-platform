@@ -4128,6 +4128,54 @@ for slug, sentence in (('adopted-in-a-year', 'The Law on Education adopted in 19
     CASES.append(guard(f'laws-the-customers-law-on-education-{slug}-en-keep', KEEP, EDU_EN + ' It was adopted in 1997.',
                        'en', sentence))
 
+# ---- The false blanks versus eb8b05c the round-11 sweep shows once the re-check's probes join it (a5, a9), each the
+# price of the blank it names. A sentence's opening noun before a law's stem is the name's, as c491da9 holds it
+# (9f843a9), so the customer's law after "Знание", "Требования", "Нарушение" blanks with an invented role opening the
+# same place ("Аудитор Закона о бухгалтерском учёте обязателен"). A word after the name read in no case of its ("...
+# учёте бухгалтер ведёт книги", "... учёте отчёт сдаётся") may go on the name as a genitive tail does ("... учёте
+# банков регулируется отчётность"), and a preposition may ("... учёте в работе", "... учёте в банках"). A past form
+# before a plural noun reads as "state funded schools" ("The Law on Education changed schools").
+JOB_RU_KNOWS_ACCOUNTING = 'Составьте должностную инструкцию бухгалтера. Он должен знать Закон о бухгалтерском учёте.'
+RUSSIAN_ACCOUNTING = (('ru', JOB_RU_KNOWS_ACCOUNTING), ('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING_UZ_RU))
+for direction, brief in RUSSIAN_ACCOUNTING:
+    translated = direction != 'ru'
+    role = f'laws-an-invented-role-opening-a-sentence-before-a-named-law-{direction}-blank'
+    tail = f'laws-a-genitive-tail-before-a-clause-verb-after-a-named-law-{direction}-blank'
+    banks = ('laws-an-opening-word-before-a-named-law-in-banks-ru-blank' if direction == 'ru'
+             else f'laws-an-opening-word-before-a-named-law-in-banks-{direction}-blank')
+    CASES += [
+        guard(role, BLANK, brief, 'ru', 'Аудитор Закона о бухгалтерском учёте обязателен.', gone=('Аудитор',),
+              translated=translated),
+        guard(tail, BLANK, brief, 'ru', 'Согласно Закону о бухгалтерском учёте банков регулируется отчётность.',
+              gone=('банков',), translated=translated),
+    ]
+    if translated:
+        CASES.append(guard(banks, BLANK, brief, 'ru', 'Соблюдает Закон о бухгалтерском учёте в банках.',
+                           gone=('банках',), translated=True))
+    for slug, sentence, word, pair in (
+            ('knowledge', 'Знание Закона о бухгалтерском учёте обязательно.', 'Знание', role),
+            ('requirements', 'Требования Закона о бухгалтерском учёте обязательны.', 'Требования', role),
+            ('violation', 'Нарушение Закона о бухгалтерском учёте недопустимо.', 'Нарушение', role),
+            ('observance', 'Соблюдение Закона о бухгалтерском учёте обязательно.', 'Соблюдение', role),
+            ('provisions', 'Положения Закона о бухгалтерском учёте соблюдаются.', 'Положения', role),
+            ('norms', 'Нормы Закона о бухгалтерском учёте применяются.', 'Нормы', role),
+            ('according-to-a-clause', 'Согласно Закону о бухгалтерском учёте бухгалтер ведёт книги.', 'бухгалтер',
+             tail),
+            ('by-a-clause', 'По Закону о бухгалтерском учёте отчёт сдаётся ежегодно.', 'отчёт', tail),
+            ('according-to-a-reflexive-clause', 'Согласно Закону о бухгалтерском учёте отчётность сдаётся ежегодно.',
+             'отчётность', tail),
+            ('at-work', 'Применяет Закон о бухгалтерском учёте в работе.', 'работе', banks)):
+        CASES.append(gp(f'laws-the-customers-law-after-an-opening-word-{slug}-{direction}-accepted_false_blank',
+                        ACCEPTED, brief, 'ru', sentence, gone=(word,), pair=pair))
+FUNDED_SCHOOLS_GREW = 'laws-an-invented-tail-after-the-customers-law-on-education-funded-schools-grew-en-blank'
+CASES += [
+    guard(FUNDED_SCHOOLS_GREW, BLANK, EDU_EN, 'en', 'The Law on Education funded schools grew.', gone=('funded',)),
+    gp('laws-the-customers-law-on-education-introduced-new-standards-en-accepted_false_blank', ACCEPTED, EDU_EN, 'en',
+       'The Law on Education introduced new standards.', gone=('introduced',), pair=FUNDED_SCHOOLS_GREW),
+    gp('laws-the-customers-law-on-education-changed-schools-en-accepted_false_blank', ACCEPTED, EDU_EN, 'en',
+       'The Law on Education changed schools.', gone=('changed',), pair=FUNDED_SCHOOLS_GREW),
+]
+
 CASE_IDS = [case.id for case in CASES]
 
 
