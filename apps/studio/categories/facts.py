@@ -1695,9 +1695,10 @@ def _opener(word):
 
 
 # Where a law's name read after its "о", "об", "of" or "on" ends, past a closing quote (`_name_ends`): the sentence's or
-# its clause's end, or the law's date or number ("... о бухгалтерском учёте от 13 апреля 2016 года").
+# its clause's end, or the law's date or number ("... о бухгалтерском учёте от 13 апреля 2016 года"). A semicolon ends
+# it only at the text's end; before a word it is read as a comma is ("... учёте; аудите и налогах" goes on).
 LAW_HEAD_CLOSE = re.compile(r"[»\"”“'’]*")
-LAW_HEAD_END = re.compile(r"[  ]*(?:[.!?…;)\]]|$)")
+LAW_HEAD_END = re.compile(r"[  ]*(?:[.!?…)\]]|;[  ]*$|$)")
 LAW_HEAD_DATED = re.compile(r"[  ]+(?:от[  ]+)?(?:№|N[  ]*\d|\d)", re.IGNORECASE)
 # A Russian verb after the name: a present tense's ending no noun has ("регулирует", "устанавливает", "соблюдают"), a
 # reflexive's ("распространяется", "руководствуются"), or one of the verbs and short forms a law's sentence goes on
@@ -1721,8 +1722,9 @@ LAW_NAME_FILLER = re.compile(r"также|тоже|ещё|еще|also|as|well")
 def _name_ends(sentence, tokens, index, why, word):
     """Whether the name `_law_names` read after a stem's "о", "об", "of" or "on", up to the token at `index` where the
     reading stopped (`why`), ends there: at the sentence's or its clause's end, the law's date or number, a verb ("...
-    учёте регулирует", "... Accounting applies"), or past a comma or a conjunction before a word that cannot go on it
-    ("..., бухгалтер ведёт книги", "... и умеет вести книги", "..., the accountant keeps the books"). Never where the
+    учёте регулирует", "... Accounting applies"), or past a comma, a semicolon or a conjunction before a word that
+    cannot go on it ("..., бухгалтер ведёт книги", "...; ведёт книги", "... и умеет вести книги", "..., the accountant
+    keeps the books"). Never where the
     reading reached its end, nor before a preposition ("... учёте в банках", "... in Banks") or a word that may go on
     the name ("... учёте и аудите", "... Accounting, Auditing and Taxes", "... о защите прав инвесторов")."""
     if why == 'reach':
@@ -1740,7 +1742,7 @@ def _name_ends(sentence, tokens, index, why, word):
         return LAW_NAME_PREPOSITION.fullmatch(low) is None  # a verb, a pronoun, a conjunction of a clause
     if why == 'word':
         return RU_LAW_VERB.fullmatch(low) is not None  # any other word may be the name's ("... о защите прав ...")
-    if token != ',' and not LAW_AND.fullmatch(low):
+    if token not in ',;' and not LAW_AND.fullmatch(low):
         return any(stem.fullmatch(token) for stem in NAMED_STEMS)  # another law, read on its own; a mark goes on
     at = index + 1
     while at < len(tokens) and (LAW_AND.fullmatch(normalised(tokens[at][1]).casefold())
@@ -1852,9 +1854,9 @@ def _law_head_ends(sentence, start, word):
     """Whether a law's name ends at its head noun `word` at `start` of `sentence`, past a closing quote: the Uzbek head
     before what joins the name to its stem ("Buxgalteriya hisobi to‘g‘risidagi qonun") or before the stem; the Russian
     head before the sentence's or its clause's end, a verb (`RU_LAW_VERB`) or the law's date or number ("... о
-    бухгалтерском учёте от 13 апреля 2016 года"), or past "и" or a comma a word that cannot go on it. Before a
-    preposition, a word in the name's case ("... учёте и аудите") or any other word the name may go on past what
-    `_law_names` reads."""
+    бухгалтерском учёте от 13 апреля 2016 года"), or past "и", a comma or a semicolon a word that cannot go on it.
+    Before a preposition, a word in the name's case ("... учёте и аудите", "... учёте; аудите") or any other word the
+    name may go on past what `_law_names` reads."""
     rest = sentence[start + len(word):]
     rest = rest[LAW_HEAD_CLOSE.match(rest).end():]
     if not re.search('[а-яё]', normalised(word).casefold()):
@@ -1866,9 +1868,9 @@ def _law_head_ends(sentence, start, word):
     verb = re.match(r"[ \u00a0]+([^\W\d_]+)(?![^\W\d_]|-)", rest)
     if verb is not None and RU_LAW_VERB.fullmatch(normalised(verb.group(1)).casefold()) is not None:
         return True
-    # Past "и", "а также" or a comma, a word that cannot go on the name (`_may_go_on`): a clause's verb or another law
-    # ("... учёте и умеет вести книги", "... учёте и налоговый кодекс"); never "... учёте и аудите".
-    joined = re.match(r"(?:[ \u00a0]*,|[ \u00a0]+(?:и|а|или)(?![^\W\d_]))(?:[ \u00a0]+(?:и|а|или|также|тоже|ещё|еще)"
+    # Past "и", "а также", a comma or a semicolon, a word that cannot go on the name (`_may_go_on`): a clause's verb or
+    # another law ("... учёте и умеет вести книги", "... учёте и налоговый кодекс"); never "... учёте и аудите".
+    joined = re.match(r"(?:[ \u00a0]*[,;]|[ \u00a0]+(?:и|а|или)(?![^\W\d_]))(?:[ \u00a0]+(?:и|а|или|также|тоже|ещё|еще)"
                       r"(?![^\W\d_]))*[ \u00a0]+([^\W\d_]+)", rest)
     return joined is not None and not _may_go_on(joined.group(1))
 
