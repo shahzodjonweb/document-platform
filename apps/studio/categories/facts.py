@@ -651,8 +651,11 @@ def _checked_only(text):
 
 def _figures_only(text):
     """Only the numbers and the addresses of `text`, as a check that read nothing else held it: the customer's side,
-    so its numbers are the first reading's (`numbers.values`)."""
-    kept = [text[number.start:number.end] for number in numbers.found(text, words=True, first=True)]
+    so its numbers are the first reading's (`numbers.values`). A placing the first reading leaves unread
+    (`numbers.UNREAD`: "to‘rtinchi" of "to‘rtinchi o‘rinni egalladi") gives no figure out of its sentence: read alone,
+    its word would be the bare "4" the whole sentence never gives."""
+    kept = [text[number.start:number.end] for number in numbers.found(text, words=True, first=True)
+            if number.value != numbers.UNREAD]
     kept += [match.group(0) for pattern in (EMAIL, HANDLE, LINK) for match in pattern.finditer(text)]
     return ' ; '.join(kept)
 
