@@ -1308,7 +1308,7 @@ def _law_names(sentence):
                 and (name[1][1][0].isupper() or _law_subject(name[0][1])):
             name = name[1:]
         elif len(name) == 1 and _starts(sentence, name[0][0]) and not _law_name(name[0][1]) \
-                and _law_subject(name[0][1]) and _named_after(tokens, at, word):
+                and _law_subject(name[0][1]) and _opener(name[0][1]) and _named_after(tokens, at, word):
             # A duty's verb or a preposition right before a stem its name follows ("Соблюдает закон о бухгалтерском
             # учёте", "Under Law on Accounting, ..."): no word of the name where the name after it ends (below).
             opener, name = name, []
@@ -1540,6 +1540,31 @@ def _named_after(tokens, at, word):
     if index < len(tokens) and tokens[index][1] in '«"“„':
         index += 1
     return word(index) and LAW_OF.fullmatch(normalised(tokens[index][1]).casefold()) is not None and word(index + 1)
+
+
+# The words a sentence opens with right before a law's stem that are its grammar, never a word of the law's name
+# (`_opener`): a preposition, a determiner or a pronoun ("Согласно", "По", "Она", "Under", "Per", "The").
+LAW_OPENER = re.compile(r"согласно|по|в|во|на|при|для|вопреки|соответственно|он|она|оно|они|мы|я|вы|это|этот|эта"
+                        r"|the|a|an|under|according|per|in|by|every|each|all|our|his|her|their|its|this|that|he|she"
+                        r"|it|they|we|you")
+# A Russian gerund or infinitive, a sentence's verb too: "Изучив", "Руководствуясь", "Знать", "Соблюдать".
+RU_GERUND = re.compile(r"[а-яё]{3,}(?:ив|ав|яв|ев|вши|ясь|ась|учи|ючи)|[а-яё]{2,}(?:[аяеиуоы]ть|ться|ти|чь)")
+# The English verbs a duty opens with before a law ("Follows Law on Accounting", "Knows the Law ...").
+EN_OPENER_VERBS = frozenset("know observe obey respect study".split())
+
+
+def _opener(word):
+    """Whether a sentence's opening word right before a law's stem is its verb or its grammar (`_law_names`): a
+    Russian verb or gerund ("Соблюдает", "Руководствуется", "Знать", "Изучив"), an English verb's -s ("Follows"), or
+    one of `LAW_OPENER`; never a noun ("Учётчик", "Знание", "Требования", "Accountant", "Employee"), which may be the
+    name's or invented and is held as c491da9 holds it."""
+    low = normalised(word).casefold()
+    if LAW_OPENER.fullmatch(low):
+        return True
+    if re.search('[а-яё]', low):
+        return RU_VERB.fullmatch(low) is not None or RU_LAW_VERB.fullmatch(low) is not None \
+            or RU_GERUND.fullmatch(low) is not None
+    return low.endswith('s') and any(base in LAW_VERBS or base in EN_OPENER_VERBS for base in _s_bases(low))
 
 
 # Where a law's name read after its "о", "об", "of" or "on" ends, past a closing quote (`_name_ends`): the sentence's or
