@@ -2265,7 +2265,9 @@ def held_names(value, kind, trusted, *, translated=False, people=True):
         for run, bad in runs:
             found += _holdable(line, run, bad)
         if kind in ('line', 'list') and people:
-            found += [fold(word) for word in _line_names(line)
+            # The tip's reading of a line's name and c491da9's both (`_first_line_names`): a given name that is also a
+            # role's modifier ("Direktor Junior Smith") is held as c491da9 holds it.
+            found += [fold(word) for word in _line_names(line) + _first_line_names(line)
                       if _letters(word) >= 2 and not trusted.person(word, translated)]
         if kind in ('org', 'place'):
             found += _one_name(line, runs)
@@ -2458,6 +2460,25 @@ def _line_names(line):
             if run and _only_name(' '.join(run)):
                 found += [word for word in WORD.findall(' '.join(run)) if not HONORIFICS.fullmatch(normalised(word))]
             run = []
+    return found
+
+
+# A vice president's abbreviations, the role words read since c491da9 (`_first_line_names`).
+FIRST_ROLE_EXCEPT = _folded([word + ending for word in "vp svp evp avp".split() for ending in ('', 's')])
+
+
+def _first_line_names(line):
+    """c491da9's reading of a line fact's name (`held_names`): of each part (`LINE_PARTS`), the words after its last
+    role's, job's or document's word (`_role_word`, as c491da9 read them), when they are only a name (`_only_name`).
+    "Direktor Junior Smith" gives Junior and Smith, where `_line_names` reads "Junior" as the role's modifier."""
+    found = []
+    for part in LINE_PARTS.split(line):
+        words = WORD.findall(part)
+        roles = [index for index, word in enumerate(words)
+                 if _role_word(word) and fold(word) not in FIRST_ROLE_EXCEPT]
+        rest = words[roles[-1] + 1:] if roles else words
+        if rest and _only_name(' '.join(rest)):
+            found += [word for word in rest if not HONORIFICS.fullmatch(normalised(word))]
     return found
 
 
