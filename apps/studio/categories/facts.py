@@ -1735,18 +1735,34 @@ LAW_NAME_PREPOSITION = re.compile(
 LAW_NAME_FILLER = re.compile(r"также|тоже|ещё|еще|also|as|well")
 # An English article after "and" or a comma, passed over before what follows is read (`_name_ends`).
 LAW_ARTICLE = re.compile(r"the|a|an")
+# The words passed over after a comma, a semicolon or a conjunction before what follows a law's name is judged
+# (`_joined_ends`), as none of them opens a clause or names anything: the English adverbs and grammar words "and even
+# Auditing", "and not only auditing", ", i.e. auditing" take, and the Russian particles, parenthetical words and adverbs
+# ("и особенно аудите", "а именно аудите", ", то есть аудите", ", т. е. аудите", ", как и об аудите", "и разумеется
+# аудите", "и лишь налогообложении"), with every lower-case Russian word in -о (`_passed`: "конечно", "заодно",
+# "только", "немного", "строго").
+LAW_PASS_EN = re.compile(r"even|only|so|also|too|not|just|especially|particularly|mainly|chiefly|notably|i|e")
+LAW_PASS_RU = re.compile(r"т|е|есть|как|лишь|уж|вот|ведь|же|всё|вдруг|опять|вновь|снова|иногда|всегда|тогда|сначала"
+                         r"|сперва|сразу|наряду|полностью|разумеется|кажется|пожалуй|видимо|наверное|притом|причём"
+                         r"|причем|вдобавок|главным|чуть|едва|пока|раз")
+# The neuter nouns in -о a list goes on with after a law's name, no adverb (`_passed`): "... учёте и правило ...",
+# "... учёте и законодательство о налогах".
+RU_NEUTER = re.compile(r"[а-яё]+ство|правило|право|дело|число|слово|место|лицо|письмо|сальдо|нетто|брутто|бюро")
+# The English determiners a joined word may take, read as the article is (`_joined_ends`): "and its auditing rules",
+# "and every auditing standard", never ", its rules apply to banks".
+LAW_JOINED_DETERMINER = re.compile(LAW_ARTICLE.pattern + r"|its|their|his|her|our|your|all|each|every|any|some|no"
+                                                         r"|this|these|those|both|either|such")
 
 
 def _name_ends(sentence, tokens, index, why, word):
     """Whether the name `_law_names` read after a stem's "о", "об", "of" or "on", up to the token at `index` where the
     reading stopped (`why`), ends there: at the sentence's or its clause's end, the law's date or number, a verb ("...
     учёте регулирует", "... Accounting applies"), or past a comma, a semicolon or a conjunction before a word that
-    cannot go on it ("..., бухгалтер ведёт книги", "...; ведёт книги", "... и умеет вести книги"). An English article
-    after them is passed over: what follows "and the" may go on the name unless it is another law ("... and the
-    Auditing of Banks", never "... and the Labour Code"), and after a comma a capitalised word may ("..., the Auditing
-    of Banks"), never a clause's subject ("..., the accountant keeps the books"). Never where the reading reached its
-    end, nor before a preposition ("... учёте в банках", "... in Banks") or a word that may go on the name ("... учёте и
-    аудите", "... Accounting, Auditing and Taxes", "... о защите прав инвесторов")."""
+    cannot go on it (`_joined_ends`: "..., бухгалтер ведёт книги", "...; ведёт книги", "... и умеет вести книги"), the
+    words that open no clause passed over ("... учёте и особенно аудите", "... Accounting and even auditing" go on).
+    Never where the reading reached its end, nor before a preposition ("... учёте в банках", "... in Banks") or a word
+    that may go on the name ("... учёте и аудите", "... Accounting, Auditing and Taxes", "... о защите прав
+    инвесторов")."""
     if why == 'reach':
         return False
     if why == 'goes':
@@ -1764,17 +1780,58 @@ def _name_ends(sentence, tokens, index, why, word):
         return RU_LAW_VERB.fullmatch(low) is not None  # any other word may be the name's ("... о защите прав ...")
     if token not in ',;' and not LAW_AND.fullmatch(low):
         return any(stem.fullmatch(token) for stem in NAMED_STEMS)  # another law, read on its own; a mark goes on
-    at, conjoined = index + 1, token not in ',;'
-    while at < len(tokens) and (LAW_AND.fullmatch(normalised(tokens[at][1]).casefold())
-                                or LAW_NAME_FILLER.fullmatch(normalised(tokens[at][1]).casefold())):
-        conjoined = conjoined or LAW_AND.fullmatch(normalised(tokens[at][1]).casefold()) is not None
+    return _joined_ends(tokens, index + 1, token not in ',;')
+
+
+def _passed(text):
+    """Whether a word after a comma, a semicolon or a conjunction is passed over before what follows a law's name is
+    judged (`_joined_ends`): one of `LAW_PASS_EN` or `LAW_PASS_RU`, or a lower-case Russian adverb in -о ("особенно",
+    "конечно", "именно", "то", "заодно", "только", "строго"), never a neuter noun (`RU_NEUTER`: "законодательство",
+    "правило")."""
+    low = normalised(text).casefold()
+    if not re.search('[а-яё]', low):
+        return LAW_PASS_EN.fullmatch(low) is not None
+    return LAW_PASS_RU.fullmatch(low) is not None or (
+        text.islower() and low.endswith('о') and RU_NEUTER.fullmatch(low) is None)
+
+
+def _joined_ends(tokens, at, conjoined):
+    """Whether a law's name ends past the comma, the semicolon or the conjunction before the token at `at`
+    (`_name_ends`, `_law_head_ends`; `conjoined`: a conjunction, which takes what follows into a list).
+
+    Past the conjunctions and their fillers ("а также", "as well as") and the words that open no clause (`_passed`:
+    "особенно", "а именно", "то есть", "т. е.", "как и", "лишь", "even", "only", "i.e.", "that is"), with a
+    parenthetical's commas, the first other word decides: the name ends before a word that cannot go on it
+    (`_may_go_on`: a clause's verb or subject, "... учёте и умеет вести книги", "..., бухгалтер ведёт книги"; another
+    law; "and so on"), never before a word in its case, a preposition or a word of a name ("... учёте и особенно
+    аудите", "... учёте, как и об аудите", "... Accounting and even auditing"). An English article or determiner is
+    passed over too: what follows "and the", "and its" or "and every" may go on the name unless it is another law or a
+    clause's verb ("... and the Auditing of Banks", "... and its auditing rules"; never "... and the Labour Code", "...
+    and this applies to banks"), and after a comma a capitalised word may ("..., the Auditing of Banks"), never a
+    clause's subject ("..., the accountant keeps the books", "..., its rules apply to banks")."""
+    while at < len(tokens):
+        text = tokens[at][1]
+        low = normalised(text).casefold()
+        following = normalised(tokens[at + 1][1]).casefold() if at + 1 < len(tokens) else ''
+        if low == 'so' and following in ('on', 'forth'):
+            return True  # "... and so on"
+        if low == 'that' and following == 'is':
+            at += 1  # ", that is, auditing", read as "i.e."
+        elif LAW_AND.fullmatch(low) or LAW_NAME_FILLER.fullmatch(low):
+            conjoined = conjoined or LAW_AND.fullmatch(low) is not None
+        elif text not in ',;' and (any(stem.fullmatch(text) for stem in NAMED_STEMS)
+                                   or LAW_NAME_PREPOSITION.fullmatch(low) or not _passed(text)):
+            break
         at += 1
-    if at + 1 < len(tokens) and LAW_ARTICLE.fullmatch(tokens[at][1].casefold()) and WORD.fullmatch(tokens[at + 1][1]):
+    if at >= len(tokens):
+        return True
+    if at + 1 < len(tokens) and LAW_JOINED_DETERMINER.fullmatch(tokens[at][1].casefold()) \
+            and WORD.fullmatch(tokens[at + 1][1]):
         at += 1
-        if _another_law(tokens, at):
+        if _another_law(tokens, at) or LAW_AUX.fullmatch(normalised(tokens[at][1]).casefold()):
             return True
         return not (conjoined or tokens[at][1][0].isupper())
-    return at >= len(tokens) or not _may_go_on(tokens[at][1])
+    return not _may_go_on(tokens[at][1])
 
 
 def _another_law(tokens, at):
@@ -1899,9 +1956,10 @@ def _law_head_ends(sentence, start, word):
     """Whether a law's name ends at its head noun `word` at `start` of `sentence`, past a closing quote: the Uzbek head
     before what joins the name to its stem ("Buxgalteriya hisobi to‘g‘risidagi qonun") or before the stem; the Russian
     head before the sentence's or its clause's end, a verb (`RU_LAW_VERB`) or the law's date or number ("... о
-    бухгалтерском учёте от 13 апреля 2016 года"), or past "и", a comma or a semicolon a word that cannot go on it.
-    Before a preposition, a word in the name's case ("... учёте и аудите", "... учёте; аудите") or any other word the
-    name may go on past what `_law_names` reads."""
+    бухгалтерском учёте от 13 апреля 2016 года"), or past "и", a comma or a semicolon and the words that open no clause
+    a word that cannot go on it (`_joined_ends`), as `_name_ends` reads the name. Before a preposition, a word in the
+    name's case ("... учёте и аудите", "... учёте; аудите", "... учёте и особенно аудите") or any other word the name
+    may go on past what `_law_names` reads."""
     rest = sentence[start + len(word):]
     rest = rest[LAW_HEAD_CLOSE.match(rest).end():]
     if not re.search('[а-яё]', normalised(word).casefold()):
@@ -1913,11 +1971,12 @@ def _law_head_ends(sentence, start, word):
     verb = re.match(r"[ \u00a0]+([^\W\d_]+)(?![^\W\d_]|-)", rest)
     if verb is not None and RU_LAW_VERB.fullmatch(normalised(verb.group(1)).casefold()) is not None:
         return True
-    # Past "и", "а также", a comma or a semicolon, a word that cannot go on the name (`_may_go_on`): a clause's verb or
-    # another law ("... учёте и умеет вести книги", "... учёте и налоговый кодекс"); never "... учёте и аудите".
-    joined = re.match(r"(?:[ \u00a0]*[,;]|[ \u00a0]+(?:и|а|или)(?![^\W\d_]))(?:[ \u00a0]+(?:и|а|или|также|тоже|ещё|еще)"
-                      r"(?![^\W\d_]))*[ \u00a0]+([^\W\d_]+)", rest)
-    return joined is not None and not _may_go_on(joined.group(1))
+    # Past "и", "а также", a comma or a semicolon and the words that open no clause, a word that cannot go on the name
+    # (`_joined_ends`): a clause's verb or another law ("... учёте и умеет вести книги", "... учёте и налоговый
+    # кодекс"); never "... учёте и аудите", "... учёте и особенно аудите", "... учёте, как и об аудите".
+    joined = re.match(r"[ \u00a0]*[,;]|[ \u00a0]+(?:и|а|или)(?![^\W\d_])", rest)
+    tokens = [(match.start(), match.group(0)) for match in LAW_TOKEN.finditer(rest)]
+    return joined is not None and _joined_ends(tokens, 0, False)
 
 
 def _legal_known(sentence, concepts, trusted, translated, *, names=True):
