@@ -1688,6 +1688,57 @@ def _law_name_known(word, trusted):
     return trusted.allowed.known(word) or trusted.person(word, True)
 
 
+# The noun a law's name word stands before in one language and not in another: the Russian "о бухгалтерском учёте"
+# and the Uzbek "Buxgalteriya hisobi" of the English "on Accounting". It is the name's, read as the word before it is
+# (`_legal_known`), where the customer named that law in their words ("Law on Accounting", "Buxgalteriya hisobi
+# to‘g‘risidagi qonun", "Закон о бухгалтерском учёте"; `_laws_named`) and the name ends at it (`_law_head_ends`). Only
+# the head noun's own forms are: a word built on its stem ("hisobotlari", "hisobchilari", "учётчиках", "учётности")
+# names another law and must be the customer's word. Where the customer's "бухгалтерской службы", "accounting" or
+# "Buxgalteriya bo‘limi" and their "laws" name no Law on Accounting, or an invented tail may follow the head ("...
+# учёте и аудите", "... учёте, аудите и налогах", "... учёте в банках"), the head is the customer's word, as in c491da9.
+LAW_NAME_HEADS = {LAW_NAMES.index(r"buxgalteriya|бухгалтерск|accounting"):
+                  re.compile(r"уч[её]т(?:а|у|ом|е)?|hisob(?:i|ini|iga|ida|idan|ining)?")}
+
+
+def _laws_named(trusted):
+    """The LAW_NAME_FORMS the customer's own words name a code or a law by (`_law_names` of their sentences, their
+    Uzbek Cyrillic put in Latin too): "Law on Accounting", "Закон о бухгалтерском учёте", "Buxgalteriya hisobi
+    to‘g‘risidagi qonun" name the accounting law; "бухгалтерской службы ... законы" names none."""
+    if 'laws_named' not in trusted.cache:
+        texts = [trusted.said] + ([to_latin(trusted.said)] if UZBEK_CYRILLIC.search(trusted.said) else [])
+        trusted.cache['laws_named'] = {
+            _law_name(word) for text in texts for start, end in _sentences(normalised(text))
+            for _, word in _law_names(normalised(text)[start:end]) if _law_name(word) is not None}
+    return trusted.cache['laws_named']
+
+
+def _law_head_noun(before, word, trusted):
+    """Whether `word` is the head noun of the law name word `before` stands for (`LAW_NAME_HEADS`), a law the
+    customer named (`_laws_named`)."""
+    forms = _law_name(before)
+    head = LAW_NAME_HEADS.get(LAW_NAME_FORMS.index(forms)) if forms is not None else None
+    return head is not None and head.fullmatch(normalised(word).casefold()) is not None \
+        and forms in _laws_named(trusted)
+
+
+def _law_head_ends(sentence, start, word):
+    """Whether a law's name ends at its head noun `word` at `start` of `sentence`, past a closing quote: the Uzbek head
+    before what joins the name to its stem ("Buxgalteriya hisobi to‘g‘risidagi qonun") or before the stem; the Russian
+    head before the sentence's or its clause's end, a verb (`RU_LAW_VERB`) or the law's date or number ("... о
+    бухгалтерском учёте от 13 апреля 2016 года"). After "и", a comma, a preposition or any other word the name may go
+    on past what `_law_names` reads."""
+    rest = sentence[start + len(word):]
+    rest = rest[LAW_HEAD_CLOSE.match(rest).end():]
+    if not re.search('[а-яё]', normalised(word).casefold()):
+        after = LAW_TOKEN.match(rest, len(rest) - len(rest.lstrip(' \u00a0')))
+        low = normalised(after.group(0)).casefold() if after is not None else ''
+        return LAW_ABOUT.fullmatch(low) is not None or UZ_LAW_STEM.fullmatch(low) is not None
+    if LAW_HEAD_END.match(rest) or LAW_HEAD_DATED.match(rest):
+        return True
+    verb = re.match(r"[ \u00a0]+([^\W\d_]+)(?![^\W\d_]|-)", rest)
+    return verb is not None and RU_LAW_VERB.fullmatch(normalised(verb.group(1)).casefold()) is not None
+
+
 def _legal_known(sentence, concepts, trusted, translated, *, names=True):
     """Whether a legal sentence cites only what the customer gave: its kinds of act, numbers and the code's name;
     with `names`, every other capitalised word of it too (a person, a ministry, a date's issuer)."""
@@ -1704,8 +1755,10 @@ def _legal_known(sentence, concepts, trusted, translated, *, names=True):
     # Its other words in lower case ("арбитражному", "iqtisodiyot", "javobgarlik") are the customer's too: as they
     # wrote them, or in a translated paper in the spellings a translation gives a name. A translated code's words
     # not of LAW_NAMES cannot be told from an invented one's, so they go: a false removal, never an invention.
-    plain = [word for _, word in words if not word[0].isupper() and _law_name(word) is None
-             and not LAW_KIND.fullmatch(normalised(word).casefold())]
+    plain = [word for index, (start, word) in enumerate(words) if not word[0].isupper() and _law_name(word) is None
+             and not LAW_KIND.fullmatch(normalised(word).casefold())
+             and not (index and _law_head_noun(words[index - 1][1], word, trusted)
+                      and _law_head_ends(sentence, start, word))]
     if not all(trusted.person(word, True) if translated else trusted.words.known(word) for word in plain):
         return False
     named = [(start, word) for start, word in words if word[0].isupper()]

@@ -3624,9 +3624,6 @@ assert all(sum(case.id == keep for case in CASES) == 1 for keep in PAID), 'every
 # preposition or at the end ("grants for students"). Each restored keep's accepted id stays (the core list names it),
 # with the same word before a comma, where a list may go on the name ("the Law on state funded, private and public
 # schools"): the tie-break the restored reading keeps, paid for by the same blank.
-RESTORED = {keep for keep, (_, pair) in PAID.items()
-            if pair in (GOES_ON_S, GOES_ON_S_LOWER, GOES_ON_ED, GOES_ON_LY, GOES_ON_LY_LOWER)
-            or 'possessive' in pair}
 # The same words where a name may go on after them stay the name's (must, restore-r10 r1): eb8b05c ended the name
 # at each of them.
 for slug, brief, sentence, gone in (
@@ -3647,15 +3644,35 @@ for slug, brief, sentence, gone in (
         ('accountings-rules-for-banks', ACCOUNTING_EN, 'He follows the Law on Accounting’s rules for banks.',
          ('banks',)),
         ('accountings-rules-and-annexes', ACCOUNTING_EN, 'He follows the Law on Accounting’s rules and annexes.',
-         ('annexes',))):
+         ('annexes',)),
+        ('accountings-rules-before-a-comma', ACCOUNTING_EN,
+         'He follows the Law on Accounting’s rules, standards and annexes.', ('standards',))):
     CASES.append(guard(f'laws-an-invented-tail-after-the-customers-law-{slug}-en-blank', BLANK, brief, 'en', sentence,
                        gone=gone))
+# The Uzbek head before an invented tail, as the Russian one (round 6): "... hisobi va audit to‘g‘risidagi qonun".
+CASES.append(guard('laws-an-accounting-law-head-before-and-audit-en-to-uz-blank', BLANK, ACCOUNTING_EN_UZ, 'uz',
+                   'Buxgalter Buxgalteriya hisobi va audit to‘g‘risidagi qonunga amal qiladi.', gone=('audit',),
+                   translated=True))
+# The keeps restored, and the blank each one's accepted id now pays for: a word before a comma, where a list may go
+# on the name (`_aside`); the Uzbek head before another word than "to‘g‘risidagi" ("... hisobi bo‘yicha Qonunni").
+COMMA_AFTER = 'laws-an-invented-tail-after-the-customers-law-state-funded-before-a-comma-en-blank'
+RESTORED = {keep: COMMA_AFTER for keep, (_, pair) in PAID.items()
+            if pair in (GOES_ON_S, GOES_ON_S_LOWER, GOES_ON_ED, GOES_ON_LY, GOES_ON_LY_LOWER)}
+RESTORED.update({keep: 'laws-an-invented-tail-after-the-customers-law-accountings-rules-before-a-comma-en-blank'
+                 for keep, (_, pair) in PAID.items() if 'possessive' in pair})
+RESTORED.update({keep: ('laws-an-accounting-law-head-before-and-audit-en-to-uz-blank' if keep.endswith('-to-uz-keep')
+                        else 'laws-an-accounting-law-head-before-audit-and-taxes-'
+                        + ('en' if keep.endswith('-en-to-ru-keep') else 'uz') + '-to-ru-blank')
+                 for keep, (gone, _) in PAID.items() if gone in (('учёте',), ('hisobi',))})
 ASIDE = {'en': ', in practice', 'ru': ', как известно'}
 
 
 def _aside(value, word, locale):
     """`value` with an aside after the first `word`, before a comma: "The Law on Education guarantees, in practice,
-    free schooling.", "He knows the Law on Accounting well, in practice." """
+    free schooling.", "He knows the Law on Accounting well, in practice.", "... Законом о бухгалтерском учёте, как
+    известно."; the Uzbek head before "bo‘yicha" for its "to‘g‘risidagi": "... hisobi bo‘yicha Qonunni biladi." """
+    if locale == 'uz':
+        return value.replace(f'{word} to‘g‘risidagi qonun', f'{word} bo‘yicha Qonun')
     found = re.search(r'(?<![^\W_])' + re.escape(word) + r'(?![^\W_])', value)
     end = found.end()
     rest = value[end:]
@@ -3665,11 +3682,12 @@ def _aside(value, word, locale):
 def _paid(case):
     """A paid keep: the accepted false blank, and its id under the customer's own words. Those words, in the paper's
     language, may tell the brief's language otherwise, so the keep no longer asserts how it is read. A restored keep
-    (`RESTORED`) is the keep as it was and its accepted id the same word before a comma (`_aside`)."""
+    (`RESTORED`) is the keep as it was, and its accepted id the same word where the tie-break still holds (`_aside`),
+    paid for by the blank `RESTORED` names."""
     gone, pair = PAID[case.id]
     if case.id in RESTORED:
         blank = replace(case, id=case.id.removesuffix('-' + KEEP) + '-' + ACCEPTED, direction=ACCEPTED,
-                        value=_aside(case.value, gone[0], case.locale), gone=gone, pair=pair)
+                        value=_aside(case.value, gone[0], case.locale), gone=gone, pair=RESTORED[case.id])
         return [case, blank]
     keep, blank = removed(case, gone, pair, listed=True)
     return [replace(keep, translated=None), blank]
