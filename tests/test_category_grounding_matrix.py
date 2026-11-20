@@ -3907,6 +3907,185 @@ for slug, line in (('direktor-junior', 'Direktor Junior Smith'),
                           'pdf.biz.hisobot', brief, locale, 'summary', sentence, gone=(word,),
                           facts=(('author', line),)))
 
+# ---------------------------------------------------------------- the re-check of round 10 (pr77-r1), both ways
+# Round 10 left four readings that keep what eb8b05c (in production) or c491da9 blanks, each pinned here as blanks
+# under the briefs the re-check used, with the keeps eb8b05c has for the same readings.
+
+# ---- An unnamed law's -s word ends its name only as a verb (a6, a7, a8): a plural noun of the name before a
+# determiner and a clause of its own ("The Law on Education fees some parents pay were cut", "Under the Law on
+# Education grants every school gets, ..."), before "in force" or before "on" is the name's, as c491da9 reads it.
+COURSE_EN = ('Write a course paper in English on school funding in Uzbekistan. Use the Law on Education as the main '
+             'source.')
+COURSE_EN_LOWER = COURSE_EN.replace('the Law on Education', 'the law on education')
+STATE_DUTY_LOWER_EN = 'Write an essay about taxes in Uzbekistan. Mention the law on state duty.'
+RELATIVE_TAILS = (
+    ('standards-all-schools-meet', COURSE_EN, 'The Law on Education standards all schools meet are strict.',
+     'standards'),
+    ('fees-some-parents-pay', COURSE_EN, 'The Law on Education fees some parents pay were cut.', 'fees'),
+    ('lower-case-fees-some-parents-pay', COURSE_EN_LOWER, 'The law on education fees some parents pay were cut.',
+     'fees'),
+    ('state-fees-some-citizens-pay', STATE_DUTY_LOWER_EN, 'The law on state fees some citizens pay was amended.',
+     'fees'),
+    ('loans-many-students-take', COURSE_EN, 'The Law on Education loans many students take are cheap.', 'loans'),
+    ('grants-every-school-gets', COURSE_EN, 'Under the Law on Education grants every school gets, funding grew.',
+     'grants'),
+    ('vouchers-each-family-gets', COURSE_EN, 'The Law on Education vouchers each family gets were raised in 2020.',
+     'vouchers'),
+    ('quotas-these-regions-set', COURSE_EN, 'The Law on Education quotas these regions set are fair.', 'quotas'),
+    ('fees-every-family-pays', COURSE_EN, 'The Law on Education fees every family pays were cut.', 'fees'),
+    ('standards-the-state-sets', COURSE_EN, 'The Law on Education standards the state sets are strict.', 'standards'),
+    ('grants-the-state-sets', EDU_EN, 'The Law on Education grants the state sets was amended.', 'grants'),
+    ('grants-many-families-get', EDU_EN, 'The Law on Education grants many families get was amended.', 'grants'),
+    ('grants-such-firms-claim', EDU_EN, 'The Law on Education grants such firms claim was amended.', 'grants'),
+    ('grants-all-schools-meet', EDU_EN, 'The Law on Education grants all schools meet was amended.', 'grants'),
+    ('grants-families-get', EDU_EN, 'The Law on Education grants families get were cut.', 'grants'),
+    ('grants-each-pupil-receives', EDU_EN, 'Under the Law on Education grants each pupil receives, schools grew.',
+     'grants'),
+    ('state-loans-all-banks-issue', STATE_DUTY_LOWER_EN, 'The law on state loans all banks issue was amended.',
+     'loans'),
+    ('state-duty-exemptions-any-firm-can-claim', STATE_DUTY_LOWER_EN,
+     'The law on state duty exemptions any firm can claim was amended.', 'exemptions'),
+    ('state-fees-in-force', STATE_DUTY_LOWER_EN, 'The law on state fees in force was amended.', 'fees'),
+    ('education-measures-in-force', EDU_EN, 'The Law on Education measures in force were cut.', 'measures'),
+    ('education-requirements-on-schools', EDU_EN, 'The Law on Education requirements on schools are strict.',
+     'requirements'),
+)
+for slug, brief, sentence, word in RELATIVE_TAILS:
+    CASES += [
+        guard(f'laws-a-plural-noun-of-an-unnamed-law-{slug}-en-blank', BLANK, brief, 'en', sentence, gone=(word,)),
+        gp(f'laws-a-plural-noun-of-an-unnamed-law-{slug}-in-a-grounded-part-en-blank', BLANK, brief, 'en', sentence,
+           gone=(word,)),
+    ]
+for slug, brief, sentence, word in RELATIVE_TAILS[:6]:
+    CASES.append(body(f'laws-a-plural-noun-of-an-unnamed-law-{slug}-in-a-course-papers-relevance-en-blank', BLANK,
+                      'pdf.kurs_ishi', brief, 'en', 'relevance', sentence, gone=(word,)))
+# eb8b05c's keeps the reading keeps: a verb's -s before its object, a determiner's noun phrase that goes on with no
+# clause of its own.
+for slug, sentence in (('grants-every-school-a-budget', 'The Law on Education grants every school a budget.'),
+                       ('defines-the-basic-principles', 'The Law on Education defines the basic principles of state '
+                                                        'policy.'),
+                       ('guarantees-every-citizen-the-right', 'The Law on Education guarantees every citizen the right '
+                                                              'to education.'),
+                       ('sets-the-rules-every-school-follows', 'The Law on Education sets the rules every school '
+                                                               'follows.'),
+                       ('protects-every-child-equally', 'The Law on Education protects every child equally.'),
+                       ('grants-schools-autonomy', 'The Law on Education grants schools autonomy.'),
+                       ('guarantees-many-rights', 'The Law on Education guarantees many rights.'),
+                       ('lists-several-rights', 'The Law on Education lists several rights.')):
+    CASES.append(guard(f'laws-the-customers-law-on-education-{slug}-en-keep', KEEP, EDU_EN, 'en', sentence))
+
+# ---- The customer's Uzbek ordinal with its apostrophe in a placing gives its place key alone (a1, a8, q3): the
+# number word `_words` reads inside it ("to‘rtinchi", "o‘n to‘rtinchi") is no bare figure of theirs, so their
+# "to‘rtinchi o‘rinni egalladi" grounds no "4 yil", "4-sinf" or "4 года" (c491da9 and eb8b05c stopped reading there and
+# failed the job). A tens word before it the reader did not know ("qirq to‘rtinchi", 44th) makes no fourth place.
+APOSTROPHE_SIGNS = (('', '‘'), ('-ascii', "'"), ('-right-quote', '’'), ('-backtick', '`'))
+for slug, ordinal, n in (('fourth', 'to{a}rtinchi', 4), ('tenth', 'o{a}ninchi', 10), ('ninth', 'to{a}qqizinchi', 9),
+                         ('fourteenth', 'o{a}n to{a}rtinchi', 14), ('twenty-fourth', 'yigirma to{a}rtinchi', 24)):
+    for sign, a in APOSTROPHE_SIGNS:
+        said = PLACING_LETTERS['uz'] + f'Viloyat olimpiadasida {ordinal.format(a=a)} o{a}rinni egalladi.'
+        CASES.append(gp(f'numbers-a-customers-{slug}{sign}-apostrophe-placing-grounds-no-years-uz-blank', BLANK, said,
+                        'uz', f'U {n} yil to‘garakka qatnashgan.', gone=(str(n),)))
+    said = PLACING_LETTERS['uz'] + f'Viloyat olimpiadasida {ordinal.format(a="‘")} o‘rinni egalladi.'
+    CASES += [
+        gp(f'numbers-a-customers-{slug}-apostrophe-placing-grounds-no-grade-uz-blank', BLANK, said, 'uz',
+           f'U {n}-sinfda o‘qiydi.', gone=(str(n),)),
+        gp(f'numbers-a-customers-{slug}-apostrophe-placing-grounds-no-years-uz-to-ru-blank', BLANK, said, 'ru',
+           f'Опыт работы — {n} года.', gone=(str(n),)),
+        gp(f'numbers-a-customers-{slug}-apostrophe-placing-grounds-no-years-uz-to-en-blank', BLANK, said, 'en',
+           f'I have {n} years of experience.', gone=(str(n),)),
+        body(f'numbers-a-customers-{slug}-apostrophe-placing-grounds-no-years-in-references-achievements-uz-blank',
+             BLANK, 'pdf.xat.tavsifnoma', said, 'uz', 'achievements', f'U {n} yil matematika to‘garagiga qatnashgan.',
+             gone=(str(n),)),
+        fact(f'numbers-a-customers-{slug}-apostrophe-placing-grounds-no-years-in-references-subject-role-uz-blank',
+             BLANK, 'pdf.xat.tavsifnoma', said, 'uz', 'subject_role', f'U {n} yil matematika to‘garagiga qatnashgan.',
+             gone=(str(n),)),
+    ]
+CASES += [
+    body('numbers-a-customers-tenth-apostrophe-placing-grounds-no-projects-in-references-achievements-uz-blank', BLANK,
+         'pdf.xat.tavsifnoma', PLACING_LETTERS['uz'] + 'Tuman tanlovida o‘ninchi o‘rinda.', 'uz', 'achievements',
+         'U 10 ta loyiha tayyorlagan.', gone=('10',)),
+]
+for slug, ordinal, small in (('forty-fourth', 'qirq to‘rtinchi', 4), ('eighty-fourth', 'sakson to‘rtinchi', 4),
+                             ('ninety-fourth', 'to‘qson to‘rtinchi', 4), ('fifty-ninth', 'ellik to‘qqizinchi', 9),
+                             ('sixty-fourth', 'oltmish to‘rtinchi', 4), ('seventy-fourth', 'yetmish to‘rtinchi', 4),
+                             ('hundred-and-tenth', 'yuz o‘ninchi', 10), ('hundred-and-fourth', 'yuz to‘rtinchi', 4)):
+    said = PLACING_LETTERS['uz'] + f'Viloyat olimpiadasida {ordinal} o‘rinni egalladi.'
+    word = {4: 'fourth', 9: 'ninth', 10: 'tenth'}[small]
+    CASES += [
+        gp(f'numbers-a-customers-{slug}-apostrophe-placing-grounds-no-{word}-place-uz-blank', BLANK, said, 'uz',
+           f'U olimpiadada {small}-o‘rinni egalladi.', gone=(str(small),)),
+        gp(f'numbers-a-customers-{slug}-apostrophe-placing-grounds-no-{word}-place-uz-to-en-blank', BLANK, said, 'en',
+           f'She took {word} place at the olympiad.', gone=(word,)),
+        gp(f'numbers-a-customers-{slug}-apostrophe-placing-grounds-no-{word}-place-in-digits-uz-to-en-blank', BLANK,
+           said, 'en', f'She took {small}th place at the olympiad.', gone=(str(small),)),
+        gp(f'numbers-a-customers-{slug}-apostrophe-placing-grounds-no-{word}-place-uz-to-ru-blank', BLANK, said, 'ru',
+           f'Она заняла {small}-е место на олимпиаде.', gone=(str(small),)),
+        body(f'numbers-a-customers-{slug}-apostrophe-placing-grounds-no-{word}-place-in-references-achievements-uz'
+             f'-blank', BLANK, 'pdf.xat.tavsifnoma', said, 'uz', 'achievements',
+             f'U olimpiadada {small}-o‘rinni egalladi.', gone=(str(small),)),
+    ]
+
+# ---- A semicolon after a law's name ends it only before a word that cannot go on it, as a comma does (a3, a4, a8):
+# "Соблюдает Закон о бухгалтерском учёте; аудите и налогах" names more than the customer's law; c491da9 blanks it.
+SEMICOLON_BRIEFS = (('ru', JOB_RU_ACCOUNTING, 'ru'), ('en-to-ru', ACCOUNTING_EN_RU, 'ru'),
+                    ('uz-to-ru', ACCOUNTING_UZ_RU, 'ru'))
+for slug, sentence, gone in (
+        ('audit-and-taxes', 'Соблюдает Закон о бухгалтерском учёте; аудите и налогах.', ('аудите', 'налогах')),
+        ('about-audit', 'Соблюдает Закон о бухгалтерском учёте; об аудите.', ('аудите',)),
+        ('auditing', 'Соблюдает Закон о бухгалтерском учёте; аудиторской деятельности.', ('аудиторской',)),
+        ('audit-taxes', 'Руководствуется Законом о бухгалтерском учёте; аудите; налогах.', ('аудите', 'налогах')),
+        ('in-banks', 'Знает Закон о бухгалтерском учёте; в банках.', ('банках',))):
+    for direction, brief, locale in SEMICOLON_BRIEFS:
+        CASES += [
+            guard(f'laws-a-tail-after-a-semicolon-after-a-named-law-{slug}-{direction}-blank', BLANK, brief, locale,
+                  sentence, gone=gone),
+            gp(f'laws-a-tail-after-a-semicolon-after-a-named-law-{slug}-in-a-grounded-part-{direction}-blank', BLANK,
+               brief, locale, sentence, gone=gone),
+        ]
+for part in ('qualification', 'duties'):
+    for slug, sentence, gone in (('audit-and-taxes', 'Соблюдает Закон о бухгалтерском учёте; аудите и налогах.',
+                                  ('аудите',)),
+                                 ('about-audit', 'Соблюдает Закон о бухгалтерском учёте; об аудите.', ('аудите',))):
+        CASES.append(body(f'laws-a-tail-after-a-semicolon-after-a-named-law-{slug}-in-a-{part}-ru-blank', BLANK,
+                          'pdf.biz.lavozim_yoriqnomasi', JOB_RU_ACCOUNTING, 'ru', part, sentence, gone=gone))
+for direction, brief in (('ru-to-en', JOB_RU_EN_LAW), ('uz-to-en', ACCOUNTING_UZ_EN)):
+    CASES.append(guard(f'laws-a-tail-after-a-semicolon-after-a-named-law-auditing-and-taxes-{direction}-blank', BLANK,
+                       brief, 'en', 'Under Law on Accounting; Auditing and Taxes, the accountant keeps the books.',
+                       gone=('Auditing',)))
+# eb8b05c keeps the customer's law before a semicolon and a clause, or at the end.
+for slug, sentence in (('keeps-books', 'Соблюдает Закон о бухгалтерском учёте; ведёт книги.'),
+                       ('makes-reports', 'Соблюдает Закон о бухгалтерском учёте; составляет отчёты.'),
+                       ('can-keep-books', 'Знает Закон о бухгалтерском учёте; умеет вести книги.'),
+                       ('at-the-end', 'Соблюдает Закон о бухгалтерском учёте;')):
+    for direction, brief, locale in SEMICOLON_BRIEFS:
+        CASES.append(guard(f'laws-the-customers-law-before-a-semicolon-{slug}-{direction}-keep', KEEP, brief, locale,
+                           sentence))
+
+# ---- An article after "and" or a comma is passed over before what follows is read (a3): "Under Law on Accounting
+# and the Auditing of Banks, ..." names more than the customer's law in a translated paper too; c491da9 blanks it.
+for slug, sentence, gone in (
+        ('and-the-auditing-of-banks', 'Under Law on Accounting and the Auditing of Banks, the accountant keeps the '
+                                      'books.', ('Auditing',)),
+        ('and-an-audit-of-banks', 'Per Law on Accounting and an Audit of Banks, the accountant keeps the books.',
+         ('Audit',)),
+        ('comma-the-auditing-of-banks', 'Under Law on Accounting, the Auditing of Banks, the accountant keeps the '
+                                        'books.', ('Auditing',)),
+        ('and-a-banking-supplement', 'Under Law on Accounting and a Banking Supplement, reports are filed.',
+         ('Banking',)),
+        ('and-the-auditing-of-banks-in-lower-case', 'Under Law on Accounting and the auditing of banks, reports are '
+                                                    'filed.', ('auditing',))):
+    for direction, brief in (('ru-to-en', JOB_RU_EN_LAW), ('uz-to-en', ACCOUNTING_UZ_EN)):
+        CASES.append(guard(f'laws-an-article-before-a-tail-after-a-named-law-{slug}-{direction}-blank', BLANK, brief,
+                           'en', sentence, gone=gone, translated=True))
+for call in (guard, gp):
+    CASES.append(call(f'laws-an-article-before-a-tail-after-a-named-law-in-lower-case-{call.__name__}-en-blank', BLANK,
+                      JOB_EN_LAW, 'en', 'Under Law on Accounting and the auditing of banks, reports are filed.',
+                      gone=('auditing',)))
+# eb8b05c keeps the customer's law before an article and another law of theirs.
+for direction, brief in (('en', JOB_EN_LAW), ('ru-to-en', JOB_RU_EN_LAW)):
+    CASES.append(guard(f'laws-the-customers-law-before-an-article-and-their-labour-code-{direction}-keep', KEEP, brief,
+                       'en', 'Under Law on Accounting and the Labour Code, the accountant keeps the books.'))
+
 CASE_IDS = [case.id for case in CASES]
 
 
