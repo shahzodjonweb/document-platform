@@ -1350,7 +1350,8 @@ def _law_names(sentence):
                     why = 'goes'
                     break
                 if unnamed and not re.search('[а-яё]', low) and not token[0].isupper() and not _law_name(token) \
-                        and not LAW_OF_GRAMMAR.fullmatch(low) and after and _goes_on(sentence, tokens, index, word):
+                        and not LAW_OF_GRAMMAR.fullmatch(low) and after \
+                        and _goes_on(sentence, tokens, index, word, _governed(tokens, at, word)):
                     why = 'goes'
                     break  # the name ends where the sentence goes on: "The Law on Education guarantees ..."
                 if re.search('[а-яё]', low):
@@ -1417,17 +1418,42 @@ LAW_VERBS = frozenset((
     # The verbs whose -s ends as a plural noun does ("ensures", "mentions", "assists", `LAW_NAME_NOUN`) or that take a
     # plural object ("upholds students’ rights", "motivates teachers").
     "mention feature enhance insist assure measure assist advance influence finance structure balance uphold "
-    "reinforce affirm motivate equip free target modernise modernize widen").split())
+    "reinforce affirm motivate equip free target modernise modernize widen highlight").split())
 # The plural nouns a law is named by: "requirements", "relations", "securities", "procedures".
 LAW_NAME_NOUN = re.compile(r"[a-z]+(?:ments|tions|sions|ities|ances|ences|ships|nesses|isms|ists|ures)")
 # What only a verb's object opens, never the next word of a law's name: a determiner ("ensures the right", "features a
-# chapter"); a possessive ("upholds students’ rights") is read by its mark (`_object_follows`).
-LAW_OBJECT = re.compile(r"the|a|an|its|their|his|her|our|your|every|both|several|numerous|various|all|each|any|some"
-                        r"|no|this|that|these|those|such|many|more|most")
+# chapter"); a possessive ("upholds students’ rights") is read by its mark (`_object_follows`). eb8b05c's words: a
+# determiner that also opens a relative clause's subject ("all", "some", "these", "such") is no sign of a verb.
+LAW_OBJECT = re.compile(r"the|a|an|its|their|his|her|our|your|every|both|several|numerous|various")
 # The words after which a verb's -s is still the verb: "functions as", "insists on", "relies upon"; "to" only before
 # a verb ("aims to raise", "exists to protect"), never before a noun ("grants to students").
 LAW_VERB_AFTER = re.compile(r"as|on|upon")
 LAW_INFINITIVE = re.compile(r"[a-z]+(?:ise|ize|ify|ate|en)")
+# A clause's subject and its verb after an -s word (`_clause_after`): a determiner, at most `LAW_CLAUSE_REACH` words,
+# then an auxiliary, a modal or a verb of `LAW_OF_STOP` ("fees some parents pay were cut", "exemptions any firm can
+# claim", "standards the state sets").
+LAW_DETERMINER = re.compile(LAW_OBJECT.pattern + r"|all|each|any|some|no|this|that|these|those|such|many|more|most"
+                                                 r"|few|another")
+LAW_AUX = re.compile(r"is|are|was|were|be|been|has|have|had|do|does|did|will|shall|would|should|must|may|might|can"
+                     r"|could"
+                     # The verbs of `LAW_OF_STOP`: "grants the state sets ...", "standards every school follows ...".
+                     r"|appl(?:y|ies|ied)|govern(?:s|ed)?|regulat(?:e|es|ed)|requir(?:e|es|ed)|set|sets|cover(?:s|ed)?"
+                     r"|say|says|said|state[sd]|provid(?:e|es|ed)|allow(?:s|ed)?|forbid|forbids|forbade"
+                     r"|oblig(?:e|es|ed)|mean(?:s|t)?|follow(?:s|ed)?|keep|keeps|kept|make|makes|made|take|takes|took"
+                     r"|give|gives|gave")
+LAW_CLAUSE_REACH = 3
+# A question word opens a verb's object clause, never a relative one: "explains how schools are run".
+LAW_WH = re.compile(r"how|what|why|whether|whatever|whoever|wherever|whenever")
+# The prepositions that govern a law's name (`_governed`): "Under the Law on Education grants ...", "According to
+# the Law on ...", "In line with the Law on ...".
+LAW_GOVERNED_BY = re.compile(r"to|in|into|for|with|without|by|at|from|under|over|after|before|during|through|within"
+                             r"|about|against|between|of|on|per|upon|via|like|than|despite")
+# eb8b05c's reading of an unnamed law's name (`_goes_on_eb8b05c`): its adverbs and past forms, and its verbs, which
+# had no "modernise", "widen" or "highlight", and the words after which an -s word was its verb.
+LAW_NAME_END_EB8B05C = re.compile('|'.join((LAW_NAME_ADVERB.pattern, LAW_NAME_PAST.pattern,
+                                            LAW_SENTENCE_ADVERB.pattern)))
+LAW_VERBS_EB8B05C = LAW_VERBS - {'modernise', 'modernize', 'widen', 'highlight'}
+LAW_VERB_AFTER_EB8B05C = re.compile(r"to|as|on|upon")
 
 
 def _object_follows(sentence, tokens, index, word):
@@ -1447,9 +1473,94 @@ def _s_bases(low):
     return [low[:-1]] + ([low[:-2]] if low.endswith('es') else []) + ([low[:-3] + 'y'] if low.endswith('ies') else [])
 
 
-def _goes_on(sentence, tokens, index, word):
+def _clause_after(sentence, tokens, index, word):
+    """Whether the words after the -s word at `index` are a clause of their own, its subject and its verb: a
+    determiner, at most `LAW_CLAUSE_REACH` words and an auxiliary, a modal or a verb of `LAW_OF_STOP` (`LAW_AUX`: "fees
+    some parents pay were cut", "grants the state sets was amended", "exemptions any firm can claim"). The -s word is
+    then a plural noun of the law's name and the clause a relative one, as c491da9 reads it. A verb's object has no
+    verb of its own ("grants every school a budget", "sets the rules every school follows"), or opens with a question
+    word ("explains how schools are run")."""
+    at = index + 1
+    if word(at) and LAW_DETERMINER.fullmatch(normalised(tokens[at][1]).casefold()):
+        at += 1
+    seen = 0
+    while word(at) and seen <= LAW_CLAUSE_REACH:
+        start, text = tokens[at]
+        low = normalised(text).casefold()
+        if LAW_AUX.fullmatch(low):
+            return seen > 0
+        after = sentence[start + len(text):start + len(text) + 1]
+        if seen == LAW_CLAUSE_REACH or not low.isascii() or text[0].isupper() or LAW_OF_STOP.fullmatch(low) \
+                or LAW_AND.fullmatch(low) or LAW_DETERMINER.fullmatch(low) or LAW_WH.fullmatch(low) \
+                or (after in "'’ʼ" and after != ''):
+            return False
+        seen, at = seen + 1, at + 1
+    return False
+
+
+def _governed(tokens, at, word):
+    """Whether the law's stem at `at` is governed by a preposition, past its determiner or a word pointing at it
+    (`LAW_GOVERNED_BY`: "Under the Law on Education", "According to the Law on ..."): the law is then no subject, and an
+    -s word after its name is no verb of it (`_goes_on`)."""
+    index = at - 1
+    while word(index) and (LAW_OF_GRAMMAR.fullmatch(normalised(tokens[index][1]).casefold())
+                           or LAW_THIS.fullmatch(normalised(tokens[index][1]).casefold())):
+        index -= 1
+    return word(index) and LAW_GOVERNED_BY.fullmatch(normalised(tokens[index][1]).casefold()) is not None
+
+
+def _goes_on_eb8b05c(sentence, tokens, index, word):
+    """eb8b05c's `_goes_on`, as it read a lower-case word after an unnamed law's first name word: an adverb, a past
+    form or a verb's -s before what it governs, its base an English word. `_goes_on` ends a name only where this ends
+    it too, so it never keeps what eb8b05c blanked."""
+    low = normalised(tokens[index][1]).casefold()
+    if not low.isascii() or sentence[tokens[index][0] - 1:tokens[index][0]] == '-':
+        return False
+    words = _lexicon()['en'][0]
+    if LAW_NAME_END_EB8B05C.fullmatch(low):
+        return True
+    if low.endswith('ly') and len(low) > 5 and (low[:-2] in words or low[:-3] + 'y' in words):
+        return True
+    if low.endswith('ed') and len(low) > 4 and (low[:-2] in words or low[:-1] in words
+                                                 or (low[-3] == low[-4] and low[:-3] in words)):
+        return True
+    if not low.endswith('s') or low.endswith('ss'):
+        return False
+    bases = _s_bases(low)
+    if any(base in words or base in LAW_VERBS_EB8B05C for base in bases) \
+            and _object_follows(sentence, tokens, index, word):
+        return True
+    following = normalised(tokens[index + 1][1]).casefold() if word(index + 1) else None
+    if any(base in LAW_VERBS_EB8B05C for base in bases):
+        if not LAW_NAME_NOUN.fullmatch(low):
+            return True
+        return following is not None and not LAW_AND.fullmatch(following) \
+            and (following != 'of' or 'consist' in bases) \
+            and (LAW_VERB_AFTER_EB8B05C.fullmatch(following) is not None or LAW_OF_STOP.fullmatch(following) is None) \
+            and not any(base in LAW_VERBS_EB8B05C for base in _s_bases(following) if following.endswith('s'))
+    if LAW_NAME_NOUN.fullmatch(low):
+        return False
+    if following is None or not any(base in words for base in bases):
+        return False
+    if following == 'to':
+        return True
+    if LAW_AND.fullmatch(following) or following == 'of' or LAW_OF_STOP.fullmatch(following):
+        return False
+    return not (following.endswith('s') and not following.endswith('ss') and following.isascii()
+                and not LAW_NAME_NOUN.fullmatch(following) and any(base in words for base in _s_bases(following)))
+
+
+def _goes_on(sentence, tokens, index, word, governed=False):
     """Whether a lower-case word after an unnamed law's first name word goes on the sentence rather than the name
-    (`_law_names`), so that nothing after it is read as the name's.
+    (`_law_names`), so that nothing after it is read as the name's: as this reads it (`_ends_name`) and as eb8b05c
+    read it (`_goes_on_eb8b05c`), both, so a name never ends where eb8b05c read it on. `governed`: the law's stem is
+    governed by a preposition (`_governed`)."""
+    return _goes_on_eb8b05c(sentence, tokens, index, word) and _ends_name(sentence, tokens, index, word, governed)
+
+
+def _ends_name(sentence, tokens, index, word, governed=False):
+    """Whether a lower-case word after an unnamed law's first name word goes on the sentence, as this reads it
+    (`_goes_on`).
 
     Never before a comma or a conjunction, where a list may go on the name ("the Law on state funded, private and
     public schools", "the Law on Education grants and scholarships"), nor a word of LAW_NAMES. A sentence adverb always
@@ -1459,9 +1570,12 @@ def _goes_on(sentence, tokens, index, word):
     disabled") nor before a noun ("tax related offences", "state funded schools", "family friendly workplaces", "paid
     leave"). A verb's -s ("guarantees free schooling", "defines the rights", "consists of", "insists on", "aims to
     raise"), its base one of LAW_VERBS, does before its object, a noun or an adjective; never at the end, before a
-    preposition or "to" with a noun ("grants for students", "the Law on state grants."); any other -s, its base an
-    English word (words/en.txt), only before its object, "as", "on" or "to" with a verb ("relies on"). A plural noun the name ends with
-    ("accounting requirements", "state fees for ...") and a compound's part ("state-owned") are words of it."""
+    preposition or "to" with a noun ("grants for students", "the Law on state grants."), before a clause of its own
+    (`_clause_after`: "grants the state sets was amended"), nor after a law a preposition governs, which is no subject
+    ("Under the Law on Education grants every school gets, ..."); any other -s, its base an English word
+    (words/en.txt), only before "as", "on" or "to" with a verb ("relies on"), never before its object ("fees some
+    parents pay", "loans many students take"). A plural noun the name ends with ("accounting requirements", "state
+    fees for ...") and a compound's part ("state-owned") are words of it."""
     low = normalised(tokens[index][1]).casefold()
     if not low.isascii() or sentence[tokens[index][0] - 1:tokens[index][0]] == '-':
         return False
@@ -1493,15 +1607,18 @@ def _goes_on(sentence, tokens, index, word):
         if LAW_OF_STOP.fullmatch(following):
             return adverb or LAW_NAME_PREPOSITION.fullmatch(following) is None or LAW_MADE.fullmatch(low) is not None
         return _object_follows(sentence, tokens, index, word) or (
-            following.endswith('s') and not following.endswith('ss') and _goes_on(sentence, tokens, index + 1, word))
+            following.endswith('s') and not following.endswith('ss')
+            and _goes_on(sentence, tokens, index + 1, word, governed))
     if not low.endswith('s') or low.endswith('ss'):
         return False
+    if governed or _clause_after(sentence, tokens, index, word):
+        return False  # a plural noun of the name: "Under the Law on Education grants ...", "... fees some parents pay"
     bases = _s_bases(low)
-    if any(base in words or base in LAW_VERBS for base in bases) and _object_follows(sentence, tokens, index, word):
+    if any(base in LAW_VERBS for base in bases) and _object_follows(sentence, tokens, index, word):
         return True  # "features a chapter", "balances pupils’ rights"
     if following is None:
         return False
-    if following in ('in', 'into') and word(index + 2) \
+    if following in ('in', 'into') and word(index + 2) and any(base in LAW_VERBS for base in bases) \
             and normalised(tokens[index + 2][1]).casefold() in ('force', 'effect'):
         return True  # "remains in force", "comes into force", "enters into effect"
     if following == 'to':
@@ -1512,7 +1629,7 @@ def _goes_on(sentence, tokens, index, word):
         return (following != 'of' or 'consist' in bases) \
             and (LAW_VERB_AFTER.fullmatch(following) is not None or LAW_OF_STOP.fullmatch(following) is None) \
             and not any(base in LAW_VERBS for base in _s_bases(following) if following.endswith('s'))
-    # "relies on", "focuses on", "centres on"; never before a noun ("funds allocation").
+    # "relies on", "focuses on", "centres on"; never before a noun ("funds allocation") or its object.
     return any(base in words for base in bases) and LAW_VERB_AFTER.fullmatch(following) is not None
 
 

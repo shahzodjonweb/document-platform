@@ -3654,8 +3654,11 @@ for slug, brief, sentence, gone in (
 CASES += [
     guard('laws-the-customers-law-on-education-remains-in-force-en-keep', KEEP, EDU_EN, 'en',
           'The Law on Education remains in force.'),
-    guard('laws-the-customers-law-on-education-protects-all-pupils-en-keep', KEEP, EDU_EN, 'en',
-          'The Law on Education protects all pupils.'),
+    # Round 11: "all" opens a relative clause's subject as often as a verb's object, so it is no sign of a verb any
+    # more (`facts.LAW_OBJECT`): the keep is the customer's own words, the model's an accepted false blank.
+    *removed(guard('laws-the-customers-law-on-education-protects-all-pupils-en-keep', KEEP, EDU_EN, 'en',
+                   'The Law on Education protects all pupils.'), ('protects',),
+             'laws-a-plural-noun-of-an-unnamed-law-grants-all-pupils-receive-en-blank', listed=True),
     guard('laws-the-customers-law-on-accounting-well-and-a-verb-en-keep', KEEP, ACCOUNTING_EN, 'en',
           'He knows the Law on Accounting well and applies it daily.'),
 ]
@@ -3971,8 +3974,25 @@ for slug, sentence in (('grants-every-school-a-budget', 'The Law on Education gr
                        ('protects-every-child-equally', 'The Law on Education protects every child equally.'),
                        ('grants-schools-autonomy', 'The Law on Education grants schools autonomy.'),
                        ('guarantees-many-rights', 'The Law on Education guarantees many rights.'),
-                       ('lists-several-rights', 'The Law on Education lists several rights.')):
+                       ('lists-several-rights', 'The Law on Education lists several rights.'),
+                       ('highlights-the-role-of-teachers', 'The Law on Education highlights the role of teachers.'),
+                       ('explains-how-schools-are-run', 'The Law on Education explains how schools are run.')):
     CASES.append(guard(f'laws-the-customers-law-on-education-{slug}-en-keep', KEEP, EDU_EN, 'en', sentence))
+# What the reading costs against eb8b05c: a determiner that opens a relative clause's subject as often as a verb's
+# object ("all", "that") is no sign of a verb, so the customer's law before such a verb blanks, the price of an
+# invented plural noun before the same determiner and a relative clause whose verb is no auxiliary.
+CASES += [
+    guard('laws-a-plural-noun-of-an-unnamed-law-grants-all-pupils-receive-en-blank', BLANK, EDU_EN, 'en',
+          'The Law on Education grants all pupils receive rose in 2020.', gone=('grants',)),
+    guard('laws-a-plural-noun-of-an-unnamed-law-grants-that-pupils-receive-en-blank', BLANK, EDU_EN, 'en',
+          'The Law on Education grants that pupils receive rose in 2020.', gone=('grants',)),
+    guard('laws-the-customers-law-on-education-equally-protects-all-pupils-en-accepted_false_blank', ACCEPTED, EDU_EN,
+          'en', 'The Law on Education equally protects all pupils.', gone=('protects',),
+          pair='laws-a-plural-noun-of-an-unnamed-law-grants-all-pupils-receive-en-blank'),
+    guard('laws-the-customers-law-on-education-guarantees-that-every-child-can-study-en-accepted_false_blank', ACCEPTED,
+          EDU_EN, 'en', 'The Law on Education guarantees that every child can study.', gone=('guarantees',),
+          pair='laws-a-plural-noun-of-an-unnamed-law-grants-that-pupils-receive-en-blank'),
+]
 
 # ---- The customer's Uzbek ordinal with its apostrophe in a placing gives its place key alone (a1, a8, q3): the
 # number word `_words` reads inside it ("to‘rtinchi", "o‘n to‘rtinchi") is no bare figure of theirs, so their
