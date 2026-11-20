@@ -3663,6 +3663,30 @@ CASES += [
 CASES.append(guard('laws-an-accounting-law-head-before-and-audit-en-to-uz-blank', BLANK, ACCOUNTING_EN_UZ, 'uz',
                    'Buxgalter Buxgalteriya hisobi va audit to‘g‘risidagi qonunga amal qiladi.', gone=('audit',),
                    translated=True))
+# ---- The false blanks versus eb8b05c the sweep still shows (round 10), each the price of the blank it names: an -s
+# whose base is no LAW_VERBS word before a noun ("funds allocation"), a verb's -s before a preposition not its own
+# ("grants for students"), an adverb before a past form and a noun ("state funded schools"); c491da9's reading of a
+# rejected line's name (N3, "Direktor Junior Smith") holding a unit's common word; the customer's placing in a form
+# c491da9 never read giving its place key alone (L1).
+REPORT_EN_ANNUAL = 'Write the annual report of our firm for 2025. Revenue grew to 3 billion soums.'
+CASES += [
+    guard('laws-the-customers-law-on-education-prioritises-en-accepted_false_blank', ACCEPTED, EDU_EN, 'en',
+          'The Law on Education prioritises quality.', gone=('prioritises',),
+          pair='laws-an-invented-tail-after-the-customers-law-education-funds-allocation-en-blank'),
+    guard('laws-the-customers-law-on-education-deals-with-en-accepted_false_blank', ACCEPTED, EDU_EN, 'en',
+          'The Law on Education deals with teacher training.', gone=('deals',),
+          pair='laws-an-invented-tail-after-the-customers-law-on-education-grants-en-blank'),
+    guard('laws-the-customers-law-on-education-fundamentally-changed-en-accepted_false_blank', ACCEPTED, EDU_EN, 'en',
+          'The Law on Education fundamentally changed schools.', gone=('fundamentally',),
+          pair='laws-an-invented-tail-after-the-customers-law-on-state-duty-funded-schools-en-blank'),
+    body('names-a-rejected-units-common-word-opening-a-sentence-en-accepted_false_blank', ACCEPTED, 'pdf.biz.hisobot',
+         REPORT_EN_ANNUAL, 'en', 'summary', 'Retail sales grew.', gone=('Retail',), facts=(('unit', 'Retail Network'),),
+         pair='names-a-line-modifier-given-name-direktor-junior-opening-a-sentence-en-blank'),
+    gp('numbers-the-customers-placing-became-first-as-a-digit-place-uz-accepted_false_blank', ACCEPTED,
+       'Qodirova Malika uchun tavsifnoma yozing, u olimpiadada birinchi bo‘ldi.', 'uz',
+       'U olimpiadada 1-o‘rinni egalladi.', gone=('1',),
+       pair='numbers-a-customers-non-placing-contest-was-her-first-grounds-no-placing-uz-blank'),
+]
 # The Russian head before "и" and another law of the customer's ends the name there: "... учёте и налоговый кодекс".
 ACCOUNTING_TAX_UZ_RU = ('Buxgalter uchun rus tilida lavozim yo‘riqnomasi yozing. U Buxgalteriya hisobi to‘g‘risidagi '
                         'qonunni va Soliq kodeksini bilishi kerak.')
