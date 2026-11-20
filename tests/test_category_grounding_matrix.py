@@ -15,7 +15,9 @@ class letters, references), each in one of three directions:
   parts), the blank is chosen. The case asserts the blank and names, in
   `pair`, the leak it is the price of. A fix that keeps such a word while its
   pair still blanks is an improvement; it changes the case to `keep` and says
-  so. A fix never keeps it by letting the pair leak.
+  so. A fix never keeps it by letting the pair leak. An accepted id the core
+  list names stays, repointed to the same word where the tie-break still holds
+  (`RESTORED`).
 
 Owner's rules the matrix holds: never invent a customer fact on a category
 page; when blank and leak collide, blank. Cases run through the calls the
@@ -1851,8 +1853,9 @@ CASES += [
 ]
 
 # ---- The customer's own law followed by a verb or an adverb (final re-check, should 6, over-blank from 34ae7a8): an
-# unnamed law's name ends at the first word that cannot continue it, so the customer's law sentences stay and an
-# invented law still goes.
+# unnamed law's name ended at the first word that cannot continue it, so the customer's law sentences stayed and an
+# invented law still went. Round 8 reads every word of the name again, as c491da9 does: the keeps are accepted false
+# blanks (`PAID`, the re-check of round 7).
 EDU_EN = 'Write an independent study paper on the main provisions of the Law on Education.'
 EDU_UZ_EN = 'Menga ingliz tilida mustaqil ish yozib bering, mavzu: Ta’lim to‘g‘risidagi qonunning asosiy qoidalari.'
 CONSUMER_RU_EN = ('Напишите самостоятельную работу на английском на тему «Закон о защите прав потребителей в '
@@ -2113,14 +2116,16 @@ CASES += [
     guard('laws-a-draft-zakon-o-opening-a-sentence-ru-accepted_false_blank', ACCEPTED, COVER_RU, 'ru',
           'Закон о малом бизнесе обсуждается давно, но пока не принят.', gone=('малом',),
           pair='laws-an-invented-zakon-o-opening-a-sentence-ru-blank'),
-    # The customer's law named in Uzbek or English, cited in a Russian paper in lower case.
+    # The customer's law named in Uzbek or English, cited in a Russian paper in lower case (accepted false blanks since
+    # round 8: c491da9 reads no lower-case law, and the head noun is the customer's word).
     guard('laws-the-customers-uzbek-law-as-zakon-o-in-lower-case-uz-to-ru-keep', KEEP,
           'Buxgalter uchun lavozim yo‘riqnomasini rus tilida yozing, Buxgalteriya hisobi to‘g‘risidagi qonunga muvofiq.',
           'ru', 'Руководствуется законом о бухгалтерском учёте.', translated=False),  # too short a brief to tell
     guard('laws-the-customers-english-law-as-zakon-o-in-lower-case-en-to-ru-keep', KEEP,
           'Write in Russian a job description for an accountant under the Law on Accounting.', 'ru',
           'Руководствуется законом о бухгалтерском учёте.', translated=True),
-    # The customer's law in lower case before a sentence adverb or "aims to" (should, from 02ef0cc and e04969c).
+    # The customer's law in lower case before a sentence adverb or "aims to" (should, from 02ef0cc and e04969c; accepted
+    # false blanks since round 8, `PAID`).
     guard('laws-an-invented-lower-case-law-before-thus-en-blank', BLANK, EDU_EN, 'en',
           'The law on media thus protects journalists.', gone=('media',)),
     guard('laws-an-invented-law-before-aims-to-en-blank', BLANK, EDU_EN, 'en',
@@ -2247,8 +2252,9 @@ CASES += [
 
 # ---- The customer's own law before a verb whose -s ends as a plural noun does, or before its possessive (must, item 6,
 # from f3253a7): "ensures", "lists", "consists", "implements" and "mentions" end a law's name in title case and in
-# lower case, so the customer's law sentences stay in English, Russian and Uzbek briefs; the same verbs after an
-# invented law still take it out.
+# lower case, so the customer's law sentences stayed in English, Russian and Uzbek briefs; the same verbs after an
+# invented law still take it out. Round 8 reads every word of the name again, the possessive's noun too: the keeps are
+# accepted false blanks (`PAID`).
 EDU_RU_EN = 'Напишите на английском самостоятельную работу о Законе об образовании.'
 EDU_UZC_EN = 'Менга инглиз тилида мустақил иш ёзиб беринг, мавзу: Таълим тўғрисидаги қонуннинг асосий қоидалари.'
 for slug, tail in (('ensures', 'ensures equal access to schooling'), ('lists', 'lists the rights of pupils'),
@@ -3184,7 +3190,8 @@ CASES += [
 
 # ---- A translated paper's accounting law takes only its head noun's own forms (must, from 424c38a): "учёт", "учёта",
 # "учёте" and "hisob", "hisobi", "hisobiga" are the name of the customer's Law on Accounting; a word built on the stem
-# ("hisobotlari", "hisobchilari", "hisobvaraqlari", "учётчиках", "учётности") names another law.
+# ("hisobotlari", "hisobchilari", "hisobvaraqlari", "учётчиках", "учётности") names another law. Round 8 removed the
+# head noun's exemption: the head is the customer's word, as in c491da9, and the keeps are accepted false blanks.
 ACCOUNTING_EN_UZ = 'Write a job description for an accountant in Uzbek. He must know the Law on Accounting.'
 ACCOUNTING_EN_RU = 'Write a job description for an accountant in Russian. He must know the Law on Accounting.'
 ACCOUNTING_UZ_RU = ('Buxgalter uchun rus tilida lavozim yo‘riqnomasi yozing. U Buxgalteriya hisobi to‘g‘risidagi '
@@ -3219,6 +3226,1264 @@ CASES += [
           'Бухгалтер соблюдает Закон о бухгалтерском учёте.', translated=True),
     guard('laws-the-customers-law-on-accounting-as-uchete-uz-to-ru-keep', KEEP, ACCOUNTING_UZ_RU, 'ru',
           'Бухгалтер руководствуется Законом о бухгалтерском учёте.', translated=True),
+]
+
+# ---------------------------------------------------------------- the re-check of round 6 (drop-r2), both ways
+# Round 6 left two readings that kept what c491da9 blanks: the customer's placing in a form only this branch reads gave
+# its bare figure, and a translated paper's accounting law exempted its head noun with an unread tail after it.
+
+# ---- The customer's placing in a form c491da9 never read gives a key of its own (must, from 21147ba, 3167c90 and
+# fdea722): "U olimpiadada birinchi bo‘ldi", "I was first in sales", "Она стала третьей" ground the paper's placing,
+# never its "1 yil", "1-sinf", "1%", "grade 1" or "3 года". Being first at an olympiad is no year of experience.
+PLACING_LETTERS = {'ru': 'Напишите рекомендательное письмо для ученицы Малики Кодировой. ',
+                   'en': 'Please write a recommendation letter for my student Malika Qodirova. ',
+                   'uz': 'O‘quvchim Qodirova Malika uchun tavsiyanoma yozing. '}
+PLACING_FIGURES = {
+    'ru': (('a-year-of-experience', 'Опыт работы — {n} год.'), ('a-class', 'Она учится в {n} классе.'),
+           ('a-percent', 'Продажи выросли на {n}%.'), ('a-club', 'Она открыла {n} кружок.')),
+    'en': (('a-year-of-experience', 'I have {n} year of experience.'), ('a-branch', 'We opened {n} new branch.'),
+           ('a-percent', 'Sales grew by {n}%.'), ('a-grade', 'She is in grade {n}.')),
+    'uz': (('a-year', 'U {n} yil to‘garakka qatnashgan.'), ('a-class', 'U {n}-sinfda o‘qiydi.'),
+           ('a-percent', 'Savdo {n}% ga oshdi.'), ('branches', 'Kompaniya {n} ta filial ochdi.')),
+}
+for locale, slug, said, figure in (
+        ('ru', 'became-first-in-the-region', 'Он стал первым в регионе по продажам.', '1'),
+        ('ru', 'became-first-at-an-olympiad', 'Она стала первой на городской олимпиаде.', '1'),
+        ('ru', 'first-in-a-class-ranking', 'Она первая в рейтинге класса.', '1'),
+        ('ru', 'first-pupil-after-a-dash', 'Она — первая ученица школы по итогам олимпиады.', '1'),
+        ('ru', 'first-degree-diploma', 'Она получила диплом первой степени.', '1'),
+        ('ru', 'first-line-of-a-ranking', 'Она заняла первую строчку рейтинга.', '1'),
+        ('ru', 'first-place-by-region', 'Она была на первом месте по региону.', '1'),
+        ('ru', 'first-place-by-sales-volume', 'Она была на первом месте по объёму продаж.', '1'),
+        ('ru', 'turned-out-first', 'Она оказалась первой среди участников олимпиады.', '1'),
+        ('ru', 'finished-with-third-place', 'Она закончила олимпиаду с третьим местом.', '3'),
+        ('ru', 'became-third', 'Она стала третьей на олимпиаде.', '3'),
+        ('ru', 'became-fifth', 'Он стал пятым в рейтинге школы.', '5'),
+        ('ru', 'held-third-position', 'Она занимала третьей позицией в рейтинге.', '3'),
+        ('en', 'first-in-sales', 'I was first in sales last year.', '1'),
+        ('en', 'was-first-at-an-olympiad', 'At the regional olympiad she was first.', '1'),
+        ('en', 'took-first-at-an-olympiad', 'She took first at the city olympiad.', '1'),
+        ('en', 'first-in-a-ranking', 'She was first in the regional ranking.', '1'),
+        ('en', 'finished-in-first', 'She finished the olympiad in first.', '1'),
+        ('en', 'first-degree-diploma', 'She received a first-degree diploma.', '1'),
+        ('en', 'diploma-of-the-first-degree', 'She got a diploma of the first degree.', '1'),
+        ('en', 'first-runner-up', 'She was named first runner-up.', '1'),
+        ('en', 'first-best-student', 'She was the first-best student in the olympiad.', '1'),
+        ('en', 'came-out-first-among', 'She came out first among the olympiad participants.', '1'),
+        ('uz', 'became-first-at-an-olympiad', 'U olimpiadada birinchi bo‘ldi.', '1'),
+        ('uz', 'was-first-with-edi', 'Viloyat olimpiadasida u birinchi edi.', '1'),
+        ('uz', 'showed-the-first-result', 'Olimpiadada birinchi natijani ko‘rsatdi.', '1'),
+        ('uz', 'rose-to-the-first-step', 'Musobaqada birinchi pog‘onaga ko‘tarildi.', '1'),
+        ('uz', 'first-degree-diploma', 'U birinchi darajali diplom oldi.', '1'),
+        ('uz', 'first-with-bolib-and-a-medal', 'Musobaqada birinchi bo‘lib, oltin medal oldi.', '1'),
+        ('uz', 'won-the-first-ness', 'U tanlovda birinchilikni qo‘lga kiritdi.', '1'),
+        ('uz', 'first-by-sales', 'Sotuv bo‘yicha birinchi o‘rinda.', '1'),
+        ('uz', 'first-by-trade-volume', 'Savdo hajmi bo‘yicha birinchi o‘ringa chiqdi.', '1'),
+        ('uz', 'had-been-first', 'Tanlovda birinchi bo‘lgan.', '1')):
+    for row_slug, sentence in PLACING_FIGURES[locale]:
+        CASES.append(gp(f'numbers-the-customers-placing-{slug}-grounds-no-{row_slug}-{locale}-blank', BLANK,
+                        PLACING_LETTERS[locale] + said, locale, sentence.format(n=figure), gone=(figure,)))
+for locale, slug, said, sentence, figure in (
+        ('ru', 'finished-with-third-place', 'Она закончила олимпиаду с третьим местом.', 'Опыт работы — 3 года.', '3'),
+        ('en', 'first-in-sales', 'I was first in sales last year.', 'I have 1 year of experience.', '1'),
+        ('uz', 'became-first-at-an-olympiad', 'U olimpiadada birinchi bo‘ldi.', 'U 1 yil to‘garakka qatnashgan.', '1')):
+    CASES.append(body(f'numbers-the-customers-placing-{slug}-grounds-no-figure-in-a-references-achievements-{locale}'
+                      '-blank', BLANK, 'pdf.xat.tavsifnoma', PLACING_LETTERS[locale] + said, locale, 'achievements',
+                      sentence, gone=(figure,)))
+    if locale != 'ru':
+        CASES.append(fact(f'numbers-the-customers-placing-{slug}-grounds-no-figure-in-a-references-role-{locale}-blank',
+                          BLANK, 'pdf.xat.tavsifnoma', PLACING_LETTERS[locale] + said, locale, 'subject_role',
+                          sentence, gone=(figure,)))
+# The customer's placing still grounds the paper's, restated in their words or in another placing's.
+CASES += [
+    gp('numbers-the-customers-placing-became-first-restated-uz-keep', KEEP,
+       PLACING_LETTERS['uz'] + 'U olimpiadada birinchi bo‘ldi.', 'uz', 'U olimpiadada birinchi bo‘ldi.'),
+    gp('numbers-the-customers-placing-became-first-as-first-place-uz-keep', KEEP,
+       PLACING_LETTERS['uz'] + 'U olimpiadada birinchi bo‘ldi.', 'uz', 'U olimpiadada birinchi o‘rinni egalladi.'),
+    body('numbers-the-customers-placing-became-first-in-a-references-achievements-uz-keep', KEEP, 'pdf.xat.tavsifnoma',
+         PLACING_LETTERS['uz'] + 'U olimpiadada birinchi bo‘ldi.', 'uz', 'achievements',
+         'U olimpiadada birinchi bo‘ldi.'),
+    gp('numbers-the-customers-placing-won-the-first-ness-restated-uz-keep', KEEP,
+       PLACING_LETTERS['uz'] + 'U tanlovda birinchilikni qo‘lga kiritdi.', 'uz',
+       'U tanlovda birinchilikni qo‘lga kiritdi.'),
+    gp('numbers-the-customers-placing-first-degree-diploma-restated-uz-keep', KEEP,
+       PLACING_LETTERS['uz'] + 'U birinchi darajali diplom oldi.', 'uz', 'U birinchi darajali diplom oldi.'),
+    gp('numbers-the-customers-placing-first-in-sales-restated-en-keep', KEEP,
+       PLACING_LETTERS['en'] + 'I was first in sales last year.', 'en', 'Last year I was first in sales.'),
+    gp('numbers-the-customers-placing-took-first-at-an-olympiad-as-first-place-en-keep', KEEP,
+       PLACING_LETTERS['en'] + 'She took first at the city olympiad.', 'en',
+       'She won first place at the city olympiad.'),
+    gp('numbers-the-customers-placing-first-degree-diploma-restated-en-keep', KEEP,
+       PLACING_LETTERS['en'] + 'She received a first-degree diploma.', 'en', 'She received a first-degree diploma.'),
+    gp('numbers-the-customers-placing-became-third-restated-ru-keep', KEEP,
+       PLACING_LETTERS['ru'] + 'Она стала третьей на олимпиаде.', 'ru', 'Она стала третьей на олимпиаде.'),
+    gp('numbers-the-customers-placing-became-third-as-third-place-ru-keep', KEEP,
+       PLACING_LETTERS['ru'] + 'Она стала третьей на олимпиаде.', 'ru', 'Она заняла третье место на олимпиаде.'),
+    gp('numbers-the-customers-placing-finished-with-third-place-as-third-place-ru-keep', KEEP,
+       PLACING_LETTERS['ru'] + 'Она закончила олимпиаду с третьим местом.', 'ru',
+       'Она заняла третье место на олимпиаде.'),
+    gp('numbers-the-customers-placing-became-first-ru-to-uz-keep', KEEP,
+       'Напишите характеристику на узбекском для Малики Кодировой, она стала первой на олимпиаде.', 'uz',
+       'U olimpiadada birinchi bo‘ldi.'),
+    # A placing c491da9 read gives its figure as there: the customer's "1-o‘rinni egallagan" grounds "birinchi
+    # bo‘ldi", and their "first place" the paper's "1st place".
+    gp('numbers-the-customers-digit-placing-as-became-first-uz-keep', KEEP,
+       'Qodirova Malika uchun tavsifnoma yozing, u olimpiadada 1-o‘rinni egallagan.', 'uz',
+       'U olimpiadada birinchi bo‘ldi.'),
+    gp('numbers-the-customers-first-place-as-a-digit-placing-en-keep', KEEP,
+       PLACING_LETTERS['en'] + 'She won first place at the city olympiad.', 'en',
+       'She won 1st place at the city olympiad.'),
+]
+# No ordinal written in Uzbek Cyrillic is read, on either side: the customer's "биринчи бўлди" or "биринчи даражали
+# диплом" grounds no placing, so the paper's "birinchi bo‘ldi" and "birinchi darajali diplom" blank under their brief.
+# c491da9 reads neither paper form and keeps them, as it keeps them invented: the blanks are the price of the pairs.
+REFERENCE_UZC_FIRST = 'Қодирова Малика учун тавсифнома ёзинг, у олимпиадада биринчи бўлди.'
+REFERENCE_UZC_DIPLOMA = 'Қодирова Малика учун тавсифнома ёзинг, у биринчи даражали диплом олган.'
+CASES += [
+    gp('numbers-first-with-boldi-beside-an-olympiad-uz-blank', BLANK, REFERENCE_UZ, 'uz',
+       'U olimpiadada birinchi bo‘ldi.', gone=('birinchi',)),
+    gp('numbers-first-degree-diploma-with-darajali-uz-blank', BLANK, REFERENCE_UZ, 'uz',
+       'U birinchi darajali diplom olgan.', gone=('birinchi',)),
+    gp('numbers-the-customers-cyrillic-placing-became-first-uz-accepted_false_blank', ACCEPTED, REFERENCE_UZC_FIRST,
+       'uz', 'U olimpiadada birinchi bo‘ldi.', gone=('birinchi',),
+       pair='numbers-first-with-boldi-beside-an-olympiad-uz-blank'),
+    body('numbers-the-customers-cyrillic-placing-became-first-in-a-references-achievements-uz-accepted_false_blank',
+         ACCEPTED, 'pdf.xat.tavsifnoma', REFERENCE_UZC_FIRST, 'uz', 'achievements', 'U olimpiadada birinchi bo‘ldi.',
+         gone=('birinchi',), pair='numbers-first-with-boldi-beside-an-olympiad-uz-blank'),
+    gp('numbers-the-customers-cyrillic-first-degree-diploma-uz-accepted_false_blank', ACCEPTED, REFERENCE_UZC_DIPLOMA,
+       'uz', 'U birinchi darajali diplom olgan.', gone=('birinchi',),
+       pair='numbers-first-degree-diploma-with-darajali-uz-blank'),
+    body('numbers-the-customers-cyrillic-first-degree-diploma-in-a-references-achievements-uz-accepted_false_blank',
+         ACCEPTED, 'pdf.xat.tavsifnoma', REFERENCE_UZC_DIPLOMA, 'uz', 'achievements',
+         'U birinchi darajali diplom olgan.', gone=('birinchi',),
+         pair='numbers-first-degree-diploma-with-darajali-uz-blank'),
+]
+# An English paper reads a Latin word against the Uzbek lexicon only whole (8bb7198), so an Uzbek sentence's inflected
+# first word ("Olimpiadada", "Reytingda", "Musobaqada") blanks as a name, as "Bogdan" (bog+dan) must: the re-check's
+# Uzbek placings in an English paper (r2) showed it. c491da9 keeps the word, as it keeps "Bogdan".
+COVER_EN_FIGURES = ('Please write a cover letter for me, Malika Qodirova. I have 1 year of retail experience, '
+                    '2 certificates and 3 languages.')
+for word, sentence in (('Olimpiadada', 'Olimpiadada uchinchi natijani qayd etdi.'),
+                       ('Reytingda', 'Reytingda ikkinchi pog‘onani egalladi.'),
+                       ('Musobaqada', 'Musobaqada uchinchi bo‘lib, bronza medal oldi.')):
+    CASES.append(gp(f'names-an-inflected-uzbek-word-opening-an-english-sentence-{word.lower()}-en-accepted_false_blank',
+                    ACCEPTED, COVER_EN_FIGURES, 'en', sentence, gone=(word,),
+                    pair='names-uzbek-lexicon-given-name-bogdan-ru-to-en-blank'))
+
+# ---- A translated paper's accounting law exempts its head noun only where its name ends there (must, from 424c38a
+# and 0bdb620): "... о бухгалтерском учёте." or "... учёте» регулирует ...". After "и", a comma or a preposition
+# ("... учёте и аудите", "... учёте, аудите и налогах", "... учёте в банках", "... учёте для банков") the name goes on
+# past what `_law_names` reads, so the head is the customer's word or the sentence goes, as in c491da9. Round 8
+# removed the exemption everywhere: these blanks stand, the keeps after them are accepted false blanks (`PAID`).
+for slug, sentence, gone in (
+        ('and-audit', 'Бухгалтер соблюдает Закон о бухгалтерском учёте и аудите.', ('аудите',)),
+        ('in-banks', 'Бухгалтер соблюдает Закон о бухгалтерском учёте в банках.', ('банках',)),
+        ('audit-and-taxes', 'Бухгалтер соблюдает Закон о бухгалтерском учёте, аудите и налогах.',
+         ('аудите', 'налогах')),
+        ('of-the-republic-and-audit', 'Бухгалтер соблюдает Закон Республики Узбекистан о бухгалтерском учёте и '
+         'аудите.', ('аудите',)),
+        ('for-banks', 'Бухгалтер соблюдает Закон о бухгалтерском учёте для банков.', ('банков',)),
+        ('in-bankruptcy', 'Бухгалтер соблюдает Закон о бухгалтерском учёте при банкротстве.', ('банкротстве',)),
+        ('reporting-and-audit', 'Бухгалтер соблюдает Закон о бухгалтерском учёте, отчётности и аудите.',
+         ('отчётности', 'аудите')),
+        ('and-auditing', 'Бухгалтер соблюдает Закон о бухгалтерском учёте и аудиторской деятельности.',
+         ('аудиторской',)),
+        ('and-financial-reporting', 'Бухгалтер обязан знать Закон о бухгалтерском учёте и финансовой отчётности.',
+         ('финансовой',))):
+    for brief, direction in ((ACCOUNTING_EN_RU, 'en-to-ru'), (ACCOUNTING_UZ_RU, 'uz-to-ru')):
+        CASES += [
+            guard(f'laws-an-accounting-law-head-before-{slug}-{direction}-blank', BLANK, brief, 'ru', sentence,
+                  gone=gone, translated=True),
+            body(f'laws-an-accounting-law-head-before-{slug}-in-a-qualification-{direction}-blank', BLANK,
+                 'pdf.biz.lavozim_yoriqnomasi', brief, 'ru', 'qualification', sentence, gone=gone),
+        ]
+# The customer's law named alone stayed: its name ended at the head before the sentence's end, a verb or its date.
+ACCOUNTING_EN_RU_DATED = ('Write a job description for an accountant in Russian. He must know the Law on Accounting '
+                          'of 13 April 2016.')
+CASES += [
+    guard('laws-the-customers-law-on-accounting-before-a-verb-en-to-ru-keep', KEEP, ACCOUNTING_EN_RU, 'ru',
+          'Бухгалтер знает, что Закон о бухгалтерском учёте устанавливает правила.', translated=True),
+    guard('laws-the-customers-law-on-accounting-before-a-verb-uz-to-ru-keep', KEEP, ACCOUNTING_UZ_RU, 'ru',
+          'Бухгалтер знает, что Закон о бухгалтерском учёте устанавливает правила.', translated=True),
+    guard('laws-the-customers-law-on-accounting-before-its-date-en-to-ru-keep', KEEP, ACCOUNTING_EN_RU_DATED, 'ru',
+          'Бухгалтер соблюдает Закон о бухгалтерском учёте от 13 апреля 2016 года.', translated=True),
+]
+
+# ---------------------------------------------------------------- the re-check of round 7 (parity-r1), both ways
+# Round 7's targeted fixes still kept what c491da9 blanks, so parity with c491da9 is kept by construction (the owner's
+# decision): the customer's numbers are c491da9's reading, a placing read since adding only its place key
+# (numbers.values); a paper's number holds c491da9's reading of the same characters and needs what that needed
+# (numbers.found); and the law-name readings the re-check found leaking read as c491da9 reads them. An unnamed law's
+# name no longer ends where the sentence goes on (an -s verb, an -ed or -ly word, an adverb) nor at a possessive, and
+# the accounting law's head noun ("учёте", "hisobi") is the customer's word in a translated paper too. Each leak is
+# pinned here as a blank; each keep it costs is an accepted false blank (below) naming the blank it pays for.
+
+# ---- A customer's sentence that is no placing, or a negated one, grounds no placing c491da9 reads (must, p1, p3):
+# its place key ("place:1") never stands for the figure "first place" needs.
+NOT_PLACINGS = (
+    ('en', 'not-first-in-the-ranking', 'She was not first in the ranking, but she improved a lot.',
+     'She won first place at the olympiad.', 'first'),
+    ('en', 'first-in-her-class-to-qualify', 'She was first in her class to qualify for the regional olympiad.',
+     'She won first place at the olympiad.', 'first'),
+    ('ru', 'did-not-become-first', 'Она не стала первой на олимпиаде.', 'На олимпиаде она заняла первое место.',
+     'первое'),
+    ('ru', 'first-olympiad-of-her-life', 'Эта олимпиада была первой в её жизни.',
+     'На олимпиаде она заняла первое место.', 'первое'),
+    ('ru', 'third-olympiad-of-her-life', 'Эта олимпиада стала третьей в её жизни.',
+     'На олимпиаде она заняла третье место.', 'третье'),
+    ('ru', 'first-of-her-class-through-to-the-olympiad', 'Она первой из класса прошла на олимпиаду.',
+     'На олимпиаде она заняла первое место.', 'первое'),
+    ('uz', 'contest-was-her-first', 'Bu tanlov u uchun birinchi edi.', 'U olimpiadada birinchi o‘rinni egalladi.',
+     'birinchi'),
+    ('uz', 'could-not-reach-the-first-step', 'U olimpiadada birinchi pog‘onaga chiqa olmadi.',
+     'U olimpiadada birinchi o‘rinni egalladi.', 'birinchi'),
+    ('uz', 'lost-the-first-ness', 'U tanlovda birinchilikni raqibiga boy berdi.',
+     'U olimpiadada birinchi o‘rinni egalladi.', 'birinchi'),
+    ('uz', 'registered-first', 'Musobaqada birinchi bo‘lib, ro‘yxatdan o‘tdi.',
+     'U olimpiadada birinchi o‘rinni egalladi.', 'birinchi'))
+for locale, slug, said, sentence, word in NOT_PLACINGS:
+    CASES += [
+        gp(f'numbers-a-customers-non-placing-{slug}-grounds-no-placing-{locale}-blank', BLANK,
+           PLACING_LETTERS[locale] + said, locale, sentence, gone=(word,)),
+        body(f'numbers-a-customers-non-placing-{slug}-grounds-no-placing-in-a-references-achievements-{locale}-blank',
+             BLANK, 'pdf.xat.tavsifnoma', PLACING_LETTERS[locale] + said, locale, 'achievements', sentence,
+             gone=(word,)),
+    ]
+CASES += [
+    gp('numbers-a-customers-non-placing-first-olympiad-of-her-life-grounds-no-placing-ru-to-uz-blank', BLANK,
+       'Напишите характеристику на узбекском для Малики Кодировой. Эта олимпиада была первой в её жизни.', 'uz',
+       'U olimpiadada birinchi o‘rinni egalladi.', gone=('birinchi',)),
+    gp('numbers-a-customers-non-placing-contest-was-her-first-grounds-no-placing-uz-to-en-blank', BLANK,
+       'Malika Qodirova uchun ingliz tilida tavsifnoma yozing. Bu tanlov u uchun birinchi edi.', 'en',
+       'She won first place at the olympiad.', gone=('first',)),
+]
+
+# ---- The accounting law's head noun is the customer's word when they never named the law (must, p2): their
+# "бухгалтерской службы", "accounting" or "Buxgalteriya bo‘limi" and their "laws" name no Law on Accounting.
+UNNAMED_ACCOUNTING = (
+    ('ru', 'Составьте должностную инструкцию сотрудника бухгалтерской службы. Он должен соблюдать законы.'),
+    ('en-to-ru', 'Write a job description in Russian for an accounting assistant. He must obey the law.'),
+    ('uz-to-ru', 'Buxgalteriya bo‘limi xodimi uchun rus tilida lavozim yo‘riqnomasi yozing. U qonunlarga qat’iy rioya '
+                 'qilishi kerak.'))
+for direction, brief in UNNAMED_ACCOUNTING:
+    CASES += [
+        guard(f'laws-an-unnamed-accounting-law-as-uchete-{direction}-blank', BLANK, brief, 'ru',
+              'Сотрудник соблюдает Закон о бухгалтерском учёте.', gone=('учёте',)),
+        guard(f'laws-an-unnamed-accounting-law-in-the-instrumental-{direction}-blank', BLANK, brief, 'ru',
+              'Сотрудник руководствуется Законом о бухгалтерском учёте.', gone=('учёте',)),
+        guard(f'laws-an-unnamed-accounting-law-in-lower-case-{direction}-blank', BLANK, brief, 'ru',
+              'Сотрудник руководствуется законом о бухгалтерском учёте.', gone=('учёте',)),
+        body(f'laws-an-unnamed-accounting-law-as-uchete-in-a-qualification-{direction}-blank', BLANK,
+             'pdf.biz.lavozim_yoriqnomasi', brief, 'ru', 'qualification',
+             'Сотрудник соблюдает Закон о бухгалтерском учёте.', gone=('учёте',)),
+    ]
+for direction, brief in (
+        ('uz', 'Buxgalteriya bo‘limi xodimi uchun lavozim yo‘riqnomasi yozing. U qonunlarga qat’iy rioya qilishi '
+               'kerak.'),
+        ('en-to-uz', 'Write a job description in Uzbek for an accounting assistant. He must obey the law.'),
+        ('ru-to-uz', 'Составьте должностную инструкцию на узбекском для сотрудника бухгалтерской службы. Он должен '
+                     'соблюдать законы.')):
+    CASES.append(guard(f'laws-an-unnamed-accounting-law-as-hisobi-{direction}-blank', BLANK, brief, 'uz',
+                       'Xodim Buxgalteriya hisobi to‘g‘risidagi qonunga amal qiladi.', gone=('hisobi',)))
+
+# ---- An unnamed law's name goes on past an -ed or -ly modifier and an -s word that is also a verb (must, p5, p7,
+# p10): every word after its "on" is the customer's, as c491da9 reads it.
+TAX_LAW_EN = 'Write a job description for an accountant. He must know the Tax Code and the Law on taxes.'
+STATE_DUTY_EN = 'Write a short report for a school. Mention the Law on state duty.'
+FAMILY_LAW_EN = 'Write an independent study paper on the Family Code and the Law on the family.'
+CASES += [
+    guard('laws-an-invented-tail-after-the-customers-law-on-taxes-related-offences-en-blank', BLANK, TAX_LAW_EN, 'en',
+          'He follows the Law on tax related offences.', gone=('offences',)),
+    body('laws-an-invented-tail-after-the-customers-law-on-taxes-related-offences-in-a-qualification-en-blank', BLANK,
+         'pdf.biz.lavozim_yoriqnomasi', TAX_LAW_EN, 'en', 'qualification',
+         'He follows the Law on tax related offences. He checks invoices daily.', gone=('offences',)),
+    guard('laws-an-invented-tail-after-the-customers-law-on-state-duty-funded-schools-en-blank', BLANK, STATE_DUTY_EN,
+          'en', 'Schools follow the Law on state funded schools.', gone=('funded',)),
+    guard('laws-an-invented-tail-after-the-customers-law-on-state-duty-owned-enterprises-en-blank', BLANK,
+          STATE_DUTY_EN, 'en', 'Schools follow the Law on state owned enterprises.', gone=('enterprises',)),
+    guard('laws-an-invented-tail-after-the-customers-law-on-state-duty-guaranteed-loans-en-blank', BLANK,
+          STATE_DUTY_EN, 'en', 'He follows the Law on state guaranteed loans.', gone=('loans',)),
+    guard('laws-an-invented-tail-after-the-customers-law-on-the-family-friendly-workplaces-en-blank', BLANK,
+          FAMILY_LAW_EN, 'en', 'Parents follow the Law on family friendly workplaces.', gone=('workplaces',)),
+    guard('laws-an-invented-tail-after-the-customers-law-on-the-family-owned-businesses-en-blank', BLANK,
+          FAMILY_LAW_EN, 'en', 'Owners follow the Law on family owned businesses.', gone=('businesses',)),
+    guard('laws-an-invented-tail-after-the-customers-law-on-education-grants-en-blank', BLANK, EDU_EN, 'en',
+          'Students apply under the Law on Education grants for students.', gone=('grants',)),
+    guard('laws-an-invented-tail-after-the-customers-law-on-education-related-offences-en-blank', BLANK, EDU_EN, 'en',
+          'Teachers follow the Law on education related offences.', gone=('offences',)),
+    guard('laws-an-invented-tail-after-the-customers-law-on-education-supports-en-blank', BLANK, EDU_EN, 'en',
+          'Schools follow the Law on Education supports for disabled pupils.', gone=('supports',)),
+    # The same in lower case, which c491da9 never read as a citation: this branch does (`_lower_cited`).
+    guard('laws-an-invented-tail-after-the-customers-lower-case-law-on-education-grants-en-blank', BLANK, EDU_EN, 'en',
+          'Students apply under the law on education grants for students.', gone=('grants',)),
+    guard('laws-an-invented-tail-after-the-customers-lower-case-law-on-education-related-offences-en-blank', BLANK,
+          EDU_EN, 'en', 'Teachers follow the law on education related offences.', gone=('offences',)),
+    guard('laws-an-invented-tail-after-the-customers-lower-case-law-on-the-family-friendly-workplaces-en-blank',
+          BLANK, FAMILY_LAW_EN, 'en', 'Parents follow the law on family friendly workplaces.', gone=('workplaces',)),
+]
+
+# ---- A LAW_NAMES word's possessive no longer ends the name (should, p9): the part after it is the customer's words.
+for direction, brief in (('en', ACCOUNTING_EN), ('ru-to-en', JOB_RU_EN_LAW), ('uz-to-en', ACCOUNTING_UZ_EN)):
+    CASES.append(guard(f'laws-an-invented-part-after-the-law-on-accountings-possessive-{direction}-blank', BLANK,
+                       brief, 'en', 'He follows the Law on Accounting’s banking supplement.', gone=('banking',)))
+for direction, brief in (('en', EDU_EN), ('ru-to-en', EDU_RU_EN)):
+    CASES.append(guard(f'laws-an-invented-part-after-the-law-on-educations-possessive-{direction}-blank', BLANK,
+                       brief, 'en', 'He follows the Law on Education’s vocational annex.', gone=('vocational',)))
+
+# ---- The keeps these readings cost: each is an accepted false blank naming the leak it pays for, and keeps its id
+# under the customer's own words (`removed`). The lower-case laws c491da9 never read as citations (it keeps every one
+# of them, invented or not) are new false blanks; the rest c491da9 blanks too.
+GOES_ON_S = 'laws-an-invented-tail-after-the-customers-law-on-education-grants-en-blank'
+GOES_ON_S_LOWER = 'laws-an-invented-tail-after-the-customers-lower-case-law-on-education-grants-en-blank'
+GOES_ON_ED = 'laws-an-invented-tail-after-the-customers-law-on-taxes-related-offences-en-blank'
+GOES_ON_LY = 'laws-an-invented-tail-after-the-customers-law-on-the-family-friendly-workplaces-en-blank'
+GOES_ON_LY_LOWER = 'laws-an-invented-tail-after-the-customers-lower-case-law-on-the-family-friendly-workplaces-en-blank'
+PAID = {
+    'laws-the-customers-law-on-education-in-lower-case-before-a-verb-en-keep': (('guarantees',), GOES_ON_S),
+    'laws-the-customers-consumer-rights-law-before-a-verb-ru-to-en-keep': (('protects',), GOES_ON_S),
+    'laws-the-customers-law-of-the-republic-before-a-verb-en-keep': (('guarantees',), GOES_ON_S),
+    'laws-the-customers-law-on-accounting-before-well-en-keep': (('well',), GOES_ON_LY),
+    'laws-the-customers-law-on-accounting-before-well-ru-to-en-keep': (('well',), GOES_ON_LY),
+    'laws-the-customers-law-on-accounting-before-daily-en-keep': (('daily',), GOES_ON_LY),
+    'laws-the-customers-law-on-accounting-before-together-en-keep': (('together',), GOES_ON_LY),
+    'laws-the-customers-law-of-the-republic-before-an-adverb-en-keep': (('carefully',), GOES_ON_LY),
+    'laws-the-customers-law-on-accounting-possessive-en-keep': (('rules',),
+                                                                'laws-an-invented-part-after-the-law-on-accountings'
+                                                                '-possessive-en-blank'),
+    'laws-the-customers-law-on-accounting-possessive-ru-to-en-keep': (('rules',),
+                                                                      'laws-an-invented-part-after-the-law-on'
+                                                                      '-accountings-possessive-ru-to-en-blank'),
+    'laws-the-customers-law-on-accounting-possessive-uz-to-en-keep': (('rules',),
+                                                                      'laws-an-invented-part-after-the-law-on'
+                                                                      '-accountings-possessive-uz-to-en-blank'),
+    'laws-the-customers-law-on-education-possessive-en-keep': (('aim',),
+                                                               'laws-an-invented-part-after-the-law-on-educations'
+                                                               '-possessive-en-blank'),
+    'laws-the-customers-law-on-accounting-as-hisobi-en-to-uz-keep': (('hisobi',),
+                                                                     'laws-an-unnamed-accounting-law-as-hisobi-en-to'
+                                                                     '-uz-blank'),
+    'laws-the-customers-law-on-accounting-as-uchete-en-to-ru-keep': (('учёте',),
+                                                                     'laws-an-unnamed-accounting-law-as-uchete-en-to'
+                                                                     '-ru-blank'),
+    'laws-the-customers-law-on-accounting-as-uchete-uz-to-ru-keep': (('учёте',),
+                                                                     'laws-an-unnamed-accounting-law-in-the'
+                                                                     '-instrumental-uz-to-ru-blank'),
+    'laws-the-customers-law-on-accounting-before-a-verb-en-to-ru-keep': (('учёте',),
+                                                                         'laws-an-accounting-law-head-before-and-audit'
+                                                                         '-en-to-ru-blank'),
+    'laws-the-customers-law-on-accounting-before-a-verb-uz-to-ru-keep': (('учёте',),
+                                                                         'laws-an-accounting-law-head-before-and-audit'
+                                                                         '-uz-to-ru-blank'),
+    'laws-the-customers-law-on-accounting-before-its-date-en-to-ru-keep': (('учёте',),
+                                                                           'laws-an-accounting-law-head-before-and'
+                                                                           '-audit-en-to-ru-blank'),
+    'laws-the-customers-uzbek-law-as-zakon-o-in-lower-case-uz-to-ru-keep': (('учёте',),
+                                                                            'laws-an-unnamed-accounting-law-in-lower'
+                                                                            '-case-uz-to-ru-blank'),
+    'laws-the-customers-english-law-as-zakon-o-in-lower-case-en-to-ru-keep': (('учёте',),
+                                                                              'laws-an-unnamed-accounting-law-in-lower'
+                                                                              '-case-en-to-ru-blank'),
+    'numbers-the-customers-placing-became-first-as-first-place-uz-keep': (
+        ('birinchi',), 'numbers-a-customers-non-placing-contest-was-her-first-grounds-no-placing-uz-blank'),
+    'numbers-the-customers-placing-took-first-at-an-olympiad-as-first-place-en-keep': (
+        ('first',), 'numbers-a-customers-non-placing-first-in-her-class-to-qualify-grounds-no-placing-en-blank'),
+    'numbers-the-customers-placing-became-third-as-third-place-ru-keep': (
+        ('третье',), 'numbers-a-customers-non-placing-third-olympiad-of-her-life-grounds-no-placing-ru-blank'),
+    'numbers-the-customers-placing-finished-with-third-place-as-third-place-ru-keep': (
+        ('третье',), 'numbers-a-customers-non-placing-third-olympiad-of-her-life-grounds-no-placing-ru-blank'),
+}
+for verb in ('guarantees', 'defines', 'establishes', 'became', 'plays', 'contains'):
+    for direction in ('en', 'uz-to-en'):
+        PAID[f'laws-the-customers-law-on-education-{verb}-{direction}-keep'] = (
+            (verb,), GOES_ON_ED if verb == 'became' else GOES_ON_S)
+for word in ('thus', 'aims', 'seeks', 'itself', 'therefore', 'however'):
+    for direction in ('en', 'ru-to-en'):
+        PAID[f'laws-the-customers-lower-case-law-on-education-{word}-{direction}-keep'] = (
+            (word,), GOES_ON_S_LOWER if word in ('aims', 'seeks') else GOES_ON_LY_LOWER)
+for verb in ('ensures', 'lists', 'consists', 'implements', 'mentions'):
+    for direction in ('en', 'ru-to-en', 'uz-to-en'):
+        PAID[f'laws-the-customers-title-law-on-education-{verb}-{direction}-keep'] = ((verb,), GOES_ON_S)
+        PAID[f'laws-the-customers-lower-law-on-education-{verb}-{direction}-keep'] = ((verb,), GOES_ON_S_LOWER)
+    PAID[f'laws-the-customers-law-on-education-{verb}-uz-cyrillic-to-en-keep'] = ((verb,), GOES_ON_S)
+for verb in ('secures', 'upholds', 'reinforces', 'affirms', 'motivates', 'equips', 'balances', 'functions', 'exists',
+             'measures', 'features', 'assists'):
+    PAID[f'laws-the-customers-law-on-education-{verb}-en-keep'] = ((verb,), GOES_ON_S)
+    PAID[f'laws-the-customers-lower-case-law-on-education-{verb}-ru-to-en-keep'] = ((verb,), GOES_ON_S_LOWER)
+for verb in ('ensures', 'consists', 'secures', 'insists'):
+    for direction in ('en', 'ru-to-en', 'uz-to-en'):
+        PAID[f'laws-the-customers-law-on-accounting-{verb}-{direction}-keep'] = ((verb,), GOES_ON_S)
+assert all(sum(case.id == keep for case in CASES) == 1 for keep in PAID), 'every paid keep is a case'
+
+
+# ---- Round 10 (the keeps eb8b05c has, restored where no leak comes back): an unnamed law's name ends where the
+# sentence goes on with a word and nothing of a name can follow it (`facts._goes_on`), and at a LAW_NAMES word's
+# possessive before a part of the law that goes on with a verb (`facts._owns_part`: "The Law on Accounting’s rules
+# apply ..."), so the customer's law before a verb, an adverb or its rules is theirs again, their own words under
+# their own brief. The leaks the round-8 removal closed stay
+# blank: a modifier before a noun ("tax related offences", "family friendly workplaces"), a verb's -s before a
+# preposition or at the end ("grants for students"). Each restored keep's accepted id stays (the core list names it),
+# with the same word before a comma, where a list may go on the name ("the Law on state funded, private and public
+# schools"): the tie-break the restored reading keeps, paid for by the same blank.
+# The same words where a name may go on after them stay the name's (must, restore-r10 r1): eb8b05c ended the name
+# at each of them.
+for slug, brief, sentence, gone in (
+        ('state-grants-at-the-end', STATE_DUTY_EN, 'He follows the Law on state grants.', ('grants',)),
+        ('state-paid-leave', STATE_DUTY_EN, 'He follows the Law on state paid leave.', ('leave',)),
+        ('state-funded-before-a-comma', STATE_DUTY_EN,
+         'Schools follow the Law on state funded, private and public schools.', ('funded',)),
+        ('education-grants-and-scholarships', EDU_EN, 'Schools follow the Law on Education grants and scholarships.',
+         ('grants',)),
+        ('education-grants-to-students', EDU_EN, 'Students apply under the Law on Education grants to students.',
+         ('grants',)),
+        ('education-funds-allocation', EDU_EN, 'Schools follow the Law on Education funds allocation.', ('funds',)),
+        ('further-education', EDU_EN, 'He follows the Law on further education.', ('further',)),
+        ('education-of-the-disabled', EDU_EN, 'Teachers follow the Law on Education of the disabled.', ('disabled',)),
+        ('education-deprived-of', EDU_RU_EN, 'He follows the Law on Education deprived of funding.', ('deprived',)),
+        ('family-friendly-measures', FAMILY_LAW_EN, 'Parents follow the Law on family friendly measures.',
+         ('measures',)),
+        ('accountings-rules-for-banks', ACCOUNTING_EN, 'He follows the Law on Accounting’s rules for banks.',
+         ('banks',)),
+        ('accountings-rules-and-annexes', ACCOUNTING_EN, 'He follows the Law on Accounting’s rules and annexes.',
+         ('annexes',)),
+        ('accountings-rules-before-a-comma', ACCOUNTING_EN,
+         'He follows the Law on Accounting’s rules, standards and annexes.', ('standards',))):
+    CASES.append(guard(f'laws-an-invented-tail-after-the-customers-law-{slug}-en-blank', BLANK, brief, 'en', sentence,
+                       gone=gone))
+# eb8b05c's keeps the narrowed reading keeps too: a verb's -s before "in force" or an object's determiner, an adverb
+# before a clause's "and" and its verb.
+CASES += [
+    guard('laws-the-customers-law-on-education-remains-in-force-en-keep', KEEP, EDU_EN, 'en',
+          'The Law on Education remains in force.'),
+    # Round 11: "all" opens a relative clause's subject as often as a verb's object, so it is no sign of a verb any
+    # more (`facts.LAW_OBJECT`): the keep is the customer's own words, the model's an accepted false blank.
+    *removed(guard('laws-the-customers-law-on-education-protects-all-pupils-en-keep', KEEP, EDU_EN, 'en',
+                   'The Law on Education protects all pupils.'), ('protects',),
+             'laws-a-plural-noun-of-an-unnamed-law-grants-all-pupils-receive-en-blank', listed=True),
+    guard('laws-the-customers-law-on-accounting-well-and-a-verb-en-keep', KEEP, ACCOUNTING_EN, 'en',
+          'He knows the Law on Accounting well and applies it daily.'),
+]
+# The Uzbek head before an invented tail, as the Russian one (round 6): "... hisobi va audit to‘g‘risidagi qonun".
+CASES.append(guard('laws-an-accounting-law-head-before-and-audit-en-to-uz-blank', BLANK, ACCOUNTING_EN_UZ, 'uz',
+                   'Buxgalter Buxgalteriya hisobi va audit to‘g‘risidagi qonunga amal qiladi.', gone=('audit',),
+                   translated=True))
+# ---- The false blanks versus eb8b05c the sweep still shows (round 10), each the price of the blank it names: an -s
+# whose base is no LAW_VERBS word before a noun ("funds allocation"), a verb's -s before a preposition not its own
+# ("grants for students"), an adverb before a past form and a noun ("state funded schools"); c491da9's reading of a
+# rejected line's name (N3, "Direktor Junior Smith") holding a unit's common word; the customer's placing in a form
+# c491da9 never read giving its place key alone (L1).
+REPORT_EN_ANNUAL = 'Write the annual report of our firm for 2025. Revenue grew to 3 billion soums.'
+CASES += [
+    guard('laws-the-customers-law-on-education-prioritises-en-accepted_false_blank', ACCEPTED, EDU_EN, 'en',
+          'The Law on Education prioritises quality.', gone=('prioritises',),
+          pair='laws-an-invented-tail-after-the-customers-law-education-funds-allocation-en-blank'),
+    guard('laws-the-customers-law-on-education-deals-with-en-accepted_false_blank', ACCEPTED, EDU_EN, 'en',
+          'The Law on Education deals with teacher training.', gone=('deals',),
+          pair='laws-an-invented-tail-after-the-customers-law-on-education-grants-en-blank'),
+    guard('laws-the-customers-law-on-education-fundamentally-changed-en-accepted_false_blank', ACCEPTED, EDU_EN, 'en',
+          'The Law on Education fundamentally changed schools.', gone=('fundamentally',),
+          pair='laws-an-invented-tail-after-the-customers-law-on-state-duty-funded-schools-en-blank'),
+    body('names-a-rejected-units-common-word-opening-a-sentence-en-accepted_false_blank', ACCEPTED, 'pdf.biz.hisobot',
+         REPORT_EN_ANNUAL, 'en', 'summary', 'Retail sales grew.', gone=('Retail',), facts=(('unit', 'Retail Network'),),
+         pair='names-a-line-modifier-given-name-direktor-junior-opening-a-sentence-en-blank'),
+    gp('numbers-the-customers-placing-became-first-as-a-digit-place-uz-accepted_false_blank', ACCEPTED,
+       'Qodirova Malika uchun tavsifnoma yozing, u olimpiadada birinchi bo‘ldi.', 'uz',
+       'U olimpiadada 1-o‘rinni egalladi.', gone=('1',),
+       pair='numbers-a-customers-non-placing-contest-was-her-first-grounds-no-placing-uz-blank'),
+]
+# The Russian head before "и" and another law of the customer's ends the name there: "... учёте и налоговый кодекс".
+ACCOUNTING_TAX_UZ_RU = ('Buxgalter uchun rus tilida lavozim yo‘riqnomasi yozing. U Buxgalteriya hisobi to‘g‘risidagi '
+                        'qonunni va Soliq kodeksini bilishi kerak.')
+CASES.append(guard('laws-the-customers-accounting-law-head-before-and-their-tax-code-uz-to-ru-keep', KEEP,
+                   ACCOUNTING_TAX_UZ_RU, 'ru', 'Знает закон о бухгалтерском учёте и налоговый кодекс.', translated=True))
+for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING_UZ_RU)):
+    CASES.append(guard(f'laws-an-accounting-law-head-before-as-well-as-audit-{direction}-blank', BLANK, brief, 'ru',
+                       'Бухгалтер руководствуется Законом о бухгалтерском учёте, а также аудите.', gone=('аудите',),
+                       translated=True))
+# The keeps restored, and the blank each one's accepted id now pays for: a word before a comma, where a list may go
+# on the name (`_aside`); the Russian head before a preposition ("... учёте на практике", as "... учёте в банках");
+# the Uzbek head before another word than "to‘g‘risidagi" ("... hisobi bo‘yicha Qonunni").
+COMMA_AFTER = 'laws-an-invented-tail-after-the-customers-law-state-funded-before-a-comma-en-blank'
+RESTORED = {keep: COMMA_AFTER for keep, (_, pair) in PAID.items()
+            if pair in (GOES_ON_S, GOES_ON_S_LOWER, GOES_ON_ED, GOES_ON_LY, GOES_ON_LY_LOWER)}
+RESTORED.update({keep: 'laws-an-invented-tail-after-the-customers-law-accountings-rules-before-a-comma-en-blank'
+                 for keep, (_, pair) in PAID.items() if 'possessive' in pair})
+RESTORED.update({keep: ('laws-an-accounting-law-head-before-and-audit-en-to-uz-blank' if keep.endswith('-to-uz-keep')
+                        else 'laws-an-accounting-law-head-before-in-banks-'
+                        + ('en' if keep.endswith('-en-to-ru-keep') else 'uz') + '-to-ru-blank')
+                 for keep, (gone, _) in PAID.items() if gone in (('учёте',), ('hisobi',))})
+ASIDE = {'en': ', in practice', 'ru': ' на практике'}
+
+
+def _aside(value, word, locale):
+    """`value` with an aside after the first `word`, before a comma: "The Law on Education guarantees, in practice,
+    free schooling.", "He knows the Law on Accounting well, in practice."; the Russian head before a preposition:
+    "... Законом о бухгалтерском учёте на практике."; the Uzbek head before "bo‘yicha" for its "to‘g‘risidagi": "...
+    hisobi bo‘yicha Qonunni biladi." """
+    if locale == 'uz':
+        return value.replace(f'{word} to‘g‘risidagi qonun', f'{word} bo‘yicha Qonun')
+    found = re.search(r'(?<![^\W_])' + re.escape(word) + r'(?![^\W_])', value)
+    end = found.end()
+    rest = value[end:]
+    return value[:end] + ASIDE[locale] + ('' if rest in ('.', '') or locale == 'ru' else ',') + rest
+
+
+def _paid(case):
+    """A paid keep: the accepted false blank, and its id under the customer's own words. Those words, in the paper's
+    language, may tell the brief's language otherwise, so the keep no longer asserts how it is read. A restored keep
+    (`RESTORED`) is the keep as it was, and its accepted id the same word where the tie-break still holds (`_aside`),
+    paid for by the blank `RESTORED` names."""
+    gone, pair = PAID[case.id]
+    if case.id in RESTORED:
+        blank = replace(case, id=case.id.removesuffix('-' + KEEP) + '-' + ACCEPTED, direction=ACCEPTED,
+                        value=_aside(case.value, gone[0], case.locale), gone=gone, pair=RESTORED[case.id])
+        return [case, blank]
+    keep, blank = removed(case, gone, pair, listed=True)
+    return [replace(keep, translated=None), blank]
+
+
+CASES = [made for case in CASES for made in (_paid(case) if case.id in PAID else [case])]
+
+# ---------------------------------------------------------------- the re-check of round 8 (parity-r2), both ways
+# Round 8 left three readings that keep what c491da9 blanks, each pinned here as blanks under the briefs the re-check
+# used, with the keeps eb8b05c (in production) has for the same readings.
+
+# ---- A sentence's opening word before a law's stem is the name's unless the name after "о", "об", "of" or "on" ends
+# there (must, q1, q6, q7, q9): at the sentence's end, a verb or the law's date, or before a word that cannot go on it.
+# An opening word dropped before "и", "and", a comma or a preposition let an invented tail through ("Соблюдает Закон о
+# бухгалтерском учёте и аудите", "Under Law on Accounting and Auditing, ..."); c491da9 holds the word and blanks.
+EDU_RU = 'Составьте должностную инструкцию учителя. Он должен знать Закон об образовании.'
+for slug, brief, sentence, gone in (
+        ('and-audit', JOB_RU_ACCOUNTING, 'Соблюдает Закон о бухгалтерском учёте и аудите.', ('аудите',)),
+        ('in-banks', JOB_RU_ACCOUNTING, 'Соблюдает Закон о бухгалтерском учёте в банках.', ('банках',)),
+        ('for-banks', JOB_RU_ACCOUNTING, 'Применяет Закон о бухгалтерском учёте для банков.', ('банков',)),
+        ('audit-and-taxes', JOB_RU_ACCOUNTING, 'Знает Закон о бухгалтерском учёте, аудите и налогах.',
+         ('аудите', 'налогах')),
+        ('as-well-as-audit', JOB_RU_ACCOUNTING, 'Соблюдает Закон о бухгалтерском учёте, а также аудите.',
+         ('аудите',)),
+        ('in-bankruptcy', JOB_RU_ACCOUNTING, 'Руководствуется Законом о бухгалтерском учёте при банкротстве.',
+         ('банкротстве',)),
+        ('according-to-and-audit', JOB_RU_ACCOUNTING,
+         'Согласно Закону о бухгалтерском учёте и аудите, бухгалтер ведёт книги.', ('аудите',)),
+        ('knowledge-of-and-audit', JOB_RU_ACCOUNTING, 'Знание Закона о бухгалтерском учёте и аудите обязательно.',
+         ('аудите',)),
+        ('requirements-of-and-audit', JOB_RU_ACCOUNTING,
+         'Требования Закона о бухгалтерском учёте и аудите соблюдаются.', ('аудите',)),
+        ('having-studied-and-taxation', JOB_RU_ACCOUNTING,
+         'Изучив Закон о бухгалтерском учёте и налогообложении, он составляет отчёты.', ('налогообложении',)),
+        ('in-lower-case-and-audit', JOB_RU_ACCOUNTING, 'Знает закон о бухгалтерском учёте и аудите.', ('аудите',)),
+        ('education-science-and-culture', EDU_RU, 'Соблюдает Закон об образовании, науке и культуре.',
+         ('науке', 'культуре')),
+        ('education-in-universities', EDU_RU, 'Знает Закон об образовании в вузах.', ('вузах',))):
+    CASES += [
+        guard(f'laws-an-opening-word-before-a-named-law-{slug}-ru-blank', BLANK, brief, 'ru', sentence, gone=gone,
+              translated=False),
+        gp(f'laws-an-opening-word-before-a-named-law-{slug}-in-a-grounded-part-ru-blank', BLANK, brief, 'ru', sentence,
+           gone=gone),
+    ]
+CASES += [
+    body('laws-an-opening-word-before-a-named-law-and-audit-in-a-qualification-ru-blank', BLANK,
+         'pdf.biz.lavozim_yoriqnomasi', JOB_RU_ACCOUNTING, 'ru', 'qualification',
+         'Соблюдает Закон о бухгалтерском учёте и аудите.', gone=('аудите',)),
+]
+for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING_UZ_RU)):
+    CASES.append(guard(f'laws-an-opening-word-before-a-named-law-and-audit-{direction}-blank', BLANK, brief, 'ru',
+                       'Соблюдает Закон о бухгалтерском учёте и аудите.', gone=('аудите',), translated=True))
+for slug, sentence, gone in (
+        ('under-and-auditing', 'Under Law on Accounting and Auditing, the accountant keeps the books.', ('Auditing',)),
+        ('per-and-auditing', 'Per Law on Accounting and Auditing, reports are filed monthly.', ('Auditing',)),
+        ('by-and-auditing', 'By Law on Accounting and Auditing, the books are kept.', ('Auditing',)),
+        ('under-in-banks', 'Under Law on Accounting in Banks, reports are filed.', ('Banks',)),
+        ('under-auditing-and-taxes', 'Under Law on Accounting, Auditing and Taxes, reports are filed.',
+         ('Auditing', 'Taxes')),
+        ('a-role-and-auditing', 'Accountant Law on Accounting and Auditing applies.', ('Auditing',))):
+    for direction, brief in (('ru-to-en', JOB_RU_EN_LAW), ('uz-to-en', ACCOUNTING_UZ_EN)):
+        CASES.append(guard(f'laws-an-opening-word-before-a-named-law-{slug}-{direction}-blank', BLANK, brief, 'en',
+                           sentence, gone=gone, translated=True))
+# eb8b05c keeps the customer's own law after a duty's verb or a preposition opening the sentence where its name ends:
+# at the sentence's end, or before a word that cannot go on it (a clause after "и" or a comma).
+CASES += [
+    guard('laws-an-opening-word-before-the-customers-law-ru-keep', KEEP, JOB_RU_ACCOUNTING, 'ru',
+          'Соблюдает Закон о бухгалтерском учёте.'),
+    gp('laws-an-opening-word-before-the-customers-law-in-a-grounded-part-ru-keep', KEEP, JOB_RU_ACCOUNTING, 'ru',
+       'Руководствуется Законом о бухгалтерском учёте.'),
+    guard('laws-an-opening-word-before-the-customers-law-and-a-clause-ru-keep', KEEP, JOB_RU_ACCOUNTING, 'ru',
+          'Знает Закон о бухгалтерском учёте и умеет вести книги.'),
+    guard('laws-an-opening-word-before-the-customers-law-and-a-comma-clause-ru-keep', KEEP, JOB_RU_ACCOUNTING, 'ru',
+          'Согласно Закону о бухгалтерском учёте, бухгалтер ведёт книги.'),
+    guard('laws-an-opening-word-before-the-customers-law-on-education-ru-keep', KEEP, EDU_RU, 'ru',
+          'Соблюдает Закон об образовании.'),
+    guard('laws-an-opening-word-before-the-customers-law-and-a-comma-clause-ru-to-en-keep', KEEP, JOB_RU_EN_LAW, 'en',
+          'Under Law on Accounting, the accountant keeps the books.', translated=True),
+    guard('laws-an-opening-word-before-the-customers-law-and-a-comma-clause-uz-to-en-keep', KEEP, ACCOUNTING_UZ_EN,
+          'en', 'Under Law on Accounting, the accountant keeps the books.', translated=True),
+]
+
+# ---- An Uzbek ordinal with its apostrophe inside ("to‘rtinchi", "to'rtinchi", "o‘ninchi", "to‘qqizinchi",
+# "o‘ttizinchi", "o‘n to‘rtinchi", "yigirma to‘rtinchi") is read whole (must, q3, q4): a placing's patterns read only its
+# letters after the apostrophe, which make no ordinal, and the tip skipped the match, so the paper's invented placing
+# went unchecked; c491da9 and eb8b05c stopped there and emptied the part. A placing whose words make no ordinal at all
+# ("kechinchi o‘rinni") blanks as they did.
+ORDINAL_BRIEFS = {
+    'uz': 'O‘quvchim Qodirova Malika uchun tavsiyanoma yozing. U a’lochi, matematikani yaxshi ko‘radi.',
+    'ru-to-uz': 'Напишите на узбекском рекомендательное письмо для ученицы Малики Кодировой. Она отличница.',
+    'en-to-uz': 'Please write a recommendation letter in Uzbek for my student Malika Qodirova. She loves maths.',
+}
+APOSTROPHE_ORDINALS = (('fourth', 'to‘rtinchi'), ('fourth-ascii', "to'rtinchi"), ('fourth-modifier', 'toʼrtinchi'),
+                       ('tenth', 'o‘ninchi'), ('ninth', 'to‘qqizinchi'), ('thirtieth', 'o‘ttizinchi'),
+                       ('fourteenth', 'o‘n to‘rtinchi'), ('twenty-fourth', 'yigirma to‘rtinchi'))
+APOSTROPHE_PLACINGS = (('took-place', 'U viloyat olimpiadasida {o} o‘rinni egalladi.'),
+                       ('was-awarded-place', 'U shahar tanlovida {o} o‘ringa sazovor bo‘ldi.'),
+                       ('at-place', 'Matematika olimpiadasida {o} o‘rinda.'),
+                       ('became', 'U tanlovda {o} bo‘ldi.'),
+                       ('degree-diploma', 'U {o} darajali diplom oldi.'),
+                       ('prize', 'Musobaqada {o} sovrinni qo‘lga kiritdi.'),
+                       ('result', 'Respublika olimpiadasida {o} natijani ko‘rsatdi.'))
+for direction, brief in ORDINAL_BRIEFS.items():
+    for slug, ordinal in APOSTROPHE_ORDINALS:
+        word = ordinal.split()[-1]
+        for form, template in APOSTROPHE_PLACINGS:
+            CASES.append(gp(f'numbers-an-apostrophe-ordinal-{slug}-{form}-{direction}-blank', BLANK, brief, 'uz',
+                            template.format(o=ordinal), gone=(word,)))
+        CASES += [
+            body(f'numbers-an-apostrophe-ordinal-{slug}-in-a-references-achievements-{direction}-blank', BLANK,
+                 'pdf.xat.tavsifnoma', brief, 'uz', 'achievements',
+                 APOSTROPHE_PLACINGS[0][1].format(o=ordinal), gone=(word,)),
+            fact(f'numbers-an-apostrophe-ordinal-{slug}-in-a-references-subject-role-{direction}-blank', BLANK,
+                 'pdf.xat.tavsifnoma', brief, 'uz', 'subject_role', APOSTROPHE_PLACINGS[0][1].format(o=ordinal),
+                 gone=(word,)),
+        ]
+CASES += [
+    gp('numbers-a-placing-whose-words-make-no-ordinal-uz-blank', BLANK, ORDINAL_BRIEFS['uz'], 'uz',
+       'U viloyat olimpiadasida kechinchi o‘rinni egalladi.', gone=('kechinchi',)),
+    body('numbers-a-placing-whose-words-make-no-ordinal-in-a-references-achievements-uz-blank', BLANK,
+         'pdf.xat.tavsifnoma', ORDINAL_BRIEFS['uz'], 'uz', 'achievements',
+         'U viloyat olimpiadasida kechinchi o‘rinni egalladi.', gone=('kechinchi',)),
+    gp('numbers-an-apostrophe-ordinal-noun-uz-blank', BLANK, ORDINAL_BRIEFS['uz'], 'uz',
+       'U tanlovda to‘rtinchilikni qo‘lga kiritdi.', gone=('to‘rtinchilikni',)),
+]
+# The customer's placing in a form c491da9 never read, their collective, or their bare figure grounds no apostrophe
+# ordinal's placing: c491da9 and eb8b05c read none of them there.
+for slug, said, locale, sentence, word in (
+        ('ranks-fourth-in-sales', 'Savdo bo‘yicha to‘rtinchi o‘rinda turadi.', 'uz', 'U to‘rtinchi o‘rinni egalladi.',
+         'to‘rtinchi'),
+        ('rose-to-the-fourth-line', 'Он поднялся на четвёртую строчку рейтинга.', 'ru', 'U to‘rtinchi o‘rinni egalladi.',
+         'to‘rtinchi'),
+        ('took-fourth-at-a-championship', 'He took fourth at the regional championship.', 'en',
+         'U to‘rtinchi o‘rinni egalladi.', 'to‘rtinchi'),
+        ('entered-the-top-ten', 'Он вошёл в десятку сильнейших.', 'ru', 'U o‘ninchi o‘rinni egalladi.', 'o‘ninchi'),
+        ('four-years', 'U 4 yil to‘garakka qatnashgan.', 'uz', 'U to‘rtinchi o‘rinni egalladi.', 'to‘rtinchi')):
+    direction = 'uz' if locale == 'uz' else f'{locale}-to-uz'
+    CASES.append(gp(f'numbers-a-customers-{slug}-grounds-no-apostrophe-ordinal-{direction}-blank', BLANK,
+                    PLACING_LETTERS[locale] + said, 'uz', sentence, gone=(word,)))
+# The customer's own placing restated with an apostrophe ordinal blanks too (c491da9 and eb8b05c emptied the part, so
+# neither kept it): their "fourth place" gives the figure and the place key their sales ranking "to‘rtinchi o‘rinda
+# turadi" gives, and their digits the bare figure "U 4 yil to‘garakka qatnashgan" gives: the owner's tie-break.
+CASES += [
+    gp('numbers-the-customers-fourth-place-as-an-apostrophe-ordinal-en-to-uz-accepted_false_blank', ACCEPTED,
+       PLACING_LETTERS['en'] + 'She won fourth place at the regional olympiad.', 'uz',
+       'U viloyat olimpiadasida to‘rtinchi o‘rinni egalladi.', gone=('to‘rtinchi',),
+       pair='numbers-a-customers-took-fourth-at-a-championship-grounds-no-apostrophe-ordinal-en-to-uz-blank'),
+    gp('numbers-the-customers-fourth-place-as-an-apostrophe-ordinal-ru-to-uz-accepted_false_blank', ACCEPTED,
+       PLACING_LETTERS['ru'] + 'На олимпиаде она заняла четвёртое место.', 'uz',
+       'U olimpiadada to‘rtinchi o‘rinni egalladi.', gone=('to‘rtinchi',),
+       pair='numbers-a-customers-rose-to-the-fourth-line-grounds-no-apostrophe-ordinal-ru-to-uz-blank'),
+    gp('numbers-the-customers-digit-placing-as-an-apostrophe-ordinal-uz-accepted_false_blank', ACCEPTED,
+       PLACING_LETTERS['uz'] + 'U viloyat olimpiadasida 4-o‘rinni egallagan.', 'uz',
+       'U viloyat olimpiadasida to‘rtinchi o‘rinni egalladi.', gone=('to‘rtinchi',),
+       pair='numbers-a-customers-four-years-grounds-no-apostrophe-ordinal-uz-blank'),
+]
+
+# ---- A rejected line's given name that is also a role's modifier ("Junior", "Global", "Content") is held as c491da9
+# holds it (must, q5): the words after a line's last role word, beside the tip's own reading of its name.
+SALES_REPORT = {'en': 'Write a monthly sales report for our shop.', 'uz': 'Do‘konimiz uchun oylik savdo hisobotini yozing.'}
+for slug, line in (('direktor-junior', 'Direktor Junior Smith'),
+                   ('senior-sales-manager-junior', 'Senior Sales Manager Junior Smith'),
+                   ('bosh-hisobchi-junior', 'Bosh hisobchi Junior Smith'),
+                   ('director-junior', 'Director Junior Smith'),
+                   ('direktor-global', 'Direktor Global Aziz'),
+                   ('direktor-content', 'Direktor Content Nodir')):
+    word = line.split()[-2]
+    for locale, brief in SALES_REPORT.items():
+        sentence = (f'{word} reviewed the figures with the team.' if locale == 'en'
+                    else f'{word} jamoa bilan raqamlarni ko‘rib chiqdi.')
+        CASES.append(body(f'names-a-line-modifier-given-name-{slug}-opening-a-sentence-{locale}-blank', BLANK,
+                          'pdf.biz.hisobot', brief, locale, 'summary', sentence, gone=(word,),
+                          facts=(('author', line),)))
+
+# ---------------------------------------------------------------- the re-check of round 10 (pr77-r1), both ways
+# Round 10 left four readings that keep what eb8b05c (in production) or c491da9 blanks, each pinned here as blanks
+# under the briefs the re-check used, with the keeps eb8b05c has for the same readings.
+
+# ---- An unnamed law's -s word ends its name only as a verb (a6, a7, a8): a plural noun of the name before a
+# determiner and a clause of its own ("The Law on Education fees some parents pay were cut", "Under the Law on
+# Education grants every school gets, ..."), before "in force" or before "on" is the name's, as c491da9 reads it.
+COURSE_EN = ('Write a course paper in English on school funding in Uzbekistan. Use the Law on Education as the main '
+             'source.')
+COURSE_EN_LOWER = COURSE_EN.replace('the Law on Education', 'the law on education')
+STATE_DUTY_LOWER_EN = 'Write an essay about taxes in Uzbekistan. Mention the law on state duty.'
+RELATIVE_TAILS = (
+    ('standards-all-schools-meet', COURSE_EN, 'The Law on Education standards all schools meet are strict.',
+     'standards'),
+    ('fees-some-parents-pay', COURSE_EN, 'The Law on Education fees some parents pay were cut.', 'fees'),
+    ('lower-case-fees-some-parents-pay', COURSE_EN_LOWER, 'The law on education fees some parents pay were cut.',
+     'fees'),
+    ('state-fees-some-citizens-pay', STATE_DUTY_LOWER_EN, 'The law on state fees some citizens pay was amended.',
+     'fees'),
+    ('loans-many-students-take', COURSE_EN, 'The Law on Education loans many students take are cheap.', 'loans'),
+    ('grants-every-school-gets', COURSE_EN, 'Under the Law on Education grants every school gets, funding grew.',
+     'grants'),
+    ('vouchers-each-family-gets', COURSE_EN, 'The Law on Education vouchers each family gets were raised in 2020.',
+     'vouchers'),
+    ('quotas-these-regions-set', COURSE_EN, 'The Law on Education quotas these regions set are fair.', 'quotas'),
+    ('fees-every-family-pays', COURSE_EN, 'The Law on Education fees every family pays were cut.', 'fees'),
+    ('standards-the-state-sets', COURSE_EN, 'The Law on Education standards the state sets are strict.', 'standards'),
+    ('grants-the-state-sets', EDU_EN, 'The Law on Education grants the state sets was amended.', 'grants'),
+    ('grants-many-families-get', EDU_EN, 'The Law on Education grants many families get was amended.', 'grants'),
+    ('grants-such-firms-claim', EDU_EN, 'The Law on Education grants such firms claim was amended.', 'grants'),
+    ('grants-all-schools-meet', EDU_EN, 'The Law on Education grants all schools meet was amended.', 'grants'),
+    ('grants-families-get', EDU_EN, 'The Law on Education grants families get were cut.', 'grants'),
+    ('grants-each-pupil-receives', EDU_EN, 'Under the Law on Education grants each pupil receives, schools grew.',
+     'grants'),
+    ('state-loans-all-banks-issue', STATE_DUTY_LOWER_EN, 'The law on state loans all banks issue was amended.',
+     'loans'),
+    ('state-duty-exemptions-any-firm-can-claim', STATE_DUTY_LOWER_EN,
+     'The law on state duty exemptions any firm can claim was amended.', 'exemptions'),
+    ('state-fees-in-force', STATE_DUTY_LOWER_EN, 'The law on state fees in force was amended.', 'fees'),
+    ('education-measures-in-force', EDU_EN, 'The Law on Education measures in force were cut.', 'measures'),
+    ('education-requirements-on-schools', EDU_EN, 'The Law on Education requirements on schools are strict.',
+     'requirements'),
+)
+for slug, brief, sentence, word in RELATIVE_TAILS:
+    CASES += [
+        guard(f'laws-a-plural-noun-of-an-unnamed-law-{slug}-en-blank', BLANK, brief, 'en', sentence, gone=(word,)),
+        gp(f'laws-a-plural-noun-of-an-unnamed-law-{slug}-in-a-grounded-part-en-blank', BLANK, brief, 'en', sentence,
+           gone=(word,)),
+    ]
+for slug, brief, sentence, word in RELATIVE_TAILS[:6]:
+    CASES.append(body(f'laws-a-plural-noun-of-an-unnamed-law-{slug}-in-a-course-papers-relevance-en-blank', BLANK,
+                      'pdf.kurs_ishi', brief, 'en', 'relevance', sentence, gone=(word,)))
+# eb8b05c's keeps the reading keeps: a verb's -s before its object, a determiner's noun phrase that goes on with no
+# clause of its own.
+for slug, sentence in (('grants-every-school-a-budget', 'The Law on Education grants every school a budget.'),
+                       ('defines-the-basic-principles', 'The Law on Education defines the basic principles of state '
+                                                        'policy.'),
+                       ('guarantees-every-citizen-the-right', 'The Law on Education guarantees every citizen the right '
+                                                              'to education.'),
+                       ('sets-the-rules-every-school-follows', 'The Law on Education sets the rules every school '
+                                                               'follows.'),
+                       ('protects-every-child-equally', 'The Law on Education protects every child equally.'),
+                       ('grants-schools-autonomy', 'The Law on Education grants schools autonomy.'),
+                       ('guarantees-many-rights', 'The Law on Education guarantees many rights.'),
+                       ('lists-several-rights', 'The Law on Education lists several rights.'),
+                       ('highlights-the-role-of-teachers', 'The Law on Education highlights the role of teachers.'),
+                       ('explains-how-schools-are-run', 'The Law on Education explains how schools are run.')):
+    CASES.append(guard(f'laws-the-customers-law-on-education-{slug}-en-keep', KEEP, EDU_EN, 'en', sentence))
+# What the reading costs against eb8b05c: a determiner that opens a relative clause's subject as often as a verb's
+# object ("all", "that") is no sign of a verb, so the customer's law before such a verb blanks, the price of an
+# invented plural noun before the same determiner and a relative clause whose verb is no auxiliary.
+CASES += [
+    guard('laws-a-plural-noun-of-an-unnamed-law-grants-all-pupils-receive-en-blank', BLANK, EDU_EN, 'en',
+          'The Law on Education grants all pupils receive rose in 2020.', gone=('grants',)),
+    guard('laws-a-plural-noun-of-an-unnamed-law-grants-that-pupils-receive-en-blank', BLANK, EDU_EN, 'en',
+          'The Law on Education grants that pupils receive rose in 2020.', gone=('grants',)),
+    guard('laws-the-customers-law-on-education-equally-protects-all-pupils-en-accepted_false_blank', ACCEPTED, EDU_EN,
+          'en', 'The Law on Education equally protects all pupils.', gone=('protects',),
+          pair='laws-a-plural-noun-of-an-unnamed-law-grants-all-pupils-receive-en-blank'),
+    guard('laws-the-customers-law-on-education-guarantees-that-every-child-can-study-en-accepted_false_blank', ACCEPTED,
+          EDU_EN, 'en', 'The Law on Education guarantees that every child can study.', gone=('guarantees',),
+          pair='laws-a-plural-noun-of-an-unnamed-law-grants-that-pupils-receive-en-blank'),
+]
+
+# ---- The customer's Uzbek ordinal with its apostrophe in a placing gives its place key alone (a1, a8, q3): the
+# number word `_words` reads inside it ("to‘rtinchi", "o‘n to‘rtinchi") is no bare figure of theirs, so their
+# "to‘rtinchi o‘rinni egalladi" grounds no "4 yil", "4-sinf" or "4 года" (c491da9 and eb8b05c stopped reading there and
+# failed the job). A tens word before it the reader did not know ("qirq to‘rtinchi", 44th) makes no fourth place.
+APOSTROPHE_SIGNS = (('', '‘'), ('-ascii', "'"), ('-right-quote', '’'), ('-backtick', '`'))
+for slug, ordinal, n in (('fourth', 'to{a}rtinchi', 4), ('tenth', 'o{a}ninchi', 10), ('ninth', 'to{a}qqizinchi', 9),
+                         ('fourteenth', 'o{a}n to{a}rtinchi', 14), ('twenty-fourth', 'yigirma to{a}rtinchi', 24)):
+    for sign, a in APOSTROPHE_SIGNS:
+        said = PLACING_LETTERS['uz'] + f'Viloyat olimpiadasida {ordinal.format(a=a)} o{a}rinni egalladi.'
+        CASES.append(gp(f'numbers-a-customers-{slug}{sign}-apostrophe-placing-grounds-no-years-uz-blank', BLANK, said,
+                        'uz', f'U {n} yil to‘garakka qatnashgan.', gone=(str(n),)))
+    said = PLACING_LETTERS['uz'] + f'Viloyat olimpiadasida {ordinal.format(a="‘")} o‘rinni egalladi.'
+    CASES += [
+        gp(f'numbers-a-customers-{slug}-apostrophe-placing-grounds-no-grade-uz-blank', BLANK, said, 'uz',
+           f'U {n}-sinfda o‘qiydi.', gone=(str(n),)),
+        gp(f'numbers-a-customers-{slug}-apostrophe-placing-grounds-no-years-uz-to-ru-blank', BLANK, said, 'ru',
+           f'Опыт работы — {n} года.', gone=(str(n),)),
+        gp(f'numbers-a-customers-{slug}-apostrophe-placing-grounds-no-years-uz-to-en-blank', BLANK, said, 'en',
+           f'I have {n} years of experience.', gone=(str(n),)),
+        body(f'numbers-a-customers-{slug}-apostrophe-placing-grounds-no-years-in-references-achievements-uz-blank',
+             BLANK, 'pdf.xat.tavsifnoma', said, 'uz', 'achievements', f'U {n} yil matematika to‘garagiga qatnashgan.',
+             gone=(str(n),)),
+        fact(f'numbers-a-customers-{slug}-apostrophe-placing-grounds-no-years-in-references-subject-role-uz-blank',
+             BLANK, 'pdf.xat.tavsifnoma', said, 'uz', 'subject_role', f'U {n} yil matematika to‘garagiga qatnashgan.',
+             gone=(str(n),)),
+    ]
+CASES += [
+    body('numbers-a-customers-tenth-apostrophe-placing-grounds-no-projects-in-references-achievements-uz-blank', BLANK,
+         'pdf.xat.tavsifnoma', PLACING_LETTERS['uz'] + 'Tuman tanlovida o‘ninchi o‘rinda.', 'uz', 'achievements',
+         'U 10 ta loyiha tayyorlagan.', gone=('10',)),
+]
+for slug, ordinal, small in (('forty-fourth', 'qirq to‘rtinchi', 4), ('eighty-fourth', 'sakson to‘rtinchi', 4),
+                             ('ninety-fourth', 'to‘qson to‘rtinchi', 4), ('fifty-ninth', 'ellik to‘qqizinchi', 9),
+                             ('sixty-fourth', 'oltmish to‘rtinchi', 4), ('seventy-fourth', 'yetmish to‘rtinchi', 4),
+                             ('hundred-and-tenth', 'yuz o‘ninchi', 10), ('hundred-and-fourth', 'yuz to‘rtinchi', 4)):
+    said = PLACING_LETTERS['uz'] + f'Viloyat olimpiadasida {ordinal} o‘rinni egalladi.'
+    word = {4: 'fourth', 9: 'ninth', 10: 'tenth'}[small]
+    CASES += [
+        gp(f'numbers-a-customers-{slug}-apostrophe-placing-grounds-no-{word}-place-uz-blank', BLANK, said, 'uz',
+           f'U olimpiadada {small}-o‘rinni egalladi.', gone=(str(small),)),
+        gp(f'numbers-a-customers-{slug}-apostrophe-placing-grounds-no-{word}-place-uz-to-en-blank', BLANK, said, 'en',
+           f'She took {word} place at the olympiad.', gone=(word,)),
+        gp(f'numbers-a-customers-{slug}-apostrophe-placing-grounds-no-{word}-place-in-digits-uz-to-en-blank', BLANK,
+           said, 'en', f'She took {small}th place at the olympiad.', gone=(str(small),)),
+        gp(f'numbers-a-customers-{slug}-apostrophe-placing-grounds-no-{word}-place-uz-to-ru-blank', BLANK, said, 'ru',
+           f'Она заняла {small}-е место на олимпиаде.', gone=(str(small),)),
+        body(f'numbers-a-customers-{slug}-apostrophe-placing-grounds-no-{word}-place-in-references-achievements-uz'
+             f'-blank', BLANK, 'pdf.xat.tavsifnoma', said, 'uz', 'achievements',
+             f'U olimpiadada {small}-o‘rinni egalladi.', gone=(str(small),)),
+    ]
+
+# ---- A semicolon after a law's name ends it only before a word that cannot go on it, as a comma does (a3, a4, a8):
+# "Соблюдает Закон о бухгалтерском учёте; аудите и налогах" names more than the customer's law; c491da9 blanks it.
+SEMICOLON_BRIEFS = (('ru', JOB_RU_ACCOUNTING, 'ru'), ('en-to-ru', ACCOUNTING_EN_RU, 'ru'),
+                    ('uz-to-ru', ACCOUNTING_UZ_RU, 'ru'))
+for slug, sentence, gone in (
+        ('audit-and-taxes', 'Соблюдает Закон о бухгалтерском учёте; аудите и налогах.', ('аудите', 'налогах')),
+        ('about-audit', 'Соблюдает Закон о бухгалтерском учёте; об аудите.', ('аудите',)),
+        ('auditing', 'Соблюдает Закон о бухгалтерском учёте; аудиторской деятельности.', ('аудиторской',)),
+        ('audit-taxes', 'Руководствуется Законом о бухгалтерском учёте; аудите; налогах.', ('аудите', 'налогах')),
+        ('in-banks', 'Знает Закон о бухгалтерском учёте; в банках.', ('банках',))):
+    for direction, brief, locale in SEMICOLON_BRIEFS:
+        CASES += [
+            guard(f'laws-a-tail-after-a-semicolon-after-a-named-law-{slug}-{direction}-blank', BLANK, brief, locale,
+                  sentence, gone=gone),
+            gp(f'laws-a-tail-after-a-semicolon-after-a-named-law-{slug}-in-a-grounded-part-{direction}-blank', BLANK,
+               brief, locale, sentence, gone=gone),
+        ]
+for part in ('qualification', 'duties'):
+    for slug, sentence, gone in (('audit-and-taxes', 'Соблюдает Закон о бухгалтерском учёте; аудите и налогах.',
+                                  ('аудите',)),
+                                 ('about-audit', 'Соблюдает Закон о бухгалтерском учёте; об аудите.', ('аудите',))):
+        CASES.append(body(f'laws-a-tail-after-a-semicolon-after-a-named-law-{slug}-in-a-{part}-ru-blank', BLANK,
+                          'pdf.biz.lavozim_yoriqnomasi', JOB_RU_ACCOUNTING, 'ru', part, sentence, gone=gone))
+for direction, brief in (('ru-to-en', JOB_RU_EN_LAW), ('uz-to-en', ACCOUNTING_UZ_EN)):
+    CASES.append(guard(f'laws-a-tail-after-a-semicolon-after-a-named-law-auditing-and-taxes-{direction}-blank', BLANK,
+                       brief, 'en', 'Under Law on Accounting; Auditing and Taxes, the accountant keeps the books.',
+                       gone=('Auditing',)))
+# eb8b05c keeps the customer's law before a semicolon and a clause, or at the end.
+for slug, sentence in (('keeps-books', 'Соблюдает Закон о бухгалтерском учёте; ведёт книги.'),
+                       ('makes-reports', 'Соблюдает Закон о бухгалтерском учёте; составляет отчёты.'),
+                       ('can-keep-books', 'Знает Закон о бухгалтерском учёте; умеет вести книги.'),
+                       ('at-the-end', 'Соблюдает Закон о бухгалтерском учёте;')):
+    for direction, brief, locale in SEMICOLON_BRIEFS:
+        CASES.append(guard(f'laws-the-customers-law-before-a-semicolon-{slug}-{direction}-keep', KEEP, brief, locale,
+                           sentence))
+
+# ---- An article after "and" or a comma is passed over before what follows is read (a3): "Under Law on Accounting
+# and the Auditing of Banks, ..." names more than the customer's law in a translated paper too; c491da9 blanks it.
+for slug, sentence, gone in (
+        ('and-the-auditing-of-banks', 'Under Law on Accounting and the Auditing of Banks, the accountant keeps the '
+                                      'books.', ('Auditing',)),
+        ('and-an-audit-of-banks', 'Per Law on Accounting and an Audit of Banks, the accountant keeps the books.',
+         ('Audit',)),
+        ('comma-the-auditing-of-banks', 'Under Law on Accounting, the Auditing of Banks, the accountant keeps the '
+                                        'books.', ('Auditing',)),
+        ('and-a-banking-supplement', 'Under Law on Accounting and a Banking Supplement, reports are filed.',
+         ('Banking',)),
+        ('and-the-auditing-of-banks-in-lower-case', 'Under Law on Accounting and the auditing of banks, reports are '
+                                                    'filed.', ('auditing',))):
+    for direction, brief in (('ru-to-en', JOB_RU_EN_LAW), ('uz-to-en', ACCOUNTING_UZ_EN)):
+        CASES.append(guard(f'laws-an-article-before-a-tail-after-a-named-law-{slug}-{direction}-blank', BLANK, brief,
+                           'en', sentence, gone=gone, translated=True))
+for call in (guard, gp):
+    CASES.append(call(f'laws-an-article-before-a-tail-after-a-named-law-in-lower-case-{call.__name__}-en-blank', BLANK,
+                      JOB_EN_LAW, 'en', 'Under Law on Accounting and the auditing of banks, reports are filed.',
+                      gone=('auditing',)))
+# eb8b05c keeps the customer's law before an article and another law of theirs.
+for direction, brief in (('en', JOB_EN_LAW), ('ru-to-en', JOB_RU_EN_LAW)):
+    CASES.append(guard(f'laws-the-customers-law-before-an-article-and-their-labour-code-{direction}-keep', KEEP, brief,
+                       'en', 'Under Law on Accounting and the Labour Code, the accountant keeps the books.'))
+
+# ---- A law's making before a preposition ends its name only before the law's date or number, and a sentence adverb
+# never ends the name of a law a preposition governs (a3, joined to the sweep in round 11): "Under Law on accounting
+# adopted for banks, ...", "Under Law on accounting thus auditing applies" name more than the customer's law; c491da9
+# blanks them, eb8b05c kept them.
+for slug, sentence, gone in (
+        ('adopted-for-banks', 'Under Law on accounting adopted for banks, the accountant keeps the books.', ('banks',)),
+        ('thus-auditing-applies', 'Under Law on accounting thus auditing applies.', ('auditing',)),
+        ('amended-for-banks', 'Per the Law on accounting amended for banks, reports are filed.', ('banks',))):
+    for direction, brief, translated in (('en', ACCOUNTING_EN, False), ('ru-to-en', JOB_RU_EN_LAW, True),
+                                         ('uz-to-en', ACCOUNTING_UZ_EN, True)):
+        CASES += [
+            guard(f'laws-a-tail-after-a-named-law-{slug}-{direction}-blank', BLANK, brief, 'en', sentence, gone=gone,
+                  translated=translated),
+            gp(f'laws-a-tail-after-a-named-law-{slug}-in-a-grounded-part-{direction}-blank', BLANK, brief, 'en',
+               sentence, gone=gone),
+        ]
+# eb8b05c keeps the customer's law before its making's date, and before an adverb where no preposition governs it.
+for slug, sentence in (('adopted-in-a-year', 'The Law on Education adopted in 1997 is still in force.'),
+                       ('thus-protects', 'The Law on Education thus protects pupils.')):
+    CASES.append(guard(f'laws-the-customers-law-on-education-{slug}-en-keep', KEEP, EDU_EN + ' It was adopted in 1997.',
+                       'en', sentence))
+
+# ---- The false blanks versus eb8b05c the round-11 sweep shows once the re-check's probes join it (a5, a9), each the
+# price of the blank it names. A sentence's opening noun before a law's stem is the name's, as c491da9 holds it
+# (9f843a9), so the customer's law after "Знание", "Требования", "Нарушение" blanks with an invented role opening the
+# same place ("Аудитор Закона о бухгалтерском учёте обязателен"). A word after the name read in no case of its ("...
+# учёте бухгалтер ведёт книги", "... учёте отчёт сдаётся") may go on the name as a genitive tail does ("... учёте
+# банков регулируется отчётность"), and a preposition may ("... учёте в работе", "... учёте в банках"). A past form
+# before a plural noun reads as "state funded schools" ("The Law on Education changed schools").
+JOB_RU_KNOWS_ACCOUNTING = 'Составьте должностную инструкцию бухгалтера. Он должен знать Закон о бухгалтерском учёте.'
+RUSSIAN_ACCOUNTING = (('ru', JOB_RU_KNOWS_ACCOUNTING), ('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING_UZ_RU))
+for direction, brief in RUSSIAN_ACCOUNTING:
+    translated = direction != 'ru'
+    role = f'laws-an-invented-role-opening-a-sentence-before-a-named-law-{direction}-blank'
+    tail = f'laws-a-genitive-tail-before-a-clause-verb-after-a-named-law-{direction}-blank'
+    banks = ('laws-an-opening-word-before-a-named-law-in-banks-ru-blank' if direction == 'ru'
+             else f'laws-an-opening-word-before-a-named-law-in-banks-{direction}-blank')
+    CASES += [
+        guard(role, BLANK, brief, 'ru', 'Аудитор Закона о бухгалтерском учёте обязателен.', gone=('Аудитор',),
+              translated=translated),
+        guard(tail, BLANK, brief, 'ru', 'Согласно Закону о бухгалтерском учёте банков регулируется отчётность.',
+              gone=('банков',), translated=translated),
+    ]
+    if translated:
+        CASES.append(guard(banks, BLANK, brief, 'ru', 'Соблюдает Закон о бухгалтерском учёте в банках.',
+                           gone=('банках',), translated=True))
+    for slug, sentence, word, pair in (
+            ('knowledge', 'Знание Закона о бухгалтерском учёте обязательно.', 'Знание', role),
+            ('requirements', 'Требования Закона о бухгалтерском учёте обязательны.', 'Требования', role),
+            ('violation', 'Нарушение Закона о бухгалтерском учёте недопустимо.', 'Нарушение', role),
+            ('observance', 'Соблюдение Закона о бухгалтерском учёте обязательно.', 'Соблюдение', role),
+            ('provisions', 'Положения Закона о бухгалтерском учёте соблюдаются.', 'Положения', role),
+            ('norms', 'Нормы Закона о бухгалтерском учёте применяются.', 'Нормы', role),
+            ('according-to-a-clause', 'Согласно Закону о бухгалтерском учёте бухгалтер ведёт книги.', 'бухгалтер',
+             tail),
+            ('by-a-clause', 'По Закону о бухгалтерском учёте отчёт сдаётся ежегодно.', 'отчёт', tail),
+            ('according-to-a-reflexive-clause', 'Согласно Закону о бухгалтерском учёте отчётность сдаётся ежегодно.',
+             'отчётность', tail),
+            ('at-work', 'Применяет Закон о бухгалтерском учёте в работе.', 'работе', banks)):
+        CASES.append(gp(f'laws-the-customers-law-after-an-opening-word-{slug}-{direction}-accepted_false_blank',
+                        ACCEPTED, brief, 'ru', sentence, gone=(word,), pair=pair))
+FUNDED_SCHOOLS_GREW = 'laws-an-invented-tail-after-the-customers-law-on-education-funded-schools-grew-en-blank'
+CASES += [
+    guard(FUNDED_SCHOOLS_GREW, BLANK, EDU_EN, 'en', 'The Law on Education funded schools grew.', gone=('funded',)),
+    gp('laws-the-customers-law-on-education-introduced-new-standards-en-accepted_false_blank', ACCEPTED, EDU_EN, 'en',
+       'The Law on Education introduced new standards.', gone=('introduced',), pair=FUNDED_SCHOOLS_GREW),
+    gp('laws-the-customers-law-on-education-changed-schools-en-accepted_false_blank', ACCEPTED, EDU_EN, 'en',
+       'The Law on Education changed schools.', gone=('changed',), pair=FUNDED_SCHOOLS_GREW),
+]
+
+# ---------------------------------------------------------------- the re-check of round 11 (pr77-r2), both ways
+# Round 11 left four readings that keep what eb8b05c (in production) or c491da9 blanks, each pinned here as blanks
+# under the briefs the re-check used, with the keeps eb8b05c has for the same readings.
+
+# ---- Past "и", "and", a comma or a semicolon after a law's name, the words that open no clause are passed over before
+# what follows is judged (p1, p4, p5): a particle, a parenthetical word or an adverb ("и особенно аудите", "а именно
+# аудите", ", то есть аудите", ", т. е. аудите", ", как и об аудите", "и лишь налогообложении", "and even auditing",
+# ", i.e. Auditing") and an English determiner ("and its auditing rules", "and every auditing standard"); "as well as"
+# joins as "and" does. The tip judged the first word after the conjunction alone and ended the name there, so an
+# opening verb or preposition was dropped, or a translated paper's head noun "учёте" passed as the customer's, and the
+# invented tail went unread; c491da9 holds the opening word or the head noun and blanks.
+FILLER_TAILS_RU = (
+    ('and-especially-audit', 'Соблюдает Закон о бухгалтерском учёте и особенно аудите.', ('аудите',)),
+    ('namely-audit', 'Знает Закон о бухгалтерском учёте, а именно аудите.', ('аудите',)),
+    ('that-is-audit', 'Применяет Закон о бухгалтерском учёте, то есть аудите.', ('аудите',)),
+    ('ie-audit', 'Руководствуется Законом о бухгалтерском учёте, т. е. аудите.', ('аудите',)),
+    ('as-about-audit', 'Согласно Закону о бухгалтерском учёте, как и об аудите, бухгалтер ведёт книги.', ('аудите',)),
+    ('and-of-course-audit', 'Изучает Закон о бухгалтерском учёте и конечно аудите.', ('аудите',)),
+    ('and-accordingly-audit', 'Соблюдает Закон о бухгалтерском учёте и соответственно аудите.', ('аудите',)),
+    ('and-naturally-audit', 'Знает Закон о бухгалтерском учёте и разумеется аудите.', ('аудите',)),
+    ('and-only-audit', 'Применяет Закон о бухгалтерском учёте и только аудите.', ('аудите',)),
+    ('and-just-taxation', 'Соблюдает Закон о бухгалтерском учёте и лишь налогообложении.', ('налогообложении',)),
+    ('and-a-little-audit', 'Знает Закон о бухгалтерском учёте и немного аудите.', ('аудите',)),
+    ('and-sometimes-audit', 'Соблюдает Закон о бухгалтерском учёте и иногда аудите.', ('аудите',)),
+    ('and-necessarily-audit', 'Соблюдает Закон о бухгалтерском учёте и обязательно аудите.', ('аудите',)),
+    ('and-once-more-audit', 'Соблюдает Закон о бухгалтерском учёте и ещё раз аудите.', ('аудите',)),
+    ('of-course-in-commas-audit', 'Соблюдает Закон о бухгалтерском учёте, конечно, аудите.', ('аудите',)))
+for direction, brief in RUSSIAN_ACCOUNTING:
+    for slug, sentence, gone in FILLER_TAILS_RU:
+        CASES += [
+            guard(f'laws-a-tail-past-a-filler-after-a-named-law-{slug}-{direction}-blank', BLANK, brief, 'ru', sentence,
+                  gone=gone, translated=direction != 'ru'),
+            gp(f'laws-a-tail-past-a-filler-after-a-named-law-{slug}-in-a-grounded-part-{direction}-blank', BLANK,
+               brief, 'ru', sentence, gone=gone),
+        ]
+    CASES.append(body(f'laws-a-tail-past-a-filler-after-a-named-law-and-especially-audit-in-a-qualification-{direction}'
+                      f'-blank', BLANK, 'pdf.biz.lavozim_yoriqnomasi', brief, 'ru', 'qualification',
+                      FILLER_TAILS_RU[0][1], gone=('аудите',)))
+# A translated paper's head noun "учёте" after a subject, no opening word: only the head noun decides.
+ACCOUNTING_UZC_RU = ('Бухгалтер учун рус тилида лавозим йўриқномаси ёзинг. У Бухгалтерия ҳисоби тўғрисидаги қонунни '
+                     'билиши керак.')
+for slug, sentence, gone in (
+        ('and-especially-audit', 'Бухгалтер соблюдает Закон о бухгалтерском учёте и особенно аудите.', ('аудите',)),
+        ('namely-audit', 'Бухгалтер обязан знать Закон о бухгалтерском учёте, а именно аудите.', ('аудите',)),
+        ('as-about-audit', 'Работник применяет Закон о бухгалтерском учёте, как и об аудите.', ('аудите',)),
+        ('and-just-taxation', 'Он хорошо знает Закон о бухгалтерском учёте и лишь налогообложении.',
+         ('налогообложении',)),
+        ('ie-audit', 'Бухгалтер соблюдает Закон о бухгалтерском учёте, т. е. аудите.', ('аудите',))):
+    for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING_UZ_RU),
+                             ('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU)):
+        CASES += [
+            guard(f'laws-a-translated-head-noun-before-a-filler-and-a-tail-{slug}-{direction}-blank', BLANK, brief,
+                  'ru', sentence, gone=gone, translated=True),
+            gp(f'laws-a-translated-head-noun-before-a-filler-and-a-tail-{slug}-in-a-grounded-part-{direction}-blank',
+               BLANK, brief, 'ru', sentence, gone=gone),
+        ]
+    CASES.append(body(f'laws-a-translated-head-noun-before-a-filler-and-a-tail-{slug}-in-a-qualification-en-to-ru'
+                      f'-blank', BLANK, 'pdf.biz.lavozim_yoriqnomasi', ACCOUNTING_EN_RU, 'ru', 'qualification',
+                      sentence, gone=gone))
+JOB_EN_KNOWS_ACCOUNTING = 'Write a job description for an accountant. He must know the Law on Accounting.'
+FILLER_TAILS_EN = (
+    ('as-well-as-auditing', 'Under Law on Accounting as well as auditing.', ('auditing',)),
+    ('as-well-as-auditing-capitalised', 'Per Law on Accounting as well as Auditing, reports are filed.', ('Auditing',)),
+    ('as-well-as-on-auditing', 'Under Law on Accounting as well as on auditing, reports are filed.',
+     ('auditing',)),
+    ('and-even-auditing', 'Under Law on Accounting and even auditing.', ('auditing',)),
+    ('and-only-auditing', 'Per Law on Accounting and only auditing, reports are filed.', ('auditing',)),
+    ('and-so-auditing', 'Under Law on Accounting and so auditing, reports are filed.', ('auditing',)),
+    ('and-not-only-auditing', 'Per Law on Accounting and not only auditing, reports are filed.', ('auditing',)),
+    ('and-its-auditing-rules', 'Under Law on Accounting and its auditing rules, reports are filed.', ('auditing',)),
+    ('and-every-auditing-standard', 'Per Law on Accounting and every auditing standard, reports are filed.',
+     ('auditing',)),
+    ('and-all-auditing-rules', 'Under Law on Accounting and all auditing rules, reports are filed.', ('auditing',)),
+    ('comma-ie-auditing', 'Under Law on Accounting, i.e. auditing, reports are filed.', ('auditing',)),
+    ('ie-auditing', 'Per Law on Accounting i.e. auditing, reports are filed.', ('auditing',)),
+    ('comma-that-is-auditing', 'Under Law on Accounting, that is, auditing, reports are filed.', ('auditing',)),
+    ('comma-even-auditing', 'Per Law on Accounting, even auditing, reports are filed.', ('auditing',)))
+for direction, brief, translated in (('en', JOB_EN_KNOWS_ACCOUNTING, False), ('ru-to-en', JOB_RU_EN_LAW, True),
+                                     ('uz-to-en', ACCOUNTING_UZ_EN, True)):
+    for slug, sentence, gone in FILLER_TAILS_EN:
+        CASES += [
+            guard(f'laws-a-tail-past-a-filler-after-a-named-law-{slug}-{direction}-blank', BLANK, brief, 'en', sentence,
+                  gone=gone, translated=translated),
+            gp(f'laws-a-tail-past-a-filler-after-a-named-law-{slug}-in-a-grounded-part-{direction}-blank', BLANK,
+               brief, 'en', sentence, gone=gone),
+        ]
+    CASES.append(body(f'laws-a-tail-past-a-filler-after-a-named-law-as-well-as-auditing-in-a-qualification-{direction}'
+                      f'-blank', BLANK, 'pdf.biz.lavozim_yoriqnomasi', brief, 'en', 'qualification',
+                      FILLER_TAILS_EN[0][1], gone=('auditing',)))
+# eb8b05c keeps the customer's law before a word past the conjunction or the comma that cannot go on its name: another
+# object, a clause's subject or verb, another law of theirs, "и т. д.", "and so on".
+for slug, sentence in (
+        ('and-the-cash-procedure', 'Знает Закон о бухгалтерском учёте и порядок ведения кассовых операций.'),
+        ('and-the-rules-of-bookkeeping', 'Знает Закон о бухгалтерском учёте и правила ведения книг.'),
+        ('and-the-method-of-reporting', 'Знает Закон о бухгалтерском учёте и методику составления отчётности.'),
+        ('and-the-basics-of-taxation', 'Знает Закон о бухгалтерском учёте и основы налогообложения.'),
+        ('and-keeps-books', 'Знает Закон о бухгалтерском учёте и ведёт книги.'),
+        ('and-so-on', 'Знает Закон о бухгалтерском учёте и т. д.'),
+        ('and-so-forth', 'Знает Закон о бухгалтерском учёте и так далее.'),
+        ('comma-and-the-accountant', 'Соблюдает Закон о бухгалтерском учёте, а бухгалтер ведёт книги.'),
+        ('comma-as-a-rule', 'Согласно Закону о бухгалтерском учёте, как правило, отчёты сдаются ежегодно.'),
+        ('comma-it-is-required', 'Согласно Закону о бухгалтерском учёте, это обязательно.'),
+        ('comma-the-chief-accountant', 'Согласно Закону о бухгалтерском учёте, главный бухгалтер ведёт книги.')):
+    for direction, brief in RUSSIAN_ACCOUNTING:
+        CASES.append(guard(f'laws-the-customers-law-before-a-word-that-cannot-go-on-it-{slug}-{direction}-keep', KEEP,
+                           brief, 'ru', sentence))
+CASES.append(guard('laws-the-customers-law-before-their-other-legislation-ru-keep', KEEP,
+                   JOB_RU_KNOWS_ACCOUNTING + ' Также законодательство о налогах.', 'ru',
+                   'Знает Закон о бухгалтерском учёте и законодательство о налогах.'))
+for slug, sentence in (('a-subject-keeps-books', 'Бухгалтер соблюдает Закон о бухгалтерском учёте и умеет вести '
+                                                 'книги.'),
+                       ('a-subject-and-the-rules', 'Бухгалтер соблюдает Закон о бухгалтерском учёте, а также правила '
+                                                   'ведения книг.')):
+    for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING_UZ_RU)):
+        CASES.append(guard(f'laws-the-customers-translated-law-before-a-word-that-cannot-go-on-it-{slug}-{direction}'
+                           f'-keep', KEEP, brief, 'ru', sentence, translated=True))
+for slug, sentence in (('comma-its-rules-apply', 'Under Law on Accounting, its rules apply to all firms.'),
+                       ('comma-every-firm-keeps', 'Under Law on Accounting, every firm keeps its books.'),
+                       ('comma-all-firms-keep', 'Under Law on Accounting, all firms keep books.'),
+                       ('comma-this-applies', 'Under Law on Accounting, this applies to all firms.'),
+                       ('comma-he-keeps', 'Under Law on Accounting, he keeps the books.'),
+                       ('and-so-on', 'Follows the Law on Accounting and so on.'),
+                       ('and-applies-it', 'Follows the Law on Accounting and applies it daily.'),
+                       ('and-this-applies', 'Knows the Law on Accounting and this applies to all firms.')):
+    for direction, brief in (('en', JOB_EN_KNOWS_ACCOUNTING), ('ru-to-en', JOB_RU_EN_LAW),
+                             ('uz-to-en', ACCOUNTING_UZ_EN)):
+        CASES.append(guard(f'laws-the-customers-law-before-a-word-that-cannot-go-on-it-{slug}-{direction}-keep', KEEP,
+                           brief, 'en', sentence))
+
+# eb8b05c's keeps the census of round 11 found blanked (p6), restored where no leak comes back: a clause after a comma
+# whose lower-case subject goes on with an auxiliary or a modal ("..., teachers must protect pupils", "..., books are
+# kept daily"), and an adverb right after the law's name before the sentence's end ("... учёте хорошо."). A list after
+# the comma and a tail after the adverb still blank.
+TEACHER_EN = 'Write a job description for a teacher. He must know the Law on Education.'
+CASES += [
+    guard('laws-the-customers-law-before-a-comma-and-a-clause-teachers-must-protect-en-keep', KEEP, TEACHER_EN, 'en',
+          'Under Law on Education, teachers must protect pupils.'),
+    guard('laws-a-tail-past-a-comma-after-a-named-law-a-list-before-a-verb-en-blank', BLANK, JOB_EN_KNOWS_ACCOUNTING,
+          'en', 'Under Law on Accounting, auditing and taxes are covered.', gone=('auditing', 'taxes')),
+]
+for direction, brief in (('en', JOB_EN_KNOWS_ACCOUNTING), ('ru-to-en', JOB_RU_EN_LAW), ('uz-to-en', ACCOUNTING_UZ_EN)):
+    CASES.append(guard(f'laws-the-customers-law-before-a-comma-and-a-clause-books-are-kept-{direction}-keep', KEEP,
+                       brief, 'en', 'Under Law on Accounting, books are kept daily.'))
+for direction, brief in RUSSIAN_ACCOUNTING:
+    CASES += [
+        guard(f'laws-the-customers-law-before-an-adverb-at-the-end-{direction}-keep', KEEP, brief, 'ru',
+              'Знает Закон о бухгалтерском учёте хорошо.'),
+        guard(f'laws-a-tail-past-an-adverb-after-a-named-law-in-banks-{direction}-blank', BLANK, brief, 'ru',
+              'Соблюдает Закон о бухгалтерском учёте строго в банках.', gone=('банках',), translated=direction != 'ru'),
+        guard(f'laws-a-tail-past-an-adverb-after-a-named-law-and-audit-{direction}-blank', BLANK, brief, 'ru',
+              'Соблюдает Закон о бухгалтерском учёте хорошо и аудите.', gone=('аудите',), translated=direction != 'ru'),
+    ]
+for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING_UZ_RU)):
+    CASES += [
+        guard(f'laws-the-customers-translated-law-before-an-adverb-at-the-end-{direction}-keep', KEEP, brief, 'ru',
+              'Бухгалтер знает Закон о бухгалтерском учёте хорошо.', translated=True),
+        guard(f'laws-a-translated-head-noun-before-an-adverb-and-a-tail-{direction}-blank', BLANK, brief, 'ru',
+              'Бухгалтер знает Закон о бухгалтерском учёте особенно аудите.', gone=('аудите',), translated=True),
+    ]
+
+# ---- After a law's date or number, its name ends only at the sentence's or its clause's end, a verb, or past "и" or a
+# comma where it cannot go on (p1, p4): "Соблюдает Закон о бухгалтерском учёте от 13 апреля 2016 года и аудите", "... №
+# 404 в банках", "Under Law on Accounting of 13 April 2016 and Auditing" name more than the customer's law; the tip
+# ended the name at the date and c491da9 blanks.
+JOB_RU_KNOWS_ACCOUNTING_DATED = ('Составьте должностную инструкцию бухгалтера. Он должен знать Закон о бухгалтерском '
+                                 'учёте от 13 апреля 2016 года № 404.')
+ACCOUNTING_EN_RU_NUMBERED = ('Write a job description for an accountant in Russian. He must know the Law on Accounting '
+                             'of 13 April 2016 No. 404.')
+ACCOUNTING_UZ_RU_NUMBERED = ('Buxgalter uchun rus tilida lavozim yo‘riqnomasi yozing. U 2016 yil 13 apreldagi '
+                             '404-sonli Buxgalteriya hisobi to‘g‘risidagi qonunni bilishi kerak.')
+JOB_EN_KNOWS_ACCOUNTING_DATED = ('Write a job description for an accountant. He must know the Law on Accounting of 13 '
+                                 'April 2016 No. 404.')
+DATED_TAILS_RU = (
+    ('and-audit', 'Соблюдает Закон о бухгалтерском учёте от 13 апреля 2016 года и аудите.', ('аудите',)),
+    ('audit-and-taxes', 'Знает Закон о бухгалтерском учёте от 13 апреля 2016 года, аудите и налогах.',
+     ('аудите', 'налогах')),
+    ('number-and-audit', 'Руководствуется Законом о бухгалтерском учёте № 404 и аудите.', ('аудите',)),
+    ('number-in-banks', 'Применяет Закон о бухгалтерском учёте № 404 в банках.', ('банках',)),
+    ('in-banks', 'Согласно Закону о бухгалтерском учёте от 13 апреля 2016 года в банках отчёты сдаются.', ('банках',)),
+    ('and-about-audit', 'Изучает Закон о бухгалтерском учёте от 13 апреля 2016 года и об аудите.', ('аудите',)),
+    ('number-and-especially-audit', 'Соблюдает Закон о бухгалтерском учёте № 404 и особенно аудите.', ('аудите',)))
+for direction, brief in (('ru', JOB_RU_KNOWS_ACCOUNTING_DATED), ('en-to-ru', ACCOUNTING_EN_RU_NUMBERED)):
+    for slug, sentence, gone in DATED_TAILS_RU:
+        CASES += [
+            guard(f'laws-a-tail-after-a-named-laws-date-{slug}-{direction}-blank', BLANK, brief, 'ru', sentence,
+                  gone=gone, translated=direction != 'ru'),
+            gp(f'laws-a-tail-after-a-named-laws-date-{slug}-in-a-grounded-part-{direction}-blank', BLANK, brief, 'ru',
+               sentence, gone=gone),
+        ]
+    CASES.append(body(f'laws-a-tail-after-a-named-laws-date-and-audit-in-a-qualification-{direction}-blank', BLANK,
+                      'pdf.biz.lavozim_yoriqnomasi', brief, 'ru', 'qualification', DATED_TAILS_RU[0][1],
+                      gone=('аудите',)))
+for slug, sentence, gone in (
+        ('and-audit', 'Бухгалтер соблюдает Закон о бухгалтерском учёте от 13 апреля 2016 года и аудите.', ('аудите',)),
+        ('number-audit-and-taxes', 'Бухгалтер соблюдает Закон о бухгалтерском учёте № 404, аудите и налогах.',
+         ('аудите', 'налогах')),
+        ('in-banks', 'Работник применяет Закон о бухгалтерском учёте от 13 апреля 2016 года в банках.', ('банках',))):
+    for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU_NUMBERED), ('uz-to-ru', ACCOUNTING_UZ_RU_NUMBERED)):
+        CASES.append(guard(f'laws-a-translated-head-noun-before-a-date-and-a-tail-{slug}-{direction}-blank', BLANK,
+                           brief, 'ru', sentence, gone=gone, translated=True))
+for slug, sentence, gone in (
+        ('and-auditing', 'Under Law on Accounting of 13 April 2016 and auditing, reports are filed.', ('auditing',)),
+        ('for-banks', 'Per Law on Accounting of 13 April 2016 for banks, reports are filed.', ('banks',)),
+        ('number-and-auditing', 'Under Law on Accounting of 13 April 2016 No. 404 and auditing, reports are filed.',
+         ('auditing',))):
+    CASES += [
+        guard(f'laws-a-tail-after-a-named-laws-date-{slug}-en-blank', BLANK, JOB_EN_KNOWS_ACCOUNTING_DATED, 'en',
+              sentence, gone=gone, translated=False),
+        gp(f'laws-a-tail-after-a-named-laws-date-{slug}-in-a-grounded-part-en-blank', BLANK,
+           JOB_EN_KNOWS_ACCOUNTING_DATED, 'en', sentence, gone=gone),
+    ]
+# A genitive tail after the law's number names more than the customer's law, as it does right after the name.
+NUMBER_GENITIVE_TAIL = 'laws-a-genitive-tail-after-a-named-laws-number-before-a-clause-verb-ru-blank'
+CASES.append(guard(NUMBER_GENITIVE_TAIL, BLANK, JOB_RU_KNOWS_ACCOUNTING_DATED, 'ru',
+                   'Согласно Закону о бухгалтерском учёте № 404 банков регулируется отчётность.', gone=('банков',)))
+# eb8b05c keeps the customer's law and its date before the sentence's end, a verb, or a clause past "и" or a comma.
+for slug, sentence in (('at-the-end', 'Знает Закон о бухгалтерском учёте от 13 апреля 2016 года.'),
+                       ('and-can-keep-books', 'Знает Закон о бухгалтерском учёте от 13 апреля 2016 года и умеет вести '
+                                              'книги.'),
+                       ('number-comma-a-clause', 'Соблюдает Закон о бухгалтерском учёте № 404, бухгалтер ведёт книги.'),
+                       ('a-verb', 'Закон о бухгалтерском учёте от 13 апреля 2016 года регулирует учёт.')):
+    for direction, brief in (('ru', JOB_RU_KNOWS_ACCOUNTING_DATED), ('en-to-ru', ACCOUNTING_EN_RU_NUMBERED)):
+        CASES.append(guard(f'laws-the-customers-law-and-its-date-{slug}-{direction}-keep', KEEP, brief, 'ru',
+                           sentence))
+for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU_NUMBERED), ('uz-to-ru', ACCOUNTING_UZ_RU_NUMBERED)):
+    CASES.append(guard(f'laws-the-customers-translated-law-and-its-date-at-the-end-{direction}-keep', KEEP, brief, 'ru',
+                       'Бухгалтер соблюдает Закон о бухгалтерском учёте от 13 апреля 2016 года.', translated=True))
+for slug, sentence in (('comma-a-clause', 'Under Law on Accounting of 13 April 2016, the accountant keeps the books.'),
+                       ('number-at-the-end', 'Follows the Law on Accounting of 13 April 2016 No. 404.'),
+                       ('and-applies-it', 'Follows the Law on Accounting of 13 April 2016 and applies it daily.')):
+    CASES.append(guard(f'laws-the-customers-law-and-its-date-{slug}-en-keep', KEEP, JOB_EN_KNOWS_ACCOUNTING_DATED, 'en',
+                       sentence))
+# What the reading costs against eb8b05c: a clause after the law's date with its subject first ("... № 404 отчёты
+# сдаются ежегодно") reads as a genitive tail after the number does, so the customer's law blanks.
+CASES.append(guard('laws-the-customers-law-and-its-number-before-a-subject-and-its-verb-ru-accepted_false_blank',
+                   ACCEPTED, JOB_RU_KNOWS_ACCOUNTING_DATED, 'ru',
+                   'Согласно Закону о бухгалтерском учёте от 13 апреля 2016 года № 404 отчёты сдаются ежегодно.',
+                   gone=('отчёты',), pair=NUMBER_GENITIVE_TAIL))
+
+# ---- A placing only the placings read since see, its Uzbek ordinal with its apostrophe left unread, gives the
+# customer's side its place key alone (the sweep's 146 lines versus eb8b05c, p2): c491da9 read the ordinal's number word
+# alone as a bare figure, so their "to‘rtinchi natijani ko‘rsatdi" grounded the paper's "4 yil", "4-sinf" or "4 года";
+# eb8b05c stopped reading there and failed the job. The owner's decision: c491da9's numbers change for these texts only
+# (tests/test_category_numbers_parity.py names them).
+SECOND_PLACINGS = (('result', 'Tuman olimpiadasida {o} natijani ko{a}rsatdi.'),
+                   ('step', 'Musobaqada {o} pog{a}onaga ko{a}tarildi.'),
+                   ('degree-diploma', 'U {o} darajali diplom oldi.'),
+                   ('sales-place', 'Savdo hajmi bo{a}yicha {o} o{a}ringa chiqdi.'),
+                   ('became', 'Olimpiadada {o} bo{a}ldi.'),
+                   ('ranks-in-sales', 'Savdo bo{a}yicha {o} o{a}rinda turadi.'))
+SECOND_ORDINALS = (('fourth', 'to{a}rtinchi', 4), ('ninth', 'to{a}qqizinchi', 9), ('tenth', 'o{a}ninchi', 10),
+                   ('fourteenth', 'o{a}n to{a}rtinchi', 14), ('twenty-ninth', 'yigirma to{a}qqizinchi', 29))
+for form, template in SECOND_PLACINGS:
+    for slug, ordinal, n in SECOND_ORDINALS:
+        said = PLACING_LETTERS['uz'] + template.format(o=ordinal.format(a='‘'), a='‘')
+        CASES.append(gp(f'numbers-a-customers-second-reading-{form}-placing-{slug}-grounds-no-years-uz-blank', BLANK,
+                        said, 'uz', f'U {n} yil to‘garakka qatnashgan.', gone=(str(n),)))
+    for sign, a in (('ascii', "'"), ('right-quote', '’'), ('backtick', '`')):
+        said = PLACING_LETTERS['uz'] + template.format(o=f'to{a}rtinchi', a=a)
+        CASES.append(gp(f'numbers-a-customers-second-reading-{form}-placing-fourth-{sign}-grounds-no-years-uz-blank',
+                        BLANK, said, 'uz', 'U 4 yil to‘garakka qatnashgan.', gone=('4',)))
+    said = PLACING_LETTERS['uz'] + template.format(o='to‘rtinchi', a='‘')
+    CASES += [
+        gp(f'numbers-a-customers-second-reading-{form}-placing-grounds-no-grade-uz-blank', BLANK, said, 'uz',
+           'U 4-sinfda o‘qiydi.', gone=('4',)),
+        gp(f'numbers-a-customers-second-reading-{form}-placing-grounds-no-projects-uz-blank', BLANK, said, 'uz',
+           'U 4 ta loyihada qatnashdi.', gone=('4',)),
+        gp(f'numbers-a-customers-second-reading-{form}-placing-grounds-no-years-uz-to-ru-blank', BLANK, said, 'ru',
+           'Опыт работы — 4 года.', gone=('4',)),
+        gp(f'numbers-a-customers-second-reading-{form}-placing-grounds-no-years-uz-to-en-blank', BLANK, said, 'en',
+           'I have 4 years of experience.', gone=('4',)),
+        body(f'numbers-a-customers-second-reading-{form}-placing-grounds-no-years-in-references-achievements-uz-blank',
+             BLANK, 'pdf.xat.tavsifnoma', said, 'uz', 'achievements', 'U 4 yil matematika to‘garagiga qatnashgan.',
+             gone=('4',)),
+    ]
+
+# ---- The false blanks versus eb8b05c the round-12 sweep and the re-check's census (p6) still show, each the price of
+# the blank it names: a preposition after the law's name may go on it ("... учёте на практике", "... учёте во всём", as
+# "... учёте в банках"); a clause's subject after the name reads as a genitive tail ("... учёте бухгалтер отвечает за
+# отчёты", as "... учёте банков регулируется отчётность"); a determiner that opens a relative clause's subject as
+# often as a verb's object is no sign of a verb ("guarantees each child", "protects some pupils", as "vouchers each
+# family gets", "fees some parents pay"); "to" before a determiner reads as before a noun ("matters to every teacher",
+# as "grants to students").
+for direction, brief in RUSSIAN_ACCOUNTING:
+    banks = ('laws-an-opening-word-before-a-named-law-in-banks-ru-blank' if direction == 'ru'
+             else f'laws-an-opening-word-before-a-named-law-in-banks-{direction}-blank')
+    tail = f'laws-a-genitive-tail-before-a-clause-verb-after-a-named-law-{direction}-blank'
+    for slug, sentence, word, pair in (
+            ('in-practice', 'Применяет Закон о бухгалтерском учёте на практике.', 'практике', banks),
+            ('in-everything', 'Следует Закону о бухгалтерском учёте во всём.', 'всём', banks),
+            ('by-a-subject-and-its-verb', 'По Закону о бухгалтерском учёте бухгалтер отвечает за отчёты.', 'бухгалтер',
+             tail)):
+        CASES.append(gp(f'laws-the-customers-law-after-an-opening-word-{slug}-{direction}-accepted_false_blank',
+                        ACCEPTED, brief, 'ru', sentence, gone=(word,), pair=pair))
+CASES += [
+    guard('laws-the-customers-law-on-education-guarantees-each-child-a-place-en-accepted_false_blank', ACCEPTED,
+          EDU_EN, 'en', 'The Law on Education guarantees each child a place.', gone=('guarantees',),
+          pair='laws-a-plural-noun-of-an-unnamed-law-vouchers-each-family-gets-en-blank'),
+    guard('laws-the-customers-law-on-education-protects-some-pupils-more-en-accepted_false_blank', ACCEPTED, EDU_EN,
+          'en', 'The Law on Education protects some pupils more.', gone=('protects',),
+          pair='laws-a-plural-noun-of-an-unnamed-law-fees-some-parents-pay-en-blank'),
+    guard('laws-the-customers-law-on-education-matters-to-every-teacher-en-accepted_false_blank', ACCEPTED, EDU_EN,
+          'en', 'The Law on Education matters to every teacher.', gone=('matters',),
+          pair='laws-an-invented-tail-after-the-customers-law-education-grants-to-students-en-blank'),
+    guard('laws-the-customers-law-and-its-number-before-a-subject-and-its-verb-en-to-ru-accepted_false_blank', ACCEPTED,
+          ACCOUNTING_EN_RU_NUMBERED, 'ru',
+          'Согласно Закону о бухгалтерском учёте от 13 апреля 2016 года № 404 отчёты сдаются ежегодно.',
+          gone=('отчёты',), pair=NUMBER_GENITIVE_TAIL),
 ]
 
 CASE_IDS = [case.id for case in CASES]
@@ -3469,6 +4734,33 @@ def test_what_a_change_reads_back(change):
     leaked = [word for word in change.gone if _shows(_strings(made), word)]
     assert not leaked, f'{leaked} reached the paper after the change: {found!r}'
 
+
+
+# An earlier version's fact of a figure's kind or of no field is held by its figures alone (`facts._figures_only`), read
+# out of its sentence (the re-check of round 11, p7): the first reading leaves the apostrophe ordinal of its placing
+# unread ("to‘rtinchi" of "to‘rtinchi o‘rinni egalladi"), and read alone that word is the bare "4" the sentence never
+# gives, so the revised paper's "4 yil" passed; c491da9 and eb8b05c stopped reading there and failed the job.
+HELD_PLACINGS = [
+    (f'numbers-an-earlier-versions-{slug}-in-{fact}-grounds-no-years-in-{kind}-uz-blank', entry, part, label, held, n)
+    for kind, entry, part in (('references', 'pdf.xat.tavsifnoma', 'achievements'), ('reports', 'pdf.biz.hisobot',
+                                                                                     'summary'))
+    for label, fact in (('', 'a-fact-of-no-field'), ('note', 'a-note-fact'), ('achievements', 'an-achievements-fact'),
+                        ('date', 'a-date-fact'))
+    for slug, held, n in (('fourth-place', 'Viloyat olimpiadasida to‘rtinchi o‘rinni egalladi.', 4),
+                          ('tenth-place', 'Tanlovda o‘ninchi o‘rinda.', 10))]
+
+
+@pytest.mark.parametrize('id, entry, part, label, held, n', HELD_PLACINGS, ids=[row[0] for row in HELD_PLACINGS])
+def test_an_earlier_versions_placing_grounds_no_bare_figure(id, entry, part, label, held, n):
+    brief = PLACING_LETTERS['uz'].strip()
+    data = _draft(entry, brief, 'uz')
+    before = _answer(data, sections={'facts': {'items': [{'label': label, 'text': held, 'value': ''}],
+                                               'layout': 'list'}})
+    data['revision'] = {'before': before, 'request': 'Matnni qisqartiring.', 'original_prompt': brief}
+    assert str(n) not in facts.trusted(data).values, f'the earlier placing gives the bare figure {n}'
+    line = f'U {n} yil matematika to‘garagiga qatnashgan.'
+    made, _ = finish.apply(data, _answer(data, sections={part: {'body': line}}), file_names=[], codes=[])
+    assert not _shows(_strings(made), f'{n} yil'), f'the earlier placing grounded the invented "{n} yil"'
 
 # ---------------------------------------------------------------- a deck's cover lines (round 3 of the convergence)
 
