@@ -805,6 +805,10 @@ class _Reader:
             start, value = match.start(), _ordinal_value(match.group(1))
             if value is None:
                 start, value = _apostrophe_ordinal(text, *match.span(1))  # "to‘rtinchilikni"
+                if value is None and _apostrophe_ordinal(text, *match.span(1), tens=False)[1] is not None:
+                    if self.free(start, match.end()):  # "yuz to‘rtinchilikni": known by nothing, as `unread`
+                        self.add(start, match.end(), 'spelled', UNREAD, [{UNREAD}], gives=())
+                    continue
             if value is not None and self.free(start, match.end()) and (
                     match.group(2).casefold() == 'likni' or _contest(text, start)):
                 self.placing(start, match.end(), value)
@@ -1112,24 +1116,28 @@ def _ordinal_value(words, first=False):
 
 # The key of a placing whose ordinal's words make no ordinal ("kechinchi o‘rinni"): no customer's text gives it.
 UNREAD = 'unread'
-# An Uzbek ordinal's letters before its apostrophe ("to‘" of "to‘rtinchi"), and the tens word before it ("o‘n
-# to‘rtinchi", "yigirma to‘rtinchi"), which `ORDINAL_WORD` does not read (`_apostrophe_ordinal`).
+# An Uzbek ordinal's letters before its apostrophe ("to‘" of "to‘rtinchi"), and the number word before it ("o‘n
+# to‘rtinchi", "qirq to‘rtinchi", "yuz to‘rtinchi"), which `ORDINAL_WORD` does not read (`_apostrophe_ordinal`): every
+# Uzbek tens word, and a hundred or a thousand, whose ordinal `_ordinal_value` does not value.
 APOSTROPHE_HEAD = re.compile(rf"{LETTER}+{APOSTROPHE}$")
-APOSTROPHE_TENS = re.compile(rf"(?<![^\W\d_])(?:o{APOSTROPHE}n|yigirma|o{APOSTROPHE}ttiz)[  ]$", re.IGNORECASE)
+APOSTROPHE_TENS = re.compile(rf"(?<![^\W\d_])(?:o{APOSTROPHE}n|yigirma|o{APOSTROPHE}ttiz|qirq|ellik|oltmish"
+                             rf"|yetmish|sakson|to{APOSTROPHE}qson|yuz|ming)[  ]$", re.IGNORECASE)
 
 
-def _apostrophe_ordinal(text, start, end):
+def _apostrophe_ordinal(text, start, end, tens=True):
     """(start, value) of the Uzbek ordinal whose letters after its apostrophe stand from `start` to `end`: "rtinchi" of
-    "to‘rtinchi" is 4 from the "t", of "o‘n to‘rtinchi" 14 from the "o"; (the word's start, None) where the whole word
-    makes no ordinal ("qo‘shinchi"), and (`start`, None) where no apostrophe stands before it ("kechinchi")."""
+    "to‘rtinchi" is 4 from the "t", of "o‘n to‘rtinchi" 14 and of "qirq to‘rtinchi" 44 from the number word; (the
+    number word's start, None) where the words make no ordinal as read ("yuz to‘rtinchi"), never the fourth place its
+    last word alone would make; (the word's start, None) where the whole word makes no ordinal ("qo‘shinchi"), and
+    (`start`, None) where no apostrophe stands before it ("kechinchi"). Without `tens`, the word alone."""
     window = max(0, start - 32)
     head = APOSTROPHE_HEAD.search(text, window, start)
     if head is None or (head.start() > 0 and re.match(LETTER, text[head.start() - 1])):
         return start, None
     begin = head.start()
-    tens = APOSTROPHE_TENS.search(text, max(0, begin - 12), begin)
-    if tens is not None and _ordinal_value(text[tens.start():end]) is not None:
-        return tens.start(), _ordinal_value(text[tens.start():end])
+    before = APOSTROPHE_TENS.search(text, max(0, begin - 12), begin) if tens else None
+    if before is not None:
+        return before.start(), _ordinal_value(text[before.start():end])
     return begin, _ordinal_value(text[begin:end])
 
 
@@ -1227,17 +1235,22 @@ def values(text):
 
     The customer's numbers are the first reading's (`FIRST_PLACE`): every figure, date and fraction key is the one
     c491da9 gave. A placing or a collective read since adds its place key alone ("place:1", "place:top3"), never a
-    bare figure (`_Reader.placing`)."""
+    bare figure (`_Reader.placing`). The words of a placing the first reading leaves unread (`UNREAD`: "to‘rtinchi
+    o‘rinni", where c491da9 stopped reading and failed) give no number word of theirs either (`_words`): their
+    "to‘rtinchi o‘rinni egalladi" is no "4 yil"."""
     text = str(text or '')
     keys = set()
+    words = text
     for number in _Reader(text, first=True).read(words=True):
+        if number.value == UNREAD:
+            words = words[:number.start] + ' ' * (number.end - number.start) + words[number.end:]
         if number.gives is not None:
             keys |= number.gives
         else:
             for need in number.needs:
                 keys |= need
         keys |= number.extra
-    keys |= _words(text)
+    keys |= _words(words)
     keys |= {key for number in _Reader(text).read(words=True) for need in number.needs for key in need
              if key.startswith(PLACE)}
     return keys
