@@ -1716,6 +1716,15 @@ def _opener(word):
 LAW_HEAD_CLOSE = re.compile(r"[»\"”“'’]*")
 LAW_HEAD_END = re.compile(r"[  ]*(?:[.!?…)\]]|;[  ]*$|$)")
 LAW_HEAD_DATED = re.compile(r"[  ]+(?:от[  ]+)?(?:№|N[  ]*\d|\d)", re.IGNORECASE)
+# The law's date or number phrase itself (`_dated_ends`): its day, month and year, its number and the words they take
+# ("от 13 апреля 2016 года № 404", "№ ЗРУ-404", "13 April 2016 No. 404", "dated 13.04.2016").
+LAW_DATE_PART = (r"(?:(?:от|of|dated|from)[  ]+)?(?:(?:№|No\.?|Nr\.?|N)[  ]*)?(?:\d[\d./-]*(?:-?(?:son|sonli))?"
+                 r"|[A-ZА-ЯЁ][A-ZА-ЯЁ‘’'ʻʼ]+-\d+[\w-]*)"
+                 r"|январ[а-яё]*|феврал[а-яё]*|март[а-яё]*|апрел[а-яё]*|ма[йяю]|июн[а-яё]*|июл[а-яё]*|август[а-яё]*"
+                 r"|сентябр[а-яё]*|октябр[а-яё]*|ноябр[а-яё]*|декабр[а-яё]*|january|february|march|april|may|june"
+                 r"|july|august|september|october|november|december|года|году|год|г\.?|year|yil")
+LAW_DATE_PHRASE = re.compile(rf"[  ]+(?:{LAW_DATE_PART})(?:[  ]*,?[  ]+(?:{LAW_DATE_PART}))*(?![^\W\d_])",
+                             re.IGNORECASE)
 # A Russian verb after the name: a present tense's ending no noun has ("регулирует", "устанавливает", "соблюдают"), a
 # reflexive's ("распространяется", "руководствуются"), or one of the verbs and short forms a law's sentence goes on
 # with that end as nouns may ("содержит", "вступил", "принят", "утверждён", "обязателен").
@@ -1756,13 +1765,14 @@ LAW_JOINED_DETERMINER = re.compile(LAW_ARTICLE.pattern + r"|its|their|his|her|ou
 
 def _name_ends(sentence, tokens, index, why, word):
     """Whether the name `_law_names` read after a stem's "о", "об", "of" or "on", up to the token at `index` where the
-    reading stopped (`why`), ends there: at the sentence's or its clause's end, the law's date or number, a verb ("...
-    учёте регулирует", "... Accounting applies"), or past a comma, a semicolon, a conjunction, "as well as" or "i.e."
-    before a word that cannot go on it (`_joined_ends`: "..., бухгалтер ведёт книги", "...; ведёт книги", "... и умеет
-    вести книги"), the words that open no clause passed over ("... учёте и особенно аудите", "... Accounting as well
-    as auditing" go on). Never where the reading reached its end, nor before a preposition ("... учёте в банках", "...
-    in Banks") or a word that may go on the name ("... учёте и аудите", "... Accounting, Auditing and Taxes", "... о
-    защите прав инвесторов")."""
+    reading stopped (`why`), ends there: at the sentence's or its clause's end, a verb ("... учёте регулирует", "...
+    Accounting applies"), or past a comma, a semicolon, a conjunction, "as well as" or "i.e." before a word that
+    cannot go on it (`_joined_ends`: "..., бухгалтер ведёт книги", "...; ведёт книги", "... и умеет вести книги"), the
+    words that open no clause passed over ("... учёте и особенно аудите", "... Accounting as well as auditing" go on).
+    After the law's date or number it ends only where it would end right after the name (`_dated_ends`: "... от 13
+    апреля 2016 года и аудите", "... № 404 в банках" go on). Never where the reading reached its end, nor before a
+    preposition ("... учёте в банках", "... in Banks") or a word that may go on the name ("... учёте и аудите", "...
+    Accounting, Auditing and Taxes", "... о защите прав инвесторов")."""
     if why == 'reach':
         return False
     if why == 'goes':
@@ -1770,8 +1780,12 @@ def _name_ends(sentence, tokens, index, why, word):
     start, last = tokens[index - 1]
     rest = sentence[start + len(last):]
     rest = rest[LAW_HEAD_CLOSE.match(rest).end():]
-    if LAW_HEAD_END.match(rest) or LAW_HEAD_DATED.match(rest) or index >= len(tokens):
+    if re.fullmatch(r"No|Nr", last) and re.match(r"\.[ \u00a0]*\d", rest):
+        return _dated_ends(' ' + rest[1:])  # the law's number read as a name word: "... of 13 April 2016 No. 404"
+    if LAW_HEAD_END.match(rest) or index >= len(tokens):
         return True
+    if LAW_HEAD_DATED.match(rest):
+        return _dated_ends(rest)
     token = tokens[index][1]
     low = normalised(token).casefold()
     if why == 'stop':
@@ -1784,6 +1798,32 @@ def _name_ends(sentence, tokens, index, why, word):
     if token not in ',;' and not LAW_AND.fullmatch(low):
         return any(stem.fullmatch(token) for stem in NAMED_STEMS)  # another law, read on its own; a mark goes on
     return _joined_ends(tokens, index + 1, token not in ',;')
+
+
+def _dated_ends(rest):
+    """Whether a law's name ends past its date or number phrase at the start of `rest` (`LAW_DATE_PHRASE`): only at
+    the sentence's or its clause's end, a verb, or past a comma, a semicolon or a conjunction where it cannot go on
+    (`_joined_ends`: "... учёте от 13 апреля 2016 года и умеет вести книги"). A preposition, a word in the name's case
+    or any other word may go on it, the date standing inside the name ("... учёте № 404 в банках", "... Accounting of
+    13 April 2016 for Banks")."""
+    dated = LAW_DATE_PHRASE.match(rest)
+    if dated is not None:
+        rest = rest[dated.end():]
+        rest = rest[LAW_HEAD_CLOSE.match(rest).end():]
+    if LAW_HEAD_END.match(rest):
+        return True
+    tokens = [(match.start(), match.group(0)) for match in LAW_TOKEN.finditer(rest)]
+    if not tokens:
+        return True
+    text = tokens[0][1]
+    low = normalised(text).casefold()
+    if text in ',;' or LAW_AND.fullmatch(low):
+        return _joined_ends(tokens, 0, False)
+    if re.search('[а-яё]', low):
+        return RU_LAW_VERB.fullmatch(low) is not None or (
+            RU_VERB.fullmatch(low) is not None and LAW_OF_CASE.fullmatch(low) is None)
+    return LAW_AUX.fullmatch(low) is not None or (
+        low.endswith('s') and any(base in LAW_VERBS for base in _s_bases(low)))
 
 
 def _passed(text):
@@ -1958,19 +1998,22 @@ def _law_head_noun(before, word, trusted):
 def _law_head_ends(sentence, start, word):
     """Whether a law's name ends at its head noun `word` at `start` of `sentence`, past a closing quote: the Uzbek head
     before what joins the name to its stem ("Buxgalteriya hisobi to‘g‘risidagi qonun") or before the stem; the Russian
-    head before the sentence's or its clause's end, a verb (`RU_LAW_VERB`) or the law's date or number ("... о
-    бухгалтерском учёте от 13 апреля 2016 года"), or past "и", a comma or a semicolon and the words that open no clause
-    a word that cannot go on it (`_joined_ends`), as `_name_ends` reads the name. Before a preposition, a word in the
-    name's case ("... учёте и аудите", "... учёте; аудите", "... учёте и особенно аудите") or any other word the name
-    may go on past what `_law_names` reads."""
+    head before the sentence's or its clause's end or a verb (`RU_LAW_VERB`), past the law's date or number where the
+    name ends there too (`_dated_ends`: "... о бухгалтерском учёте от 13 апреля 2016 года."), or past "и", a comma or a
+    semicolon and the words that open no clause a word that cannot go on it (`_joined_ends`), as `_name_ends` reads the
+    name. Before a preposition, a word in the name's case ("... учёте и аудите", "... учёте; аудите", "... учёте и
+    особенно аудите", "... учёте от 13 апреля 2016 года и аудите") or any other word the name may go on past what
+    `_law_names` reads."""
     rest = sentence[start + len(word):]
     rest = rest[LAW_HEAD_CLOSE.match(rest).end():]
     if not re.search('[а-яё]', normalised(word).casefold()):
         after = LAW_TOKEN.match(rest, len(rest) - len(rest.lstrip(' \u00a0')))
         low = normalised(after.group(0)).casefold() if after is not None else ''
         return LAW_ABOUT.fullmatch(low) is not None or UZ_LAW_STEM.fullmatch(low) is not None
-    if LAW_HEAD_END.match(rest) or LAW_HEAD_DATED.match(rest):
+    if LAW_HEAD_END.match(rest):
         return True
+    if LAW_HEAD_DATED.match(rest):
+        return _dated_ends(rest)
     verb = re.match(r"[ \u00a0]+([^\W\d_]+)(?![^\W\d_]|-)", rest)
     if verb is not None and RU_LAW_VERB.fullmatch(normalised(verb.group(1)).casefold()) is not None:
         return True
