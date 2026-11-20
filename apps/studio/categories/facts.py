@@ -1399,6 +1399,9 @@ LAW_NAME_PAST = re.compile(r"became|become|becomes|began|came|grew|held|laid|led
 # The past forms of a law's making, which may go on with its time or its maker: "adopted in 2020", "amended by ...".
 LAW_MADE = re.compile(r"adopted|passed|enacted|amended|approved|signed|ratified|published|issued|introduced|revised"
                       r"|updated|became")
+# The prepositions of a law's making's time, before its date or year (`_made_when_or_by`): "adopted in 1997", "amended on
+# 5 May 2021".
+LAW_MADE_WHEN = re.compile(r"in|on|since|from|until|till|during")
 # The verbs a law's sentence goes on with, read as verbs before anything ("protects buyers", "consists of", "remains
 # in force"), where a plural noun of the name would be read the same way ("standards defines", "adults regulates").
 LAW_VERBS = frozenset((
@@ -1550,6 +1553,16 @@ def _goes_on_eb8b05c(sentence, tokens, index, word):
                 and not LAW_NAME_NOUN.fullmatch(following) and any(base in words for base in _s_bases(following)))
 
 
+def _made_when_or_by(sentence, tokens, index):
+    """Whether the preposition at `index` after a past form of a law's making goes on with the making's maker ("adopted
+    by parliament") or its date or year ("adopted in 1997", "amended on 5 May 2021"), which the numbers check holds to
+    the customer's; any other ("adopted for banks") may go on the name, as c491da9 reads it."""
+    start, text = tokens[index]
+    low = normalised(text).casefold()
+    return low == 'by' or (LAW_MADE_WHEN.fullmatch(low) is not None
+                           and re.match(r"[ \u00a0]+\d", sentence[start + len(text):]) is not None)
+
+
 def _goes_on(sentence, tokens, index, word, governed=False):
     """Whether a lower-case word after an unnamed law's first name word goes on the sentence rather than the name
     (`_law_names`), so that nothing after it is read as the name's: as this reads it (`_ends_name`) and as eb8b05c
@@ -1563,19 +1576,21 @@ def _ends_name(sentence, tokens, index, word, governed=False):
     (`_goes_on`).
 
     Never before a comma or a conjunction, where a list may go on the name ("the Law on state funded, private and
-    public schools", "the Law on Education grants and scholarships"), nor a word of LAW_NAMES. A sentence adverb always
-    does ("thus", "therefore", "itself"). Another adverb ("well", "daily", "carefully") does at the sentence's or its
-    clause's end, or before a stop word, an object's determiner or possessive or a verb; a past form ("adopted",
-    "became") the same, a preposition only after a law's making ("adopted in 2020"), never after its own noun ("of the
-    disabled") nor before a noun ("tax related offences", "state funded schools", "family friendly workplaces", "paid
-    leave"). A verb's -s ("guarantees free schooling", "defines the rights", "consists of", "insists on", "aims to
-    raise"), its base one of LAW_VERBS, does before its object, a noun or an adjective; never at the end, before a
-    preposition or "to" with a noun ("grants for students", "the Law on state grants."), before a clause of its own
-    (`_clause_after`: "grants the state sets was amended"), nor after a law a preposition governs, which is no subject
-    ("Under the Law on Education grants every school gets, ..."); any other -s, its base an English word
-    (words/en.txt), only before "as", "on" or "to" with a verb ("relies on"), never before its object ("fees some
-    parents pay", "loans many students take"). A plural noun the name ends with ("accounting requirements", "state
-    fees for ...") and a compound's part ("state-owned") are words of it."""
+    public schools", "the Law on Education grants and scholarships"), nor a word of LAW_NAMES. A sentence adverb does
+    ("thus", "therefore", "itself"), unless a preposition governs the law ("Under Law on accounting thus auditing
+    applies"). Another adverb ("well", "daily", "carefully") does at the sentence's or its clause's end, or before a
+    stop word, an object's determiner or possessive or a verb; a past form ("adopted", "became") the same, a
+    preposition only after a law's making and only its maker's or its date's (`_made_when_or_by`: "adopted in 2020",
+    "adopted by parliament", never "adopted for banks"), never after its own noun ("of the disabled") nor before a noun
+    ("tax related offences", "state funded schools", "family friendly workplaces", "paid leave"). A verb's -s
+    ("guarantees free schooling", "defines the rights", "consists of", "insists on", "aims to raise"), its base one of
+    LAW_VERBS, does before its object, a noun or an adjective; never at the end, before a preposition or "to" with a
+    noun ("grants for students", "the Law on state grants."), before a clause of its own (`_clause_after`: "grants the
+    state sets was amended"), nor after a law a preposition governs, which is no subject ("Under the Law on Education
+    grants every school gets, ..."); any other -s, its base an English word (words/en.txt), only before "as", "on" or
+    "to" with a verb ("relies on"), never before its object ("fees some parents pay", "loans many students take"). A
+    plural noun the name ends with ("accounting requirements", "state fees for ...") and a compound's part
+    ("state-owned") are words of it."""
     low = normalised(tokens[index][1]).casefold()
     if not low.isascii() or sentence[tokens[index][0] - 1:tokens[index][0]] == '-':
         return False
@@ -1593,7 +1608,7 @@ def _ends_name(sentence, tokens, index, word, governed=False):
     if (index + 1 < len(tokens) and tokens[index + 1][1] == ',') or (following and LAW_AND.fullmatch(following)):
         return False
     if LAW_SENTENCE_ADVERB.fullmatch(low):
-        return True
+        return not governed  # never after a law a preposition governs: "Under Law on accounting thus auditing ..."
     past = LAW_NAME_PAST.fullmatch(low) is not None or (
         low.endswith('ed') and len(low) > 4 and (low[:-2] in words or low[:-1] in words
                                                   or (low[-3] == low[-4] and low[:-3] in words)))
@@ -1605,7 +1620,8 @@ def _ends_name(sentence, tokens, index, word, governed=False):
         if following is None or following == 'being':
             return False
         if LAW_OF_STOP.fullmatch(following):
-            return adverb or LAW_NAME_PREPOSITION.fullmatch(following) is None or LAW_MADE.fullmatch(low) is not None
+            return adverb or LAW_NAME_PREPOSITION.fullmatch(following) is None \
+                or (LAW_MADE.fullmatch(low) is not None and _made_when_or_by(sentence, tokens, index + 1))
         return _object_follows(sentence, tokens, index, word) or (
             following.endswith('s') and not following.endswith('ss')
             and _goes_on(sentence, tokens, index + 1, word, governed))
