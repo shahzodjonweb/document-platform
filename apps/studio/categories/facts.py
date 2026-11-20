@@ -1751,15 +1751,38 @@ LAW_ARTICLE = re.compile(r"the|a|an")
 # (`_joined_ends`), as none of them opens a clause or names anything: the English adverbs and grammar words "and even
 # Auditing", "and not only auditing", ", i.e. auditing" take, and the Russian particles, parenthetical words and adverbs
 # ("и особенно аудите", "а именно аудите", ", то есть аудите", ", т. е. аудите", ", как и об аудите", "и разумеется
-# аудите", "и лишь налогообложении"), with every lower-case Russian word in -о (`_passed`: "конечно", "заодно",
-# "только", "немного", "строго").
+# аудите", "и лишь налогообложении"), with the lower-case Russian adverbs, particles and pronouns in -о (`_ru_adverb`:
+# "конечно", "заодно", "только", "немного", "строго").
 LAW_PASS_EN = re.compile(r"even|only|so|also|too|not|just|especially|particularly|mainly|chiefly|notably|i|e")
 LAW_PASS_RU = re.compile(r"т|е|есть|как|лишь|уж|вот|ведь|же|всё|вдруг|опять|вновь|снова|иногда|всегда|тогда|сначала"
                          r"|сперва|сразу|наряду|полностью|разумеется|кажется|пожалуй|видимо|наверное|притом|причём"
                          r"|причем|вдобавок|главным|чуть|едва|пока|раз")
 # The neuter nouns in -о a list goes on with after a law's name, no adverb (`_passed`): "... учёте и правило ...",
-# "... учёте и законодательство о налогах".
-RU_NEUTER = re.compile(r"[а-яё]+ство|правило|право|дело|число|слово|место|лицо|письмо|сальдо|нетто|брутто|бюро")
+# "... учёте и законодательство о налогах". Their -о is no case a law's name takes after "о"; a noun that keeps its -о
+# in every case is `RU_INDECLINABLE`'s.
+RU_NEUTER = re.compile(r"[а-яё]+ство|правило|право|дело|число|слово|место|лицо|письмо")
+# The Russian nouns that keep their -о in every case, loans: one stands in the case a law's name takes after "о" ("...
+# о телевидении и радио", "..., бюро и аудите") or as a genitive after it ("... учёте казино"), so it is no adverb
+# passed over (`_ru_adverb`) and may go on the name (`_may_go_on`), as c491da9 holds the name. A vowel before the -о
+# makes one ("радио", "видео", "портфолио", "какао"); the others are the loans words/ru.txt or the adverbs' shapes would
+# read as adverbs, and the usual ones.
+RU_INDECLINABLE = re.compile(
+    r"[а-яё]*[аеёиоуыэюя]о|кино|казино|метро|евро|авто|мото|фото|лото|депо|бюро|сальдо|нетто|брутто|пальто|табло"
+    r"|лого|карго|эмбарго|рококо|панно|техно|промо|демо|ретро|диско|барокко|мокко|электро|соло|поло|кило|тремоло"
+    r"|инкассо|авизо")
+# The lower-case Russian adverbs, particles and pronouns in -о passed over as LAW_PASS_RU's are (`_ru_adverb`), named
+# where the lexicon or an adverb's shape may not give them: "то есть", "это", "что", "либо", "ибо", "около", "свято".
+LAW_PASS_RU_O = re.compile(r"то|это|что|оно|одно|само|либо|зато|ибо|около|вместо|помимо|мимо|много|немного|несколько"
+                           r"|сколько|столько|только|сугубо|особо|свято|густо|круто|бодро|щедро|гордо|худо|глухо|криво"
+                           r"|тупо|скупо|слепо|глупо|незримо|туго")
+# The shapes of a Russian word in -о that is no noun keeping it in every case (`_ru_adverb`): a genitive in -ого or
+# -его ("всего", "его", "малого"), a past form or a noun in -ло ("было", "стало", "начало"), an adverb made from an
+# adjective in -ный, -льный, -кий or -ливый ("добросовестно", "ежеквартально", "громко", "справедливо") or -овый
+# ("пошагово").
+RU_ADVERB_SHAPE = re.compile(r"[а-яё]+(?:[ое]го|ло|[бвгджзклмнпрстфхцчшщь][нк]о|ливо|ово)")
+# The endings of a Russian adjective the lexicon holds, whose stem an adverb in -о is made from (`_ru_adverb`).
+RU_ADJECTIVE_ENDINGS = ('ый', 'ий', 'ой', 'ая', 'яя', 'ое', 'ее', 'ые', 'ие', 'ого', 'его', 'ому', 'ему', 'ым', 'им',
+                        'ую', 'юю', 'ых', 'их', 'ыми', 'ими')
 # The English determiners a joined word may take, read as the article is (`_joined_ends`): "and its auditing rules",
 # "and every auditing standard", never ", its rules apply to banks".
 LAW_JOINED_DETERMINER = re.compile(LAW_ARTICLE.pattern + r"|its|their|his|her|our|your|all|each|every|any|some|no"
@@ -1844,14 +1867,39 @@ def _dated_ends(rest):
 
 def _passed(text):
     """Whether a word after a comma, a semicolon or a conjunction is passed over before what follows a law's name is
-    judged (`_joined_ends`): one of `LAW_PASS_EN` or `LAW_PASS_RU`, or a lower-case Russian adverb in -о ("особенно",
-    "конечно", "именно", "то", "заодно", "только", "строго"), never a neuter noun (`RU_NEUTER`: "законодательство",
-    "правило")."""
+    judged (`_joined_ends`): one of `LAW_PASS_EN` or `LAW_PASS_RU`, or a lower-case Russian adverb, particle or pronoun
+    in -о (`_ru_adverb`: "особенно", "конечно", "именно", "то", "заодно", "только", "строго"), never a neuter noun
+    (`RU_NEUTER`: "законодательство", "правило") nor one that keeps its -о in every case ("радио", "казино", "бюро")."""
     low = normalised(text).casefold()
     if not re.search('[а-яё]', low):
         return LAW_PASS_EN.fullmatch(low) is not None
     return LAW_PASS_RU.fullmatch(low) is not None or (
-        text.islower() and low.endswith('о') and RU_NEUTER.fullmatch(low) is None)
+        text.islower() and low.endswith('о') and RU_NEUTER.fullmatch(low) is None and _ru_adverb(low))
+
+
+@functools.cache
+def _ru_adjective_stems():
+    """(the lexicon's Russian words, the stems of its adjectives), ё read as е, read once per process."""
+    words = frozenset(word.replace('ё', 'е') for word in _lexicon()['ru'][0])
+    return words, frozenset(word[:-len(ending)] for word in words for ending in RU_ADJECTIVE_ENDINGS
+                            if word.endswith(ending) and len(word) - len(ending) >= 3)
+
+
+def _ru_adverb(low):
+    """Whether a lower-case Russian word in -о is an adverb, a particle or a pronoun (`_passed`): one of
+    `LAW_PASS_RU_O`, of an adverb's shape (`RU_ADVERB_SHAPE`: "всего", "было", "обязательно"), a word of the lexicon
+    (words/ru.txt: "строго", "хорошо", "конечно") or one made from an adjective it holds ("качественно" of
+    "качественного", "утверждено" of "утверждённый"). Never a noun that keeps its -о in every case (`RU_INDECLINABLE`:
+    "радио", "кино", "казино", "метро", "евро", "бюро"), which the lexicon holds too; a word none of them gives is read
+    as one of those, the owner's tie-break: the law's name may go on with it (`_may_go_on`), so its opening word is the
+    name's and must be the customer's."""
+    low = low.replace('ё', 'е')
+    if RU_INDECLINABLE.fullmatch(low):
+        return False
+    if LAW_PASS_RU_O.fullmatch(low) or RU_ADVERB_SHAPE.fullmatch(low):
+        return True
+    words, stems = _ru_adjective_stems()
+    return low in words or low[:-1] in stems or low[:-1] + 'н' in stems
 
 
 def _joined_ends(tokens, at, conjoined):
@@ -1935,16 +1983,19 @@ def _another_law(tokens, at):
 
 def _may_go_on(text):
     """Whether a word after a comma or a conjunction may go on a law's name (`_name_ends`): a mark, a preposition, a
-    Russian word in the case the name's words take after "о" (`LAW_OF_CASE`: "аудите", "налогах", "аудиторской"), or
-    an English word of a name, capitalised or in lower case ("Auditing", "auditing"), never a stem of its own ("... и
-    Закон об аудите" is read on its own) nor an English word that goes on the sentence (`LAW_OF_STOP`, "the")."""
+    Russian word in the case the name's words take after "о" (`LAW_OF_CASE`: "аудите", "налогах", "аудиторской") or a
+    word in -о that is no adverb nor a neuter noun of a list (`_ru_adverb`, `RU_NEUTER`: "радио", "казино", "бюро" keep
+    their -о in every case), or an English word of a name, capitalised or in lower case ("Auditing", "auditing"), never
+    a stem of its own ("... и Закон об аудите" is read on its own) nor an English word that goes on the sentence
+    (`LAW_OF_STOP`, "the")."""
     if any(stem.fullmatch(text) for stem in NAMED_STEMS):
         return False
     low = normalised(text).casefold()
     if not WORD.fullmatch(text) or LAW_NAME_PREPOSITION.fullmatch(low):
         return True
     if re.search('[а-яё]', low):
-        return LAW_OF_CASE.fullmatch(low) is not None
+        return LAW_OF_CASE.fullmatch(low) is not None or (
+            not text.isupper() and low.endswith('о') and RU_NEUTER.fullmatch(low) is None and not _ru_adverb(low))
     return text[0].isupper() or not (LAW_OF_STOP.fullmatch(low) or LAW_OF_GRAMMAR.fullmatch(low))
 
 
