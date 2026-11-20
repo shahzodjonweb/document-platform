@@ -3649,6 +3649,16 @@ for slug, brief, sentence, gone in (
          'He follows the Law on Accounting’s rules, standards and annexes.', ('standards',))):
     CASES.append(guard(f'laws-an-invented-tail-after-the-customers-law-{slug}-en-blank', BLANK, brief, 'en', sentence,
                        gone=gone))
+# eb8b05c's keeps the narrowed reading keeps too: a verb's -s before "in force" or an object's determiner, an adverb
+# before a clause's "and" and its verb.
+CASES += [
+    guard('laws-the-customers-law-on-education-remains-in-force-en-keep', KEEP, EDU_EN, 'en',
+          'The Law on Education remains in force.'),
+    guard('laws-the-customers-law-on-education-protects-all-pupils-en-keep', KEEP, EDU_EN, 'en',
+          'The Law on Education protects all pupils.'),
+    guard('laws-the-customers-law-on-accounting-well-and-a-verb-en-keep', KEEP, ACCOUNTING_EN, 'en',
+          'He knows the Law on Accounting well and applies it daily.'),
+]
 # The Uzbek head before an invented tail, as the Russian one (round 6): "... hisobi va audit to‘g‘risidagi qonun".
 CASES.append(guard('laws-an-accounting-law-head-before-and-audit-en-to-uz-blank', BLANK, ACCOUNTING_EN_UZ, 'uz',
                    'Buxgalter Buxgalteriya hisobi va audit to‘g‘risidagi qonunga amal qiladi.', gone=('audit',),

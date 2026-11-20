@@ -1422,7 +1422,8 @@ LAW_VERBS = frozenset((
 LAW_NAME_NOUN = re.compile(r"[a-z]+(?:ments|tions|sions|ities|ances|ences|ships|nesses|isms|ists|ures)")
 # What only a verb's object opens, never the next word of a law's name: a determiner ("ensures the right", "features a
 # chapter"); a possessive ("upholds students’ rights") is read by its mark (`_object_follows`).
-LAW_OBJECT = re.compile(r"the|a|an|its|their|his|her|our|your|every|both|several|numerous|various")
+LAW_OBJECT = re.compile(r"the|a|an|its|their|his|her|our|your|every|both|several|numerous|various|all|each|any|some"
+                        r"|no|this|that|these|those|such|many|more|most")
 # The words after which a verb's -s is still the verb: "functions as", "insists on", "relies upon"; "to" only before
 # a verb ("aims to raise", "exists to protect"), never before a noun ("grants to students").
 LAW_VERB_AFTER = re.compile(r"as|on|upon")
@@ -1466,13 +1467,19 @@ def _goes_on(sentence, tokens, index, word):
         return False
     following = normalised(tokens[index + 1][1]).casefold() if word(index + 1) else None
     closed = index + 1 >= len(tokens) or tokens[index + 1][1] in ';:)!?'
+    words = _lexicon()['en'][0]
+    adverb = LAW_NAME_ADVERB.fullmatch(low) is not None or (
+        low.endswith('ly') and len(low) > 5 and (low[:-2] in words or low[:-3] + 'y' in words))
+    if following and LAW_AND.fullmatch(following) and adverb and word(index + 2):
+        # An adverb before a clause's verb: "Knows the Law on Accounting well and applies it".
+        verb = normalised(tokens[index + 2][1]).casefold()
+        if (LAW_OF_STOP.fullmatch(verb) and not LAW_NAME_PREPOSITION.fullmatch(verb)) \
+                or (verb.endswith('s') and any(base in LAW_VERBS for base in _s_bases(verb))):
+            return True
     if (index + 1 < len(tokens) and tokens[index + 1][1] == ',') or (following and LAW_AND.fullmatch(following)):
         return False
     if LAW_SENTENCE_ADVERB.fullmatch(low):
         return True
-    words = _lexicon()['en'][0]
-    adverb = LAW_NAME_ADVERB.fullmatch(low) is not None or (
-        low.endswith('ly') and len(low) > 5 and (low[:-2] in words or low[:-3] + 'y' in words))
     past = LAW_NAME_PAST.fullmatch(low) is not None or (
         low.endswith('ed') and len(low) > 4 and (low[:-2] in words or low[:-1] in words
                                                   or (low[-3] == low[-4] and low[:-3] in words)))
@@ -1494,6 +1501,9 @@ def _goes_on(sentence, tokens, index, word):
         return True  # "features a chapter", "balances pupils’ rights"
     if following is None:
         return False
+    if following in ('in', 'into') and word(index + 2) \
+            and normalised(tokens[index + 2][1]).casefold() in ('force', 'effect'):
+        return True  # "remains in force", "comes into force", "enters into effect"
     if following == 'to':
         after = normalised(tokens[index + 2][1]).casefold() if word(index + 2) else ''
         return after in LAW_VERBS or (LAW_INFINITIVE.fullmatch(after) is not None and after in words)
