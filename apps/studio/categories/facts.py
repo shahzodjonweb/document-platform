@@ -1299,6 +1299,7 @@ def _law_names(sentence):
                 break
             index -= 1
         name.reverse()
+        opener = []
         if headed:
             name = headed
         elif len(name) > 1 and _starts(sentence, name[0][0]) and not _law_name(name[0][1]) \
@@ -1306,34 +1307,45 @@ def _law_names(sentence):
             name = name[1:]
         elif len(name) == 1 and _starts(sentence, name[0][0]) and not _law_name(name[0][1]) \
                 and _law_subject(name[0][1]) and _named_after(tokens, at, word):
-            name = []  # a duty's verb right before a stem its name follows: "Соблюдает закон о бухгалтерском учёте"
+            # A duty's verb or a preposition right before a stem its name follows ("Соблюдает закон о бухгалтерском
+            # учёте", "Under Law on Accounting, ..."): no word of the name where the name after it ends (below).
+            opener, name = name, []
         index = at + 1
         while word(index) and LAW_COUNTRY.fullmatch(normalised(tokens[index][1]).casefold()):
             index += 1
         if index < len(tokens) and tokens[index][1] in '«"“„' and word(index + 1) \
                 and LAW_OF.fullmatch(normalised(tokens[index + 1][1]).casefold()):
             index += 1  # a title in its marks: the Law "On Education", Закон «Об образовании»
+        why = 'none'
         if word(index) and LAW_OF.fullmatch(normalised(tokens[index][1]).casefold()):
             index, taken = index + 1, 0
             # No name before the stem ("the Law of the Republic of Uzbekistan on state duty"): every word after its
             # "of" or "on" is its name, so an invented subject in lower case is the customer's or the sentence goes.
             unnamed = not any(_letters(text) >= 2 and not LAW_COUNTRY.fullmatch(normalised(text).casefold())
                               for _, text in name)
-            while word(index) and taken < (LAW_OF_UNNAMED_REACH if unnamed else LAW_OF_REACH):
+            reach = LAW_OF_UNNAMED_REACH if unnamed else LAW_OF_REACH
+            why = 'mark'
+            while word(index):
+                if taken >= reach:
+                    why = 'reach'
+                    break
                 token = tokens[index][1]
                 low = normalised(token).casefold()
                 if not taken and (LAW_COUNTRY.fullmatch(low) or LAW_OF.fullmatch(low)):
                     index += 1
                     continue
                 if LAW_AND.fullmatch(low):
+                    why = 'and'
                     break
                 if re.search('[а-яё]', low):
                     if LAW_OF_CASE.fullmatch(low) is None:
+                        why = 'word'
                         break
                     name.append(tokens[index])
                 elif token[0].isupper() or _law_name(token) or LAW_KIND.fullmatch(low):
                     name.append(tokens[index])
                 elif LAW_OF_STOP.fullmatch(low):
+                    why = 'stop'
                     break  # a word that goes on the sentence ends the name
                 elif unnamed:
                     if not LAW_OF_GRAMMAR.fullmatch(low):
@@ -1342,8 +1354,11 @@ def _law_names(sentence):
                     # After a named stem, a first word that is no name word begins one only before its own "of"
                     # ("the Labour Code on working hours" names the Labour Code; never "... of Uzbekistan applies
                     # to land workers" or "... protects consumer interests").
+                    why = 'word'
                     break
                 index, taken = index + 1, taken + 1
+        if opener and not _name_ends(sentence, tokens, index, why, word):
+            name = opener + name  # the name goes on past what is read: its opening word is the name's, as c491da9's
         found += [(start, text) for start, text in name if _letters(text) >= 2
                   and not LAW_COUNTRY.fullmatch(normalised(text).casefold())]
     return list(dict.fromkeys(found))
@@ -1357,6 +1372,74 @@ def _named_after(tokens, at, word):
     if index < len(tokens) and tokens[index][1] in '«"“„':
         index += 1
     return word(index) and LAW_OF.fullmatch(normalised(tokens[index][1]).casefold()) is not None and word(index + 1)
+
+
+# Where a law's name read after its "о", "об", "of" or "on" ends, past a closing quote (`_name_ends`): the sentence's or
+# its clause's end, or the law's date or number ("... о бухгалтерском учёте от 13 апреля 2016 года").
+LAW_HEAD_CLOSE = re.compile(r"[»\"”“'’]*")
+LAW_HEAD_END = re.compile(r"[  ]*(?:[.!?…;)\]]|$)")
+LAW_HEAD_DATED = re.compile(r"[  ]+(?:от[  ]+)?(?:№|N[  ]*\d|\d)", re.IGNORECASE)
+# A Russian verb after the name: a present tense's ending no noun has ("регулирует", "устанавливает", "соблюдают"), a
+# reflexive's ("распространяется", "руководствуются"), or one of the verbs and short forms a law's sentence goes on
+# with that end as nouns may ("содержит", "вступил", "принят", "утверждён", "обязателен").
+RU_LAW_VERB = re.compile(
+    r"[а-яё]+(?:ает|яет|еет|ует|ают|яют|еют|уют)"
+    r"|[а-яё]+(?:ется|ётся|ются|ится|ятся|утся|атся|лся|лась|лось|лись)"
+    r"|содерж(?:ит|ат)|служ(?:ит|ат)|вв(?:одит|одят|[её]л)|вход(?:ит|ят)|вступил[аои]?|был[аои]?|стал[аои]?"
+    r"|действовал[аои]?|принят[аоы]?|утвержд[её]н[аоы]?|предусмотрен[аоы]?|установлен[аоы]?|определ[её]н[аоы]?"
+    r"|обязател(?:ен|ьна|ьно|ьны)")
+# The prepositions a law's name goes on with: "... учёте в банках", "... для банков", "... при банкротстве", "... in
+# Banks".
+LAW_NAME_PREPOSITION = re.compile(
+    r"в|во|на|при|для|по|с|со|к|ко|от|у|из|за|над|под|о|об|обо|без|до|через|между|перед|среди|про"
+    r"|to|in|into|for|with|without|by|at|from|under|over|after|before|during|through|within|about|against|between"
+    r"|of|on")
+# The words a conjunction takes before what it joins: "а также аудите", "and also Auditing", "as well as".
+LAW_NAME_FILLER = re.compile(r"также|тоже|ещё|еще|also|as|well")
+
+
+def _name_ends(sentence, tokens, index, why, word):
+    """Whether the name `_law_names` read after a stem's "о", "об", "of" or "on", up to the token at `index` where the
+    reading stopped (`why`), ends there: at the sentence's or its clause's end, the law's date or number, a verb ("...
+    учёте регулирует", "... Accounting applies"), or past a comma or a conjunction before a word that cannot go on it
+    ("..., бухгалтер ведёт книги", "... и умеет вести книги", "..., the accountant keeps the books"). Never where the
+    reading reached its end, nor before a preposition ("... учёте в банках", "... in Banks") or a word that may go on
+    the name ("... учёте и аудите", "... Accounting, Auditing and Taxes", "... о защите прав инвесторов")."""
+    if why == 'reach':
+        return False
+    start, last = tokens[index - 1]
+    rest = sentence[start + len(last):]
+    rest = rest[LAW_HEAD_CLOSE.match(rest).end():]
+    if LAW_HEAD_END.match(rest) or LAW_HEAD_DATED.match(rest) or index >= len(tokens):
+        return True
+    token = tokens[index][1]
+    low = normalised(token).casefold()
+    if why == 'stop':
+        return LAW_NAME_PREPOSITION.fullmatch(low) is None  # a verb, a pronoun, a conjunction of a clause
+    if why == 'word':
+        return RU_LAW_VERB.fullmatch(low) is not None  # any other word may be the name's ("... о защите прав ...")
+    if token != ',' and not LAW_AND.fullmatch(low):
+        return any(stem.fullmatch(token) for stem in NAMED_STEMS)  # another law, read on its own; a mark goes on
+    at = index + 1
+    while at < len(tokens) and (LAW_AND.fullmatch(normalised(tokens[at][1]).casefold())
+                                or LAW_NAME_FILLER.fullmatch(normalised(tokens[at][1]).casefold())):
+        at += 1
+    return at >= len(tokens) or not _may_go_on(tokens[at][1])
+
+
+def _may_go_on(text):
+    """Whether a word after a comma or a conjunction may go on a law's name (`_name_ends`): a mark, a preposition, a
+    Russian word in the case the name's words take after "о" (`LAW_OF_CASE`: "аудите", "налогах", "аудиторской"), or
+    an English word of a name, capitalised or in lower case ("Auditing", "auditing"), never a stem of its own ("... и
+    Закон об аудите" is read on its own) nor an English word that goes on the sentence (`LAW_OF_STOP`, "the")."""
+    if any(stem.fullmatch(text) for stem in NAMED_STEMS):
+        return False
+    low = normalised(text).casefold()
+    if not WORD.fullmatch(text) or LAW_NAME_PREPOSITION.fullmatch(low):
+        return True
+    if re.search('[а-яё]', low):
+        return LAW_OF_CASE.fullmatch(low) is not None
+    return text[0].isupper() or not (LAW_OF_STOP.fullmatch(low) or LAW_OF_GRAMMAR.fullmatch(low))
 
 
 def _law_head(sentence, tokens, at, word):
