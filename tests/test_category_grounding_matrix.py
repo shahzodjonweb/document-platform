@@ -15,7 +15,9 @@ class letters, references), each in one of three directions:
   parts), the blank is chosen. The case asserts the blank and names, in
   `pair`, the leak it is the price of. A fix that keeps such a word while its
   pair still blanks is an improvement; it changes the case to `keep` and says
-  so. A fix never keeps it by letting the pair leak.
+  so. A fix never keeps it by letting the pair leak. An accepted id the core
+  list names stays, repointed to the same word where the tie-break still holds
+  (`RESTORED`).
 
 Owner's rules the matrix holds: never invent a customer fact on a category
 page; when blank and leak collide, blank. Cases run through the calls the
@@ -3613,10 +3615,56 @@ for verb in ('ensures', 'consists', 'secures', 'insists'):
 assert all(sum(case.id == keep for case in CASES) == 1 for keep in PAID), 'every paid keep is a case'
 
 
+# ---- Round 10 (the keeps eb8b05c has, restored where no leak comes back): an unnamed law's name ends where the
+# sentence goes on with a word and nothing of a name can follow it (`facts._goes_on`), so the customer's law before a
+# verb or an adverb is theirs again, their own words under their own brief. The leaks the round-8 removal closed stay
+# blank: a modifier before a noun ("tax related offences", "family friendly workplaces"), a verb's -s before a
+# preposition or at the end ("grants for students"). Each restored keep's accepted id stays (the core list names it),
+# with the same word before a comma, where a list may go on the name ("the Law on state funded, private and public
+# schools"): the tie-break the restored reading keeps, paid for by the same blank.
+RESTORED = {keep for keep, (_, pair) in PAID.items()
+            if pair in (GOES_ON_S, GOES_ON_S_LOWER, GOES_ON_ED, GOES_ON_LY, GOES_ON_LY_LOWER)}
+# The same words where a name may go on after them stay the name's (must, restore-r10 r1): eb8b05c ended the name
+# at each of them.
+for slug, brief, sentence, gone in (
+        ('state-grants-at-the-end', STATE_DUTY_EN, 'He follows the Law on state grants.', ('grants',)),
+        ('state-paid-leave', STATE_DUTY_EN, 'He follows the Law on state paid leave.', ('leave',)),
+        ('state-funded-before-a-comma', STATE_DUTY_EN,
+         'Schools follow the Law on state funded, private and public schools.', ('funded',)),
+        ('education-grants-and-scholarships', EDU_EN, 'Schools follow the Law on Education grants and scholarships.',
+         ('grants',)),
+        ('education-grants-to-students', EDU_EN, 'Students apply under the Law on Education grants to students.',
+         ('grants',)),
+        ('education-funds-allocation', EDU_EN, 'Schools follow the Law on Education funds allocation.', ('funds',)),
+        ('further-education', EDU_EN, 'He follows the Law on further education.', ('further',)),
+        ('education-of-the-disabled', EDU_EN, 'Teachers follow the Law on Education of the disabled.', ('disabled',)),
+        ('education-deprived-of', EDU_RU_EN, 'He follows the Law on Education deprived of funding.', ('deprived',)),
+        ('family-friendly-measures', FAMILY_LAW_EN, 'Parents follow the Law on family friendly measures.',
+         ('measures',))):
+    CASES.append(guard(f'laws-an-invented-tail-after-the-customers-law-{slug}-en-blank', BLANK, brief, 'en', sentence,
+                       gone=gone))
+ASIDE = {'en': ', in practice', 'ru': ', как известно'}
+
+
+def _aside(value, word, locale):
+    """`value` with an aside after the first `word`, before a comma: "The Law on Education guarantees, in practice,
+    free schooling.", "He knows the Law on Accounting well, in practice." """
+    found = re.search(r'(?<![^\W_])' + re.escape(word) + r'(?![^\W_])', value)
+    end = found.end()
+    rest = value[end:]
+    return value[:end] + ASIDE[locale] + ('' if rest in ('.', '') else ',') + rest
+
+
 def _paid(case):
     """A paid keep: the accepted false blank, and its id under the customer's own words. Those words, in the paper's
-    language, may tell the brief's language otherwise, so the keep no longer asserts how it is read."""
-    keep, blank = removed(case, *PAID[case.id], listed=True)
+    language, may tell the brief's language otherwise, so the keep no longer asserts how it is read. A restored keep
+    (`RESTORED`) is the keep as it was and its accepted id the same word before a comma (`_aside`)."""
+    gone, pair = PAID[case.id]
+    if case.id in RESTORED:
+        blank = replace(case, id=case.id.removesuffix('-' + KEEP) + '-' + ACCEPTED, direction=ACCEPTED,
+                        value=_aside(case.value, gone[0], case.locale), gone=gone, pair=pair)
+        return [case, blank]
+    keep, blank = removed(case, gone, pair, listed=True)
     return [replace(keep, translated=None), blank]
 
 
