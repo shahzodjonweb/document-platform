@@ -3622,6 +3622,169 @@ def _paid(case):
 
 CASES = [made for case in CASES for made in (_paid(case) if case.id in PAID else [case])]
 
+# ---------------------------------------------------------------- the re-check of round 8 (parity-r2), both ways
+# Round 8 left three readings that keep what c491da9 blanks, each pinned here as blanks under the briefs the re-check
+# used, with the keeps eb8b05c (in production) has for the same readings.
+
+# ---- A sentence's opening word before a law's stem is the name's unless the name after "о", "об", "of" or "on" ends
+# there (must, q1, q6, q7, q9): at the sentence's end, a verb or the law's date, or before a word that cannot go on it.
+# An opening word dropped before "и", "and", a comma or a preposition let an invented tail through ("Соблюдает Закон о
+# бухгалтерском учёте и аудите", "Under Law on Accounting and Auditing, ..."); c491da9 holds the word and blanks.
+EDU_RU = 'Составьте должностную инструкцию учителя. Он должен знать Закон об образовании.'
+for slug, brief, sentence, gone in (
+        ('and-audit', JOB_RU_ACCOUNTING, 'Соблюдает Закон о бухгалтерском учёте и аудите.', ('аудите',)),
+        ('in-banks', JOB_RU_ACCOUNTING, 'Соблюдает Закон о бухгалтерском учёте в банках.', ('банках',)),
+        ('for-banks', JOB_RU_ACCOUNTING, 'Применяет Закон о бухгалтерском учёте для банков.', ('банков',)),
+        ('audit-and-taxes', JOB_RU_ACCOUNTING, 'Знает Закон о бухгалтерском учёте, аудите и налогах.',
+         ('аудите', 'налогах')),
+        ('as-well-as-audit', JOB_RU_ACCOUNTING, 'Соблюдает Закон о бухгалтерском учёте, а также аудите.',
+         ('аудите',)),
+        ('in-bankruptcy', JOB_RU_ACCOUNTING, 'Руководствуется Законом о бухгалтерском учёте при банкротстве.',
+         ('банкротстве',)),
+        ('according-to-and-audit', JOB_RU_ACCOUNTING,
+         'Согласно Закону о бухгалтерском учёте и аудите, бухгалтер ведёт книги.', ('аудите',)),
+        ('knowledge-of-and-audit', JOB_RU_ACCOUNTING, 'Знание Закона о бухгалтерском учёте и аудите обязательно.',
+         ('аудите',)),
+        ('requirements-of-and-audit', JOB_RU_ACCOUNTING,
+         'Требования Закона о бухгалтерском учёте и аудите соблюдаются.', ('аудите',)),
+        ('having-studied-and-taxation', JOB_RU_ACCOUNTING,
+         'Изучив Закон о бухгалтерском учёте и налогообложении, он составляет отчёты.', ('налогообложении',)),
+        ('in-lower-case-and-audit', JOB_RU_ACCOUNTING, 'Знает закон о бухгалтерском учёте и аудите.', ('аудите',)),
+        ('education-science-and-culture', EDU_RU, 'Соблюдает Закон об образовании, науке и культуре.',
+         ('науке', 'культуре')),
+        ('education-in-universities', EDU_RU, 'Знает Закон об образовании в вузах.', ('вузах',))):
+    CASES += [
+        guard(f'laws-an-opening-word-before-a-named-law-{slug}-ru-blank', BLANK, brief, 'ru', sentence, gone=gone,
+              translated=False),
+        gp(f'laws-an-opening-word-before-a-named-law-{slug}-in-a-grounded-part-ru-blank', BLANK, brief, 'ru', sentence,
+           gone=gone),
+    ]
+CASES += [
+    body('laws-an-opening-word-before-a-named-law-and-audit-in-a-qualification-ru-blank', BLANK,
+         'pdf.biz.lavozim_yoriqnomasi', JOB_RU_ACCOUNTING, 'ru', 'qualification',
+         'Соблюдает Закон о бухгалтерском учёте и аудите.', gone=('аудите',)),
+]
+for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING_UZ_RU)):
+    CASES.append(guard(f'laws-an-opening-word-before-a-named-law-and-audit-{direction}-blank', BLANK, brief, 'ru',
+                       'Соблюдает Закон о бухгалтерском учёте и аудите.', gone=('аудите',), translated=True))
+for slug, sentence, gone in (
+        ('under-and-auditing', 'Under Law on Accounting and Auditing, the accountant keeps the books.', ('Auditing',)),
+        ('per-and-auditing', 'Per Law on Accounting and Auditing, reports are filed monthly.', ('Auditing',)),
+        ('by-and-auditing', 'By Law on Accounting and Auditing, the books are kept.', ('Auditing',)),
+        ('under-in-banks', 'Under Law on Accounting in Banks, reports are filed.', ('Banks',)),
+        ('under-auditing-and-taxes', 'Under Law on Accounting, Auditing and Taxes, reports are filed.',
+         ('Auditing', 'Taxes')),
+        ('a-role-and-auditing', 'Accountant Law on Accounting and Auditing applies.', ('Auditing',))):
+    for direction, brief in (('ru-to-en', JOB_RU_EN_LAW), ('uz-to-en', ACCOUNTING_UZ_EN)):
+        CASES.append(guard(f'laws-an-opening-word-before-a-named-law-{slug}-{direction}-blank', BLANK, brief, 'en',
+                           sentence, gone=gone, translated=True))
+# eb8b05c keeps the customer's own law after a duty's verb or a preposition opening the sentence where its name ends:
+# at the sentence's end, or before a word that cannot go on it (a clause after "и" or a comma).
+CASES += [
+    guard('laws-an-opening-word-before-the-customers-law-ru-keep', KEEP, JOB_RU_ACCOUNTING, 'ru',
+          'Соблюдает Закон о бухгалтерском учёте.'),
+    gp('laws-an-opening-word-before-the-customers-law-in-a-grounded-part-ru-keep', KEEP, JOB_RU_ACCOUNTING, 'ru',
+       'Руководствуется Законом о бухгалтерском учёте.'),
+    guard('laws-an-opening-word-before-the-customers-law-and-a-clause-ru-keep', KEEP, JOB_RU_ACCOUNTING, 'ru',
+          'Знает Закон о бухгалтерском учёте и умеет вести книги.'),
+    guard('laws-an-opening-word-before-the-customers-law-and-a-comma-clause-ru-keep', KEEP, JOB_RU_ACCOUNTING, 'ru',
+          'Согласно Закону о бухгалтерском учёте, бухгалтер ведёт книги.'),
+    guard('laws-an-opening-word-before-the-customers-law-on-education-ru-keep', KEEP, EDU_RU, 'ru',
+          'Соблюдает Закон об образовании.'),
+    guard('laws-an-opening-word-before-the-customers-law-and-a-comma-clause-ru-to-en-keep', KEEP, JOB_RU_EN_LAW, 'en',
+          'Under Law on Accounting, the accountant keeps the books.', translated=True),
+    guard('laws-an-opening-word-before-the-customers-law-and-a-comma-clause-uz-to-en-keep', KEEP, ACCOUNTING_UZ_EN,
+          'en', 'Under Law on Accounting, the accountant keeps the books.', translated=True),
+]
+
+# ---- An Uzbek ordinal with its apostrophe inside ("to‘rtinchi", "to'rtinchi", "o‘ninchi", "to‘qqizinchi",
+# "o‘ttizinchi", "o‘n to‘rtinchi", "yigirma to‘rtinchi") is read whole (must, q3, q4): a placing's patterns read only its
+# letters after the apostrophe, which make no ordinal, and the tip skipped the match, so the paper's invented placing
+# went unchecked; c491da9 and eb8b05c stopped there and emptied the part. A placing whose words make no ordinal at all
+# ("kechinchi o‘rinni") blanks as they did.
+ORDINAL_BRIEFS = {
+    'uz': 'O‘quvchim Qodirova Malika uchun tavsiyanoma yozing. U a’lochi, matematikani yaxshi ko‘radi.',
+    'ru-to-uz': 'Напишите на узбекском рекомендательное письмо для ученицы Малики Кодировой. Она отличница.',
+    'en-to-uz': 'Please write a recommendation letter in Uzbek for my student Malika Qodirova. She loves maths.',
+}
+APOSTROPHE_ORDINALS = (('fourth', 'to‘rtinchi'), ('fourth-ascii', "to'rtinchi"), ('fourth-modifier', 'toʼrtinchi'),
+                       ('tenth', 'o‘ninchi'), ('ninth', 'to‘qqizinchi'), ('thirtieth', 'o‘ttizinchi'),
+                       ('fourteenth', 'o‘n to‘rtinchi'), ('twenty-fourth', 'yigirma to‘rtinchi'))
+APOSTROPHE_PLACINGS = (('took-place', 'U viloyat olimpiadasida {o} o‘rinni egalladi.'),
+                       ('was-awarded-place', 'U shahar tanlovida {o} o‘ringa sazovor bo‘ldi.'),
+                       ('at-place', 'Matematika olimpiadasida {o} o‘rinda.'),
+                       ('became', 'U tanlovda {o} bo‘ldi.'),
+                       ('degree-diploma', 'U {o} darajali diplom oldi.'),
+                       ('prize', 'Musobaqada {o} sovrinni qo‘lga kiritdi.'),
+                       ('result', 'Respublika olimpiadasida {o} natijani ko‘rsatdi.'))
+for direction, brief in ORDINAL_BRIEFS.items():
+    for slug, ordinal in APOSTROPHE_ORDINALS:
+        word = ordinal.split()[-1]
+        for form, template in APOSTROPHE_PLACINGS:
+            CASES.append(gp(f'numbers-an-apostrophe-ordinal-{slug}-{form}-{direction}-blank', BLANK, brief, 'uz',
+                            template.format(o=ordinal), gone=(word,)))
+        CASES += [
+            body(f'numbers-an-apostrophe-ordinal-{slug}-in-a-references-achievements-{direction}-blank', BLANK,
+                 'pdf.xat.tavsifnoma', brief, 'uz', 'achievements',
+                 APOSTROPHE_PLACINGS[0][1].format(o=ordinal), gone=(word,)),
+            fact(f'numbers-an-apostrophe-ordinal-{slug}-in-a-references-subject-role-{direction}-blank', BLANK,
+                 'pdf.xat.tavsifnoma', brief, 'uz', 'subject_role', APOSTROPHE_PLACINGS[0][1].format(o=ordinal),
+                 gone=(word,)),
+        ]
+CASES += [
+    gp('numbers-a-placing-whose-words-make-no-ordinal-uz-blank', BLANK, ORDINAL_BRIEFS['uz'], 'uz',
+       'U viloyat olimpiadasida kechinchi o‘rinni egalladi.', gone=('kechinchi',)),
+    body('numbers-a-placing-whose-words-make-no-ordinal-in-a-references-achievements-uz-blank', BLANK,
+         'pdf.xat.tavsifnoma', ORDINAL_BRIEFS['uz'], 'uz', 'achievements',
+         'U viloyat olimpiadasida kechinchi o‘rinni egalladi.', gone=('kechinchi',)),
+    gp('numbers-an-apostrophe-ordinal-noun-uz-blank', BLANK, ORDINAL_BRIEFS['uz'], 'uz',
+       'U tanlovda to‘rtinchilikni qo‘lga kiritdi.', gone=('to‘rtinchilikni',)),
+]
+# The customer's placing in a form c491da9 never read, their collective, or their bare figure grounds no apostrophe
+# ordinal's placing: it needs their figure and their placing of it both.
+for slug, said, locale, sentence, word in (
+        ('ranks-fourth-in-sales', 'Savdo bo‘yicha to‘rtinchi o‘rinda turadi.', 'uz', 'U to‘rtinchi o‘rinni egalladi.',
+         'to‘rtinchi'),
+        ('rose-to-the-fourth-line', 'Он поднялся на четвёртую строчку рейтинга.', 'ru', 'U to‘rtinchi o‘rinni egalladi.',
+         'to‘rtinchi'),
+        ('took-fourth-at-a-championship', 'He took fourth at the regional championship.', 'en',
+         'U to‘rtinchi o‘rinni egalladi.', 'to‘rtinchi'),
+        ('entered-the-top-ten', 'Он вошёл в десятку сильнейших.', 'ru', 'U o‘ninchi o‘rinni egalladi.', 'o‘ninchi'),
+        ('four-years', 'U 4 yil to‘garakka qatnashgan.', 'uz', 'U to‘rtinchi o‘rinni egalladi.', 'to‘rtinchi')):
+    direction = 'uz' if locale == 'uz' else f'{locale}-to-uz'
+    CASES.append(gp(f'numbers-a-customers-{slug}-grounds-no-apostrophe-ordinal-{direction}-blank', BLANK,
+                    PLACING_LETTERS[locale] + said, 'uz', sentence, gone=(word,)))
+CASES += [
+    gp('numbers-the-customers-fourth-place-as-an-apostrophe-ordinal-en-to-uz-keep', KEEP,
+       PLACING_LETTERS['en'] + 'She won fourth place at the regional olympiad.', 'uz',
+       'U viloyat olimpiadasida to‘rtinchi o‘rinni egalladi.'),
+    gp('numbers-the-customers-fourth-place-as-an-apostrophe-ordinal-ru-to-uz-keep', KEEP,
+       PLACING_LETTERS['ru'] + 'На олимпиаде она заняла четвёртое место.', 'uz',
+       'U olimpiadada to‘rtinchi o‘rinni egalladi.'),
+    # Their figure in digits is the bare figure "U 4 yil to‘garakka qatnashgan" gives too: the owner's tie-break.
+    gp('numbers-the-customers-digit-placing-as-an-apostrophe-ordinal-uz-accepted_false_blank', ACCEPTED,
+       PLACING_LETTERS['uz'] + 'U viloyat olimpiadasida 4-o‘rinni egallagan.', 'uz',
+       'U viloyat olimpiadasida to‘rtinchi o‘rinni egalladi.', gone=('to‘rtinchi',),
+       pair='numbers-a-customers-four-years-grounds-no-apostrophe-ordinal-uz-blank'),
+]
+
+# ---- A rejected line's given name that is also a role's modifier ("Junior", "Global", "Content") is held as c491da9
+# holds it (must, q5): the words after a line's last role word, beside the tip's own reading of its name.
+SALES_REPORT = {'en': 'Write a monthly sales report for our shop.', 'uz': 'Do‘konimiz uchun oylik savdo hisobotini yozing.'}
+for slug, line in (('direktor-junior', 'Direktor Junior Smith'),
+                   ('senior-sales-manager-junior', 'Senior Sales Manager Junior Smith'),
+                   ('bosh-hisobchi-junior', 'Bosh hisobchi Junior Smith'),
+                   ('director-junior', 'Director Junior Smith'),
+                   ('direktor-global', 'Direktor Global Aziz'),
+                   ('direktor-content', 'Direktor Content Nodir')):
+    word = line.split()[-2]
+    for locale, brief in SALES_REPORT.items():
+        sentence = (f'{word} reviewed the figures with the team.' if locale == 'en'
+                    else f'{word} jamoa bilan raqamlarni ko‘rib chiqdi.')
+        CASES.append(body(f'names-a-line-modifier-given-name-{slug}-opening-a-sentence-{locale}-blank', BLANK,
+                          'pdf.biz.hisobot', brief, locale, 'summary', sentence, gone=(word,),
+                          facts=(('author', line),)))
+
 CASE_IDS = [case.id for case in CASES]
 
 
