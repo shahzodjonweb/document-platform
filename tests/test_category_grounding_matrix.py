@@ -4408,6 +4408,12 @@ for slug, sentence in (('comma-a-clause', 'Under Law on Accounting of 13 April 2
                        ('and-applies-it', 'Follows the Law on Accounting of 13 April 2016 and applies it daily.')):
     CASES.append(guard(f'laws-the-customers-law-and-its-date-{slug}-en-keep', KEEP, JOB_EN_KNOWS_ACCOUNTING_DATED, 'en',
                        sentence))
+# What the reading costs against eb8b05c: a clause after the law's date with its subject first ("... № 404 отчёты
+# сдаются ежегодно") reads as a genitive tail after the number does, so the customer's law blanks.
+CASES.append(guard('laws-the-customers-law-and-its-number-before-a-subject-and-its-verb-ru-accepted_false_blank',
+                   ACCEPTED, JOB_RU_KNOWS_ACCOUNTING_DATED, 'ru',
+                   'Согласно Закону о бухгалтерском учёте от 13 апреля 2016 года № 404 отчёты сдаются ежегодно.',
+                   gone=('отчёты',), pair=NUMBER_GENITIVE_TAIL))
 
 # ---- A placing only the placings read since see, its Uzbek ordinal with its apostrophe left unread, gives the
 # customer's side its place key alone (the sweep's 146 lines versus eb8b05c, p2): c491da9 read the ordinal's number word
@@ -4445,6 +4451,40 @@ for form, template in SECOND_PLACINGS:
              BLANK, 'pdf.xat.tavsifnoma', said, 'uz', 'achievements', 'U 4 yil matematika to‘garagiga qatnashgan.',
              gone=('4',)),
     ]
+
+# ---- The false blanks versus eb8b05c the round-12 sweep and the re-check's census (p6) still show, each the price of
+# the blank it names: a preposition after the law's name may go on it ("... учёте на практике", "... учёте во всём", as
+# "... учёте в банках"); a clause's subject after the name reads as a genitive tail ("... учёте бухгалтер отвечает за
+# отчёты", as "... учёте банков регулируется отчётность"); a determiner that opens a relative clause's subject as
+# often as a verb's object is no sign of a verb ("guarantees each child", "protects some pupils", as "vouchers each
+# family gets", "fees some parents pay"); "to" before a determiner reads as before a noun ("matters to every teacher",
+# as "grants to students").
+for direction, brief in RUSSIAN_ACCOUNTING:
+    banks = ('laws-an-opening-word-before-a-named-law-in-banks-ru-blank' if direction == 'ru'
+             else f'laws-an-opening-word-before-a-named-law-in-banks-{direction}-blank')
+    tail = f'laws-a-genitive-tail-before-a-clause-verb-after-a-named-law-{direction}-blank'
+    for slug, sentence, word, pair in (
+            ('in-practice', 'Применяет Закон о бухгалтерском учёте на практике.', 'практике', banks),
+            ('in-everything', 'Следует Закону о бухгалтерском учёте во всём.', 'всём', banks),
+            ('by-a-subject-and-its-verb', 'По Закону о бухгалтерском учёте бухгалтер отвечает за отчёты.', 'бухгалтер',
+             tail)):
+        CASES.append(gp(f'laws-the-customers-law-after-an-opening-word-{slug}-{direction}-accepted_false_blank',
+                        ACCEPTED, brief, 'ru', sentence, gone=(word,), pair=pair))
+CASES += [
+    guard('laws-the-customers-law-on-education-guarantees-each-child-a-place-en-accepted_false_blank', ACCEPTED,
+          EDU_EN, 'en', 'The Law on Education guarantees each child a place.', gone=('guarantees',),
+          pair='laws-a-plural-noun-of-an-unnamed-law-vouchers-each-family-gets-en-blank'),
+    guard('laws-the-customers-law-on-education-protects-some-pupils-more-en-accepted_false_blank', ACCEPTED, EDU_EN,
+          'en', 'The Law on Education protects some pupils more.', gone=('protects',),
+          pair='laws-a-plural-noun-of-an-unnamed-law-fees-some-parents-pay-en-blank'),
+    guard('laws-the-customers-law-on-education-matters-to-every-teacher-en-accepted_false_blank', ACCEPTED, EDU_EN,
+          'en', 'The Law on Education matters to every teacher.', gone=('matters',),
+          pair='laws-an-invented-tail-after-the-customers-law-education-grants-to-students-en-blank'),
+    guard('laws-the-customers-law-and-its-number-before-a-subject-and-its-verb-en-to-ru-accepted_false_blank', ACCEPTED,
+          ACCOUNTING_EN_RU_NUMBERED, 'ru',
+          'Согласно Закону о бухгалтерском учёте от 13 апреля 2016 года № 404 отчёты сдаются ежегодно.',
+          gone=('отчёты',), pair=NUMBER_GENITIVE_TAIL),
+]
 
 CASE_IDS = [case.id for case in CASES]
 
