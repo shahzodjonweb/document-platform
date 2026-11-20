@@ -3741,7 +3741,7 @@ CASES += [
        'U tanlovda to‘rtinchilikni qo‘lga kiritdi.', gone=('to‘rtinchilikni',)),
 ]
 # The customer's placing in a form c491da9 never read, their collective, or their bare figure grounds no apostrophe
-# ordinal's placing: it needs their figure and their placing of it both.
+# ordinal's placing: c491da9 and eb8b05c read none of them there.
 for slug, said, locale, sentence, word in (
         ('ranks-fourth-in-sales', 'Savdo bo‘yicha to‘rtinchi o‘rinda turadi.', 'uz', 'U to‘rtinchi o‘rinni egalladi.',
          'to‘rtinchi'),
@@ -3754,14 +3754,18 @@ for slug, said, locale, sentence, word in (
     direction = 'uz' if locale == 'uz' else f'{locale}-to-uz'
     CASES.append(gp(f'numbers-a-customers-{slug}-grounds-no-apostrophe-ordinal-{direction}-blank', BLANK,
                     PLACING_LETTERS[locale] + said, 'uz', sentence, gone=(word,)))
+# The customer's own placing restated with an apostrophe ordinal blanks too (c491da9 and eb8b05c emptied the part, so
+# neither kept it): their "fourth place" gives the figure and the place key their sales ranking "to‘rtinchi o‘rinda
+# turadi" gives, and their digits the bare figure "U 4 yil to‘garakka qatnashgan" gives: the owner's tie-break.
 CASES += [
-    gp('numbers-the-customers-fourth-place-as-an-apostrophe-ordinal-en-to-uz-keep', KEEP,
+    gp('numbers-the-customers-fourth-place-as-an-apostrophe-ordinal-en-to-uz-accepted_false_blank', ACCEPTED,
        PLACING_LETTERS['en'] + 'She won fourth place at the regional olympiad.', 'uz',
-       'U viloyat olimpiadasida to‘rtinchi o‘rinni egalladi.'),
-    gp('numbers-the-customers-fourth-place-as-an-apostrophe-ordinal-ru-to-uz-keep', KEEP,
+       'U viloyat olimpiadasida to‘rtinchi o‘rinni egalladi.', gone=('to‘rtinchi',),
+       pair='numbers-a-customers-took-fourth-at-a-championship-grounds-no-apostrophe-ordinal-en-to-uz-blank'),
+    gp('numbers-the-customers-fourth-place-as-an-apostrophe-ordinal-ru-to-uz-accepted_false_blank', ACCEPTED,
        PLACING_LETTERS['ru'] + 'На олимпиаде она заняла четвёртое место.', 'uz',
-       'U olimpiadada to‘rtinchi o‘rinni egalladi.'),
-    # Their figure in digits is the bare figure "U 4 yil to‘garakka qatnashgan" gives too: the owner's tie-break.
+       'U olimpiadada to‘rtinchi o‘rinni egalladi.', gone=('to‘rtinchi',),
+       pair='numbers-a-customers-rose-to-the-fourth-line-grounds-no-apostrophe-ordinal-ru-to-uz-blank'),
     gp('numbers-the-customers-digit-placing-as-an-apostrophe-ordinal-uz-accepted_false_blank', ACCEPTED,
        PLACING_LETTERS['uz'] + 'U viloyat olimpiadasida 4-o‘rinni egallagan.', 'uz',
        'U viloyat olimpiadasida to‘rtinchi o‘rinni egalladi.', gone=('to‘rtinchi',),
