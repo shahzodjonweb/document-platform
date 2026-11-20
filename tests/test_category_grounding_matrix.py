@@ -4106,6 +4106,28 @@ for direction, brief in (('en', JOB_EN_LAW), ('ru-to-en', JOB_RU_EN_LAW)):
     CASES.append(guard(f'laws-the-customers-law-before-an-article-and-their-labour-code-{direction}-keep', KEEP, brief,
                        'en', 'Under Law on Accounting and the Labour Code, the accountant keeps the books.'))
 
+# ---- A law's making before a preposition ends its name only before the law's date or number, and a sentence adverb
+# never ends the name of a law a preposition governs (a3, joined to the sweep in round 11): "Under Law on accounting
+# adopted for banks, ...", "Under Law on accounting thus auditing applies" name more than the customer's law; c491da9
+# blanks them, eb8b05c kept them.
+for slug, sentence, gone in (
+        ('adopted-for-banks', 'Under Law on accounting adopted for banks, the accountant keeps the books.', ('banks',)),
+        ('thus-auditing-applies', 'Under Law on accounting thus auditing applies.', ('auditing',)),
+        ('amended-for-banks', 'Per the Law on accounting amended for banks, reports are filed.', ('banks',))):
+    for direction, brief, translated in (('en', ACCOUNTING_EN, False), ('ru-to-en', JOB_RU_EN_LAW, True),
+                                         ('uz-to-en', ACCOUNTING_UZ_EN, True)):
+        CASES += [
+            guard(f'laws-a-tail-after-a-named-law-{slug}-{direction}-blank', BLANK, brief, 'en', sentence, gone=gone,
+                  translated=translated),
+            gp(f'laws-a-tail-after-a-named-law-{slug}-in-a-grounded-part-{direction}-blank', BLANK, brief, 'en',
+               sentence, gone=gone),
+        ]
+# eb8b05c keeps the customer's law before its making's date, and before an adverb where no preposition governs it.
+for slug, sentence in (('adopted-in-a-year', 'The Law on Education adopted in 1997 is still in force.'),
+                       ('thus-protects', 'The Law on Education thus protects pupils.')):
+    CASES.append(guard(f'laws-the-customers-law-on-education-{slug}-en-keep', KEEP, EDU_EN + ' It was adopted in 1997.',
+                       'en', sentence))
+
 CASE_IDS = [case.id for case in CASES]
 
 
