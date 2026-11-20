@@ -1,6 +1,7 @@
 """Numbers read as c491da9 read them: the customer's side gives exactly its values and place keys, and a paper's
 figure is checked at least as it checked it (the owner's rule for stage 2: a leak c491da9 did not have is never
-acceptable).
+acceptable). One named exemption, the owner's decision in round 12: the bare figure c491da9 read in the ordinal of a
+placing only the placings read since see, left unread (`_unread_figures`), is no longer given.
 
 `fixtures/categories/numbers_c491da9.py` is c491da9's apps/studio/categories/numbers.py byte for byte (its git blob id
 is checked), loaded with its two relative imports made absolute. The corpus is every text of the grounding matrix (its
@@ -88,10 +89,20 @@ def _first_values(first, text):
         return None
 
 
+def _unread_figures(text):
+    """The bare figures c491da9 read in the number words of a placing only the placings read since see, its Uzbek
+    ordinal with its apostrophe left unread (`numbers.UNREAD`: "to‘rtinchi natijani ko‘rsatdi", "to‘rtinchi o‘rinda
+    turadi"): c491da9 read the word alone as a figure ("4"), eb8b05c stopped reading there and failed the job, and the
+    owner's decision (round 12) is that the customer's placing gives its place key alone, as every placing read since
+    does. These are the only values c491da9 gave that `numbers.values` no longer gives."""
+    unread = [number for number in numbers._Reader(text).read(words=True) if number.value == numbers.UNREAD]
+    return numbers._words(' ; '.join(text[number.start:number.end] for number in unread))
+
+
 def test_the_customers_values_are_c491da9s_with_place_keys_alone(first):
     corpus = _corpus()
     assert len(corpus) > 3000
-    differ, places = [], 0
+    differ, places, unread = [], 0, 0
     for text in corpus:
         before = _first_values(first, text)
         if before is None:
@@ -99,10 +110,27 @@ def test_the_customers_values_are_c491da9s_with_place_keys_alone(first):
         now = numbers.values(text)
         added = now - before
         places += bool(added)
-        if before - now or any(not key.startswith(numbers.PLACE) for key in added):
-            differ.append((text, sorted(before - now), sorted(key for key in added if not key.startswith('place:'))))
+        missing = before - now
+        if missing and missing <= _unread_figures(text):
+            unread += 1
+            missing = set()
+        if missing or any(not key.startswith(numbers.PLACE) for key in added):
+            differ.append((text, sorted(missing), sorted(key for key in added if not key.startswith('place:'))))
     assert not differ, f'{len(differ)} texts give other values than c491da9 (text, missing, added): {differ[:5]}'
     assert places > 100, 'the placings read since give their place keys'
+    assert unread, 'the placings read since with an unread ordinal give no bare figure (_unread_figures)'
+
+
+def test_an_unread_placing_read_since_gives_its_place_key_alone():
+    """The customer's placing only the placings read since see, its apostrophe ordinal unread, grounds no bare figure
+    (round 12): their "to‘rtinchi natijani ko‘rsatdi" is no "4 yil"."""
+    for text, place in (('Tuman olimpiadasida to‘rtinchi natijani ko‘rsatdi.', 'place:4'),
+                        ('Musobaqada to‘rtinchi pog‘onaga ko‘tarildi.', 'place:4'),
+                        ("U to'rtinchi darajali diplom oldi.", 'place:4'),
+                        ('Savdo hajmi bo‘yicha o‘ninchi o‘ringa chiqdi.', 'place:10'),
+                        ('Olimpiadada to`qqizinchi bo`ldi.', 'place:9'),
+                        ('Savdo bo‘yicha to’rtinchi o’rinda turadi.', 'place:4')):
+        assert numbers.values(text) == {place}, (text, numbers.values(text))
 
 
 def test_a_place_key_is_never_a_figure():

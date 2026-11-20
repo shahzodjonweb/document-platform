@@ -1235,9 +1235,11 @@ def values(text):
 
     The customer's numbers are the first reading's (`FIRST_PLACE`): every figure, date and fraction key is the one
     c491da9 gave. A placing or a collective read since adds its place key alone ("place:1", "place:top3"), never a
-    bare figure (`_Reader.placing`). The words of a placing the first reading leaves unread (`UNREAD`: "to‘rtinchi
-    o‘rinni", where c491da9 stopped reading and failed) give no number word of theirs either (`_words`): their
-    "to‘rtinchi o‘rinni egalladi" is no "4 yil"."""
+    bare figure (`_Reader.placing`). The words of a placing either reading leaves unread (`UNREAD`: "to‘rtinchi
+    o‘rinni", "to‘rtinchi natijani", where c491da9 stopped reading and failed or, where only the placings read since
+    see a placing, read its ordinal's number word as a bare figure) give no number word of theirs either (`_words`):
+    their "to‘rtinchi o‘rinni egalladi" or "to‘rtinchi natijani ko‘rsatdi" is no "4 yil", and gives its place key
+    alone."""
     text = str(text or '')
     keys = set()
     words = text
@@ -1250,9 +1252,12 @@ def values(text):
             for need in number.needs:
                 keys |= need
         keys |= number.extra
+    read = _Reader(text).read(words=True)
+    for number in read:
+        if number.value == UNREAD:
+            words = words[:number.start] + ' ' * (number.end - number.start) + words[number.end:]
     keys |= _words(words)
-    keys |= {key for number in _Reader(text).read(words=True) for need in number.needs for key in need
-             if key.startswith(PLACE)}
+    keys |= {key for number in read for need in number.needs for key in need if key.startswith(PLACE)}
     return keys
 
 
