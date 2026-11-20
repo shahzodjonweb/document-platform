@@ -3663,30 +3663,41 @@ CASES += [
 CASES.append(guard('laws-an-accounting-law-head-before-and-audit-en-to-uz-blank', BLANK, ACCOUNTING_EN_UZ, 'uz',
                    'Buxgalter Buxgalteriya hisobi va audit to‘g‘risidagi qonunga amal qiladi.', gone=('audit',),
                    translated=True))
+# The Russian head before "и" and another law of the customer's ends the name there: "... учёте и налоговый кодекс".
+ACCOUNTING_TAX_UZ_RU = ('Buxgalter uchun rus tilida lavozim yo‘riqnomasi yozing. U Buxgalteriya hisobi to‘g‘risidagi '
+                        'qonunni va Soliq kodeksini bilishi kerak.')
+CASES.append(guard('laws-the-customers-accounting-law-head-before-and-their-tax-code-uz-to-ru-keep', KEEP,
+                   ACCOUNTING_TAX_UZ_RU, 'ru', 'Знает закон о бухгалтерском учёте и налоговый кодекс.', translated=True))
+for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING_UZ_RU)):
+    CASES.append(guard(f'laws-an-accounting-law-head-before-as-well-as-audit-{direction}-blank', BLANK, brief, 'ru',
+                       'Бухгалтер руководствуется Законом о бухгалтерском учёте, а также аудите.', gone=('аудите',),
+                       translated=True))
 # The keeps restored, and the blank each one's accepted id now pays for: a word before a comma, where a list may go
-# on the name (`_aside`); the Uzbek head before another word than "to‘g‘risidagi" ("... hisobi bo‘yicha Qonunni").
+# on the name (`_aside`); the Russian head before a preposition ("... учёте на практике", as "... учёте в банках");
+# the Uzbek head before another word than "to‘g‘risidagi" ("... hisobi bo‘yicha Qonunni").
 COMMA_AFTER = 'laws-an-invented-tail-after-the-customers-law-state-funded-before-a-comma-en-blank'
 RESTORED = {keep: COMMA_AFTER for keep, (_, pair) in PAID.items()
             if pair in (GOES_ON_S, GOES_ON_S_LOWER, GOES_ON_ED, GOES_ON_LY, GOES_ON_LY_LOWER)}
 RESTORED.update({keep: 'laws-an-invented-tail-after-the-customers-law-accountings-rules-before-a-comma-en-blank'
                  for keep, (_, pair) in PAID.items() if 'possessive' in pair})
 RESTORED.update({keep: ('laws-an-accounting-law-head-before-and-audit-en-to-uz-blank' if keep.endswith('-to-uz-keep')
-                        else 'laws-an-accounting-law-head-before-audit-and-taxes-'
+                        else 'laws-an-accounting-law-head-before-in-banks-'
                         + ('en' if keep.endswith('-en-to-ru-keep') else 'uz') + '-to-ru-blank')
                  for keep, (gone, _) in PAID.items() if gone in (('учёте',), ('hisobi',))})
-ASIDE = {'en': ', in practice', 'ru': ', как известно'}
+ASIDE = {'en': ', in practice', 'ru': ' на практике'}
 
 
 def _aside(value, word, locale):
     """`value` with an aside after the first `word`, before a comma: "The Law on Education guarantees, in practice,
-    free schooling.", "He knows the Law on Accounting well, in practice.", "... Законом о бухгалтерском учёте, как
-    известно."; the Uzbek head before "bo‘yicha" for its "to‘g‘risidagi": "... hisobi bo‘yicha Qonunni biladi." """
+    free schooling.", "He knows the Law on Accounting well, in practice."; the Russian head before a preposition:
+    "... Законом о бухгалтерском учёте на практике."; the Uzbek head before "bo‘yicha" for its "to‘g‘risidagi": "...
+    hisobi bo‘yicha Qonunni biladi." """
     if locale == 'uz':
         return value.replace(f'{word} to‘g‘risidagi qonun', f'{word} bo‘yicha Qonun')
     found = re.search(r'(?<![^\W_])' + re.escape(word) + r'(?![^\W_])', value)
     end = found.end()
     rest = value[end:]
-    return value[:end] + ASIDE[locale] + ('' if rest in ('.', '') else ',') + rest
+    return value[:end] + ASIDE[locale] + ('' if rest in ('.', '') or locale == 'ru' else ',') + rest
 
 
 def _paid(case):

@@ -1735,8 +1735,9 @@ def _law_head_ends(sentence, start, word):
     """Whether a law's name ends at its head noun `word` at `start` of `sentence`, past a closing quote: the Uzbek head
     before what joins the name to its stem ("Buxgalteriya hisobi to‘g‘risidagi qonun") or before the stem; the Russian
     head before the sentence's or its clause's end, a verb (`RU_LAW_VERB`) or the law's date or number ("... о
-    бухгалтерском учёте от 13 апреля 2016 года"). After "и", a comma, a preposition or any other word the name may go
-    on past what `_law_names` reads."""
+    бухгалтерском учёте от 13 апреля 2016 года"), or past "и" or a comma a word that cannot go on it. Before a
+    preposition, a word in the name's case ("... учёте и аудите") or any other word the name may go on past what
+    `_law_names` reads."""
     rest = sentence[start + len(word):]
     rest = rest[LAW_HEAD_CLOSE.match(rest).end():]
     if not re.search('[а-яё]', normalised(word).casefold()):
@@ -1746,7 +1747,13 @@ def _law_head_ends(sentence, start, word):
     if LAW_HEAD_END.match(rest) or LAW_HEAD_DATED.match(rest):
         return True
     verb = re.match(r"[ \u00a0]+([^\W\d_]+)(?![^\W\d_]|-)", rest)
-    return verb is not None and RU_LAW_VERB.fullmatch(normalised(verb.group(1)).casefold()) is not None
+    if verb is not None and RU_LAW_VERB.fullmatch(normalised(verb.group(1)).casefold()) is not None:
+        return True
+    # Past "и", "а также" or a comma, a word that cannot go on the name (`_may_go_on`): a clause's verb or another law
+    # ("... учёте и умеет вести книги", "... учёте и налоговый кодекс"); never "... учёте и аудите".
+    joined = re.match(r"(?:[ \u00a0]*,|[ \u00a0]+(?:и|а|или)(?![^\W\d_]))(?:[ \u00a0]+(?:и|а|или|также|тоже|ещё|еще)"
+                      r"(?![^\W\d_]))*[ \u00a0]+([^\W\d_]+)", rest)
+    return joined is not None and not _may_go_on(joined.group(1))
 
 
 def _legal_known(sentence, concepts, trusted, translated, *, names=True):
