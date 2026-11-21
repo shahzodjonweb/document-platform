@@ -5383,6 +5383,44 @@ for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_U
         CASES.append(guard(f'laws-the-customers-law-after-a-noun-in-it-or-li-opening-a-sentence-{slug}-{direction}-'
                            f'keep', KEEP, brief, 'ru', sentence, translated=direction != 'ru'))
 
+# ---- An adverb in -о neither the lexicon nor an adverb's shape gives (k2, the fixer's k1): "не" before an adverb that
+# is one ("неплохо", "нехорошо", "нечасто", "нескоро", "нетвёрдо") and the adverbs of adjectives the lexicon lacks
+# ("трезво", "здраво", "храбро", "резво", "шустро", "наскоро", "хмуро", "лихо"). Round 14 read them as nouns that keep
+# their -о and blanked the customer's law; 28c1b69 passed every lower-case word in -о over and keeps them.
+UNREAD_ADVERBS_IN_O_RU = (
+    ('not-badly', 'Знает Закон о бухгалтерском учёте неплохо.'),
+    ('not-badly-and-a-clause', 'Соблюдает Закон о бухгалтерском учёте неплохо и умеет вести книги.'),
+    ('not-often-a-comma-clause', 'Знает Закон о бухгалтерском учёте, нечасто применяет его на практике.'),
+    ('not-firmly', 'Изучив Закон о бухгалтерском учёте нетвёрдо, бухгалтер ведёт книги.'),
+    ('soberly', 'Применяет Закон о бухгалтерском учёте трезво.'),
+    ('sensibly-and-a-clause', 'Знает Закон о бухгалтерском учёте и здраво применяет его.'),
+    ('bravely', 'Соблюдает Закон о бухгалтерском учёте храбро.'),
+    ('hastily', 'Изучив Закон о бухгалтерском учёте наскоро, бухгалтер ведёт книги.'),
+    ('glumly-and-a-clause', 'Соблюдает Закон о бухгалтерском учёте хмуро и умеет вести книги.'))
+for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
+    for slug, sentence in UNREAD_ADVERBS_IN_O_RU:
+        CASES += [
+            guard(f'laws-the-customers-law-before-an-adverb-in-o-the-lexicon-lacks-{slug}-{direction}-keep', KEEP,
+                  brief, 'ru', sentence, translated=direction != 'ru'),
+            gp(f'laws-the-customers-law-before-an-adverb-in-o-the-lexicon-lacks-{slug}-in-a-grounded-part-{direction}-'
+               f'keep', KEEP, brief, 'ru', sentence),
+        ]
+    CASES.append(body(f'laws-the-customers-law-before-an-adverb-in-o-the-lexicon-lacks-not-badly-and-a-clause-in-a-'
+                      f'report-{direction}-keep', KEEP, 'pdf.biz.hisobot', brief, 'ru', 'work_done',
+                      UNREAD_ADVERBS_IN_O_RU[1][1]))
+for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING_UZ_RU),
+                         ('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU)):
+    for slug, sentence in (('not-badly', 'Бухгалтер знает Закон о бухгалтерском учёте неплохо.'),
+                           ('soberly-and-a-clause', 'Бухгалтер применяет Закон о бухгалтерском учёте трезво и ведёт '
+                                                    'книги.')):
+        CASES.append(guard(f'laws-the-customers-translated-law-before-an-adverb-in-o-the-lexicon-lacks-{slug}-'
+                           f'{direction}-keep', KEEP, brief, 'ru', sentence, translated=True))
+# "не" before a noun that keeps its -о makes no adverb: the name goes on with "нетто" and blanks.
+for direction, brief in RUSSIAN_ACCOUNTING:
+    CASES.append(guard(f'laws-an-indeclinable-tail-in-ne-after-a-named-law-and-net-{direction}-blank', BLANK, brief,
+                       'ru', 'Знает Закон о бухгалтерском учёте и нетто.', gone=('нетто',),
+                       translated=direction != 'ru'))
+
 CASE_IDS = [case.id for case in CASES]
 
 

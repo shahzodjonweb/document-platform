@@ -1784,10 +1784,12 @@ RU_INDECLINABLE = re.compile(
     r"|[а-яё]+э")
 # The lower-case Russian adverbs, particles and pronouns in -о passed over as LAW_PASS_RU's are (`_ru_adverb`), named
 # where the lexicon or an adverb's shape may not give them: "то есть", "это", "что", "либо", "ибо", "около", "свято",
-# "будто", "надолго".
+# "будто", "надолго", and the adverbs of adjectives the lexicon lacks ("трезво", "храбро", "наскоро"), ё read as е.
 LAW_PASS_RU_O = re.compile(r"то|это|что|оно|одно|само|либо|зато|ибо|около|вместо|помимо|мимо|много|немного|несколько"
                            r"|сколько|столько|только|сугубо|особо|свято|густо|круто|бодро|щедро|гордо|худо|глухо|криво"
-                           r"|тупо|скупо|слепо|глупо|незримо|туго|будто|надолго|ненадолго|запросто")
+                           r"|тупо|скупо|слепо|глупо|незримо|туго|будто|надолго|ненадолго|запросто"
+                           r"|трезво|здраво|храбро|резво|шустро|наскоро|сыро|хмуро|лихо|мертво|пестро|толсто|ржаво"
+                           r"|шершаво|дико|угрюмо|упрямо|сноровисто")
 # The shapes of a Russian word in -о that is no noun keeping it in every case (`_ru_adverb`): a genitive in -ого or
 # -его ("всего", "его", "малого"), a past form or a noun in -ло ("было", "стало", "начало"), an adverb made from an
 # adjective in -ный, -льный, -йный, -кий, -йкий or -ивый ("добросовестно", "ежеквартально", "постатейно", "громко",
@@ -1910,7 +1912,8 @@ def _ru_adverb(low):
     """Whether a lower-case Russian word in -о is an adverb, a particle or a pronoun (`_passed`): one of
     `LAW_PASS_RU_O`, of an adverb's shape (`RU_ADVERB_SHAPE`: "всего", "было", "обязательно"), a word of the lexicon
     (words/ru.txt: "строго", "хорошо", "конечно") or one made from an adjective it holds ("качественно" of
-    "качественного", "утверждено" of "утверждённый"). Never a noun that keeps its -о in every case (`RU_INDECLINABLE`:
+    "качественного", "утверждено" of "утверждённый"), or "не" before one ("неплохо", "нечасто", "нескоро",
+    "нетвёрдо"). Never a noun that keeps its -о in every case (`RU_INDECLINABLE`:
     "радио", "кино", "казино", "метро", "евро", "бюро"), which the lexicon holds too; a word none of them gives is read
     as one of those, the owner's tie-break: the law's name may go on with it (`_may_go_on`), so its opening word is the
     name's and must be the customer's."""
@@ -1920,7 +1923,8 @@ def _ru_adverb(low):
     if LAW_PASS_RU_O.fullmatch(low) or RU_ADVERB_SHAPE.fullmatch(low):
         return True
     words, stems = _ru_adjective_stems()
-    return low in words or low[:-1] in stems or low[:-1] + 'н' in stems
+    return low in words or low[:-1] in stems or low[:-1] + 'н' in stems \
+        or (low.startswith('не') and len(low) >= 5 and _ru_adverb(low[2:]))
 
 
 def _joined_ends(tokens, at, conjoined, source='', after_verb=False):
