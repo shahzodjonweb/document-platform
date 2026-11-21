@@ -1783,6 +1783,11 @@ RU_ADVERB_SHAPE = re.compile(r"[а-яё]+(?:[ое]го|ло|[бвгджзклм�
 # The endings of a Russian adjective the lexicon holds, whose stem an adverb in -о is made from (`_ru_adverb`).
 RU_ADJECTIVE_ENDINGS = ('ый', 'ий', 'ой', 'ая', 'яя', 'ое', 'ее', 'ые', 'ие', 'ого', 'его', 'ому', 'ему', 'ым', 'им',
                         'ую', 'юю', 'ых', 'их', 'ыми', 'ими')
+# The verbs of a Russian clause after its subject that `RU_LAW_VERB` and `RU_VERB` do not give (`_ru_clause_follows`): a
+# modal, a short form or a predicate ("может", "должно", "обязано", "вправе", "нужно") and a present tense in -ёт or -ут
+# ("ведёт", "несут", "даёт").
+RU_CLAUSE_VERB = re.compile(r"мо(?:жет|гут|г|гл[аои])|долж(?:ен|н[аоы])|обязан[аоы]?|вправе|нужно|надо|можно|нельзя"
+                            r"|вед[её]т|ведут|нес[её]т|несут|да[её]т|дают|ид[её]т|идут|бер[её]т|берут")
 # The English determiners a joined word may take, read as the article is (`_joined_ends`): "and its auditing rules",
 # "and every auditing standard", never ", its rules apply to banks".
 LAW_JOINED_DETERMINER = re.compile(LAW_ARTICLE.pattern + r"|its|their|his|her|our|your|all|each|every|any|some|no"
@@ -1939,7 +1944,7 @@ def _joined_ends(tokens, at, conjoined):
         if _another_law(tokens, at) or LAW_AUX.fullmatch(normalised(tokens[at][1]).casefold()):
             return True
         return not (conjoined or tokens[at][1][0].isupper())
-    if not conjoined and _clause_follows(tokens, at):
+    if not conjoined and (_clause_follows(tokens, at) or _ru_clause_follows(tokens, at)):
         return True
     return not _may_go_on(tokens[at][1])
 
@@ -1959,6 +1964,36 @@ def _clause_follows(tokens, at):
             return False
         if LAW_AUX.fullmatch(following):
             return True
+    return False
+
+
+def _ru_clause_follows(tokens, at):
+    """Whether the Russian word at `at`, after a comma or a semicolon, is a clause's subject: a noun that keeps its form
+    in every case (`_ru_indeclinable`), which the law's name could go on with, its verb after it (`RU_LAW_VERB`,
+    `RU_VERB`, `RU_CLAUSE_VERB`), "не" or one word between that is no conjunction, preposition or word in the name's
+    case ("..., сальдо переносится на следующий период", "..., сальдо счёта переносится ...", "...; бюро ведёт учёт",
+    "..., видео не является ..."). A list in a law's name joins its last word with "и", never a comma alone, so the name
+    ended at the comma, as 28c1b69 read it; never "..., сальдо и аудите регулируется ..." nor "..., бюро в банках ..."."""
+    text = tokens[at][1]
+    low = normalised(text).casefold()
+    if not WORD.fullmatch(text) or not re.search('[а-яё]', low) or LAW_OF_CASE.fullmatch(low) \
+            or not _ru_indeclinable(text):
+        return False
+    between = False
+    for index in range(at + 1, min(at + 4, len(tokens))):
+        following = tokens[index][1]
+        word = normalised(following).casefold()
+        if not WORD.fullmatch(following) or not re.search('[а-яё]', word):
+            return False
+        if RU_CLAUSE_VERB.fullmatch(word) or RU_LAW_VERB.fullmatch(word) \
+                or (RU_VERB.fullmatch(word) and not LAW_OF_CASE.fullmatch(word)):
+            return True
+        if word == 'не':
+            continue
+        if between or LAW_AND.fullmatch(word) or LAW_NAME_PREPOSITION.fullmatch(word) or LAW_OF_CASE.fullmatch(word) \
+                or any(stem.fullmatch(following) for stem in NAMED_STEMS):
+            return False
+        between = True
     return False
 
 
@@ -1994,9 +2029,16 @@ def _may_go_on(text):
     if not WORD.fullmatch(text) or LAW_NAME_PREPOSITION.fullmatch(low):
         return True
     if re.search('[а-яё]', low):
-        return LAW_OF_CASE.fullmatch(low) is not None or (
-            not text.isupper() and low.endswith('о') and RU_NEUTER.fullmatch(low) is None and not _ru_adverb(low))
+        return LAW_OF_CASE.fullmatch(low) is not None or _ru_indeclinable(text)
     return text[0].isupper() or not (LAW_OF_STOP.fullmatch(low) or LAW_OF_GRAMMAR.fullmatch(low))
+
+
+def _ru_indeclinable(text):
+    """Whether a Russian word stands unchanged in the case a law's name takes after "о" or as its genitive, so the name
+    may go on with it (`_may_go_on`): a word in -о that is no adverb nor a neuter noun of a list (`_ru_adverb`,
+    `RU_NEUTER`: "радио", "казино", "бюро" keep their -о in every case), in lower case or capitalised."""
+    low = normalised(text).casefold()
+    return not text.isupper() and low.endswith('о') and RU_NEUTER.fullmatch(low) is None and not _ru_adverb(low)
 
 
 def _law_head(sentence, tokens, at, word):
