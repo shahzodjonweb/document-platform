@@ -1765,14 +1765,16 @@ RU_NEUTER = re.compile(r"[а-яё]+ство|правило|право|дело|�
 # ("... о телевидении и радио", "..., бюро и аудите", "... и интервью") or as a genitive after it ("... учёте казино"),
 # so it is no adverb passed over (`_ru_adverb`) and may go on the name (`_may_go_on`), as c491da9 holds the name. In -о,
 # a vowel before it makes one ("радио", "видео", "портфолио", "какао"); the others are the loans words/ru.txt or the
-# adverbs' shapes would read as adverbs ("сопрано", "шапито" of a participle's), and the usual ones. In -у, -ю and -а,
+# adverbs' shapes would read as adverbs ("сопрано", "шапито" of a participle's, "фиаско", "бунгало", "лего" of an
+# adverb's, "плато", "тако" of an adjective's stem), and the usual ones. In -у, -ю and -а,
 # the usual ones ("шоу", "меню", "интервью", "тату", "буржуа"), as a case of a noun that changes ends so ("учёту",
 # "работу", "налогообложению"); in -э, any ("каратэ", "алоэ"). One in -е or -и is in the name's case already
 # (`LAW_OF_CASE`: "резюме", "такси").
 RU_INDECLINABLE = re.compile(
     r"[а-яё]*[аеёиоуыэюя]о|кино|казино|метро|евро|авто|мото|фото|лото|депо|бюро|сальдо|нетто|брутто|пальто|табло"
     r"|лого|карго|эмбарго|рококо|панно|техно|промо|демо|ретро|диско|барокко|мокко|электро|соло|поло|кило|тремоло"
-    r"|инкассо|авизо|сопрано|фортепиано|гуано|чинзано|американо|орегано|шапито|мохито|буррито|шато"
+    r"|инкассо|авизо|сопрано|фортепиано|гуано|чинзано|американо|орегано|шапито|мохито|буррито|шато|фиаско|фламенко"
+    r"|сирокко|фреско|альфреско|бунгало|мерло|пуэбло|пикколо|лимончелло|лего|плато|тако|граффито"
     r"|шоу|меню|интервью|ревю|тату|табу|рагу|кенгуру|гуру|какаду|кешью|барбекю|фондю|иглу|марабу|зебу|эму|гну"
     r"|дежавю|парвеню|рандеву|ушу|буржуа|амплуа|боа|бра|фейхоа|[а-яё]+э")
 # The lower-case Russian adverbs, particles and pronouns in -о passed over as LAW_PASS_RU's are (`_ru_adverb`), named
@@ -2044,12 +2046,12 @@ def _ru_indeclinable(text):
     """Whether a Russian word stands unchanged in the case a law's name takes after "о" or as its genitive, so the name
     may go on with it (`_may_go_on`), in lower case or capitalised: a noun that keeps its form in every case
     (`RU_INDECLINABLE`: "радио", "шоу", "меню", "каратэ") or a word in -о that is no adverb nor a neuter noun of a list
-    (`_ru_adverb`, `RU_NEUTER`: "казино", "бюро")."""
+    (`_ru_adverb`, `RU_NEUTER`: "казино", "бюро"); capitalised, never an adverb mid-sentence ("Осло")."""
     low = normalised(text).casefold()
     if text.isupper():
         return False
     return RU_INDECLINABLE.fullmatch(low.replace('ё', 'е')) is not None or (
-        low.endswith('о') and RU_NEUTER.fullmatch(low) is None and not _ru_adverb(low))
+        low.endswith('о') and RU_NEUTER.fullmatch(low) is None and (not text.islower() or not _ru_adverb(low)))
 
 
 def _law_head(sentence, tokens, at, word):

@@ -4850,6 +4850,59 @@ for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_U
                        'согласует с руководством.', gone=('меню',), translated=direction != 'ru',
                        pair=TV_AND_SHOW_BEFORE_A_VERB))
 
+# ---- A rare loan in -о that `_ru_adverb` read as an adverb by its shape or the lexicon ("фиаско", "фламенко",
+# "сирокко" of -Cко and -Cно; "бунгало", "мерло", "пуэбло", "пикколо" of -ло; "лего" of -его; "плато", "тако" of an
+# adjective's stem) keeps its -о in every case (p1 L1, p4): round 13 passed it over, so the name ended before it, and
+# "Знает Закон о бухгалтерском учёте и фиаско", "... учёте фиаско", "Согласно Закону о бухгалтерском учёте и плато,
+# работа ведётся по плану" printed. A capitalised word in -о mid-sentence is no adverb either ("... и Осло").
+RARE_LOAN_TAILS_RU = (
+    ('and-a-fiasco', 'Знает Закон о бухгалтерском учёте и фиаско.', ('фиаско',)),
+    ('a-fiasco-as-a-genitive', 'Знает Закон о бухгалтерском учёте фиаско.', ('фиаско',)),
+    ('and-a-plateau-before-a-comma-clause', 'Согласно Закону о бухгалтерском учёте и плато, работа ведётся по плану.',
+     ('плато',)),
+    ('as-well-as-a-bungalow', 'Применяет Закон о бухгалтерском учёте, а также бунгало.', ('бунгало',)),
+    ('and-especially-flamenco', 'Руководствуется Законом о бухгалтерском учёте и особенно фламенко.', ('фламенко',)),
+    ('lego-and-audit', 'Соблюдает Закон о бухгалтерском учёте, лего и аудите.', ('лего',)),
+    ('a-semicolon-and-merlot', 'Знает Закон о бухгалтерском учёте; мерло.', ('мерло',)),
+    ('and-of-course-a-pueblo', 'Знает Закон о бухгалтерском учёте и, конечно, пуэбло.', ('пуэбло',)),
+    ('having-studied-and-a-sirocco', 'Изучив Закон о бухгалтерском учёте и сирокко, бухгалтер ведёт книги.',
+     ('сирокко',)),
+    ('and-a-taco', 'Знает Закон о бухгалтерском учёте и тако.', ('тако',)))
+for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
+    for slug, sentence, gone in RARE_LOAN_TAILS_RU:
+        CASES += [
+            guard(f'laws-a-rare-indeclinable-loan-after-a-named-law-{slug}-{direction}-blank', BLANK, brief, 'ru',
+                  sentence, gone=gone, translated=direction != 'ru'),
+            gp(f'laws-a-rare-indeclinable-loan-after-a-named-law-{slug}-in-a-grounded-part-{direction}-blank', BLANK,
+               brief, 'ru', sentence, gone=gone),
+        ]
+    CASES.append(body(f'laws-a-rare-indeclinable-loan-after-a-named-law-and-a-plateau-in-a-report-{direction}-blank',
+                      BLANK, 'pdf.biz.hisobot', brief, 'ru', 'work_done', RARE_LOAN_TAILS_RU[2][1], gone=('плато',)))
+    CASES.append(body(f'laws-a-rare-indeclinable-loan-after-a-named-law-and-a-fiasco-in-a-qualification-{direction}-'
+                      f'blank', BLANK, 'pdf.biz.lavozim_yoriqnomasi', brief, 'ru', 'qualification',
+                      RARE_LOAN_TAILS_RU[0][1], gone=('фиаско',)))
+for direction, brief in (('ru', JOB_RU_KNOWS_ACCOUNTING_DATED), ('en-to-ru', ACCOUNTING_EN_RU_NUMBERED)):
+    CASES.append(guard(f'laws-a-rare-indeclinable-loan-after-a-named-laws-number-and-a-fiasco-{direction}-blank', BLANK,
+                       brief, 'ru', 'Соблюдает Закон о бухгалтерском учёте № 404 и фиаско.', gone=('фиаско',),
+                       translated=direction != 'ru'))
+CASES.append(guard('laws-a-rare-indeclinable-loan-after-the-law-on-television-and-a-fiasco-ru-blank', BLANK,
+                   JOB_RU_KNOWS_TV, 'ru', 'Знает Закон о телевидении и фиаско.', gone=('фиаско',), translated=False))
+for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING_UZ_RU),
+                         ('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU)):
+    for slug, sentence, gone in (
+            ('and-a-fiasco', 'Бухгалтер знает Закон о бухгалтерском учёте и фиаско.', ('фиаско',)),
+            ('a-fiasco-as-a-genitive', 'Бухгалтер знает Закон о бухгалтерском учёте фиаско.', ('фиаско',)),
+            ('as-well-as-a-plateau', 'Работа ведётся согласно Закону о бухгалтерском учёте, а также плато.',
+             ('плато',)),
+            ('and-oslo-capitalised', 'Бухгалтер знает Закон о бухгалтерском учёте и Осло.', ('Осло',)),
+            ('and-flamenco-capitalised', 'Бухгалтер знает Закон о бухгалтерском учёте и Фламенко.', ('Фламенко',))):
+        CASES += [
+            guard(f'laws-a-translated-head-noun-before-a-rare-indeclinable-loan-{slug}-{direction}-blank', BLANK,
+                  brief, 'ru', sentence, gone=gone, translated=True),
+            gp(f'laws-a-translated-head-noun-before-a-rare-indeclinable-loan-{slug}-in-a-grounded-part-{direction}-'
+               f'blank', BLANK, brief, 'ru', sentence, gone=gone),
+        ]
+
 CASE_IDS = [case.id for case in CASES]
 
 
