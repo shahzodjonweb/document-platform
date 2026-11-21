@@ -205,10 +205,11 @@ class LocalTelegramSession(BaseSession):
 
 
 def message_data(message):
+    from apps.studio.keeping import shown
     asset=None
     if message.asset_id:
         file=message.asset
-        asset={'id':str(file.id),'name':file.name,'mime_type':file.mime_type,'size_bytes':file.size_bytes,'download_url':f'/api/v1/files/{file.id}/download','preview_url':f'/api/v1/files/{file.id}/preview' if file.mime_type=='application/pdf' and not file.metadata.get('encrypted') else None,'expires_at':file.expires_at}
+        asset={'id':str(file.id),'name':file.name,'mime_type':file.mime_type,'size_bytes':file.size_bytes,'download_url':f'/api/v1/files/{file.id}/download','preview_url':f'/api/v1/files/{file.id}/preview' if file.mime_type=='application/pdf' and not file.metadata.get('encrypted') else None,'expires_at':shown(file.expires_at)}
     return {'id':str(message.id),'direction':message.direction,'text':message.text,'buttons':message.buttons,'asset':asset,'created_at':message.created_at}
 
 

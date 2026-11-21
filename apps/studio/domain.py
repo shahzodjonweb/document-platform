@@ -161,7 +161,9 @@ def draft_data(d):
     if pins:data['render']=render_data(pins)
     if data.get('revision'):
         data['revision']={key:value for key,value in data['revision'].items() if key not in ('base_content','before')}
-    return {'id':str(d.id),'feature_id':d.feature_id,'version':d.version,'provider_mode':d.provider_mode,'expires_at':d.expires_at,**data,'outline':[{'id':s['id'],'title':s['heading'],'body':s['body']} for s in data['content']['sections']]}
+    # A draft a file was made from is kept until it is deleted (keeping.py): it has no expiry to show.
+    from .keeping import shown
+    return {'id':str(d.id),'feature_id':d.feature_id,'version':d.version,'provider_mode':d.provider_mode,'expires_at':shown(d.expires_at),**data,'outline':[{'id':s['id'],'title':s['heading'],'body':s['body']} for s in data['content']['sections']]}
 
 def source_excerpts(account,ids):
     if not ids:return []

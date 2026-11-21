@@ -7,8 +7,12 @@
             "type": "string"
           },
           "expires_at": {
+            "description": "When it is deleted; null when it is kept until the customer deletes it: a draft a document, deck or CV was made from, and the files a change of it needs.",
             "format": "date-time",
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "file_id": {
             "description": "The stored file itself, as `POST /editor/documents` takes it.",
@@ -62,8 +66,12 @@
             "type": "boolean"
           },
           "expires_at": {
+            "description": "When it is deleted; null when it is kept until the customer deletes it: a draft a document, deck or CV was made from, and the files a change of it needs.",
             "format": "date-time",
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "id": {
             "format": "uuid",
@@ -2063,8 +2071,12 @@
             "type": "array"
           },
           "expires_at": {
+            "description": "When it is deleted; null when it is kept until the customer deletes it: a draft a document, deck or CV was made from, and the files a change of it needs.",
             "format": "date-time",
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "feature_id": {
             "type": "string"
@@ -12915,8 +12927,12 @@
                                     "type": "string"
                                   },
                                   "expires_at": {
+                                    "description": "When it is deleted; null when it is kept until the customer deletes it: a draft a document, deck or CV was made from, and the files a change of it needs.",
                                     "format": "date-time",
-                                    "type": "string"
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
                                   },
                                   "id": {
                                     "format": "uuid",
@@ -13071,8 +13087,12 @@
                                     "type": "string"
                                   },
                                   "expires_at": {
+                                    "description": "When it is deleted; null when it is kept until the customer deletes it: a draft a document, deck or CV was made from, and the files a change of it needs.",
                                     "format": "date-time",
-                                    "type": "string"
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
                                   },
                                   "id": {
                                     "format": "uuid",
@@ -13270,8 +13290,12 @@
                                     "type": "string"
                                   },
                                   "expires_at": {
+                                    "description": "When it is deleted; null when it is kept until the customer deletes it: a draft a document, deck or CV was made from, and the files a change of it needs.",
                                     "format": "date-time",
-                                    "type": "string"
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
                                   },
                                   "id": {
                                     "format": "uuid",

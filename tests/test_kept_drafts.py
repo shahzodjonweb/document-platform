@@ -187,7 +187,9 @@ def test_on_the_web_a_change_is_asked_quoted_and_made_400_days_later(customer, c
     clock(LONG_AFTER)
     paid_by_card(customer, 'premium')
     client = login_client(customer)
-    assert client.get(f'/api/v1/generation/drafts/{draft.id}').status_code == 200
+    shown = client.get(f'/api/v1/generation/drafts/{draft.id}')
+    assert shown.status_code == 200 and shown.json()['expires_at'] is None, 'kept: no date to show'
+    assert client.get(f'/api/v1/files/{source.id}').json()['expires_at'] is None
     asked = client.post('/api/v1/generation/drafts', json.dumps({'prompt': CHANGE, 'options': {'revise_draft_id': str(draft.id)}}),
                         content_type='application/json')
     assert asked.status_code == 201, asked.content
@@ -199,7 +201,7 @@ def test_on_the_web_a_change_is_asked_quoted_and_made_400_days_later(customer, c
     job = client.post('/api/v1/jobs', json.dumps({'quote_id': priced.json()['id']}), content_type='application/json',
                       headers={'Idempotency-Key': 'change-a-year-later'})
     assert job.status_code == 201 and job.json()['status'] == 'succeeded', job.content
-    assert client.get(f'/api/v1/generation/drafts/{change["id"]}').status_code == 200
+    assert client.get(f'/api/v1/generation/drafts/{change["id"]}').json()['expires_at'] is None
 
 
 @pytest.mark.django_db
@@ -216,7 +218,7 @@ def test_in_the_deck_editor_a_deck_with_a_logo_is_opened_changed_and_sent_400_da
     assert there(mark) and all(there(asset) for asset in pictures)
     client = login_client(customer)
     opened = client.get(f'/api/v1/generation/drafts/{draft.id}').json()
-    assert opened['render']
+    assert opened['render'] and opened['expires_at'] is None
     # Saved as the editor saves it, drawn, and a picture taken off and put back.
     content = opened['content']
     content['sections'][1]['heading'] = 'Reworded a year later'
@@ -395,3 +397,18 @@ def test_nothing_shortens_what_is_kept(customer, stock_photos):  # noqa: F811
     assert not keeping.is_kept(rotated.artifacts.get().file.expires_at), 'its result goes after 24 hours'
     draft.refresh_from_db()
     assert draft.expires_at == keeping.KEPT_UNTIL and keeping.is_kept(FileAsset.objects.get(pk=mark.pk).expires_at)
+
+
+@pytest.mark.django_db
+def test_the_kept_moment_is_never_shown_as_a_date(customer, stock_photos):  # noqa: F811
+    mark = logo(customer)
+    draft, made = made_deck(customer, mark=mark)
+    assert draft_data(draft)['expires_at'] is None
+    client = login_client(customer)
+    listed = client.get('/api/v1/generation/drafts').json()['results']
+    assert [row['expires_at'] for row in listed if row['id'] == str(draft.id)] == [None]
+    assert client.get(f'/api/v1/files/{mark.id}').json()['expires_at'] is None
+    assert '2999' not in client.get(f'/api/v1/generation/drafts/{draft.id}').content.decode()
+    job = client.get(f'/api/v1/jobs/{made.id}').json()
+    assert job['artifacts'][0]['expires_at'], 'the file it was sent as still says when it goes'
+    assert [row['expires_at'] for row in job['input_files']] == [None], 'its logo, kept with it, says nothing'

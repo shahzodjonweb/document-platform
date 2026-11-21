@@ -4459,3 +4459,6 @@ tests/test_kept_drafts.py::test_deleting_the_document_takes_its_draft_and_files_
 tests/test_kept_drafts.py::test_deleting_the_account_takes_every_kept_draft_and_its_files
 tests/test_kept_drafts.py::test_drafts_with_a_file_from_before_are_kept_by_the_next_cleanup_and_unsent_ones_are_not
 tests/test_kept_drafts.py::test_nothing_shortens_what_is_kept
+
+# A kept draft or file has no expiry to show: the API says null, never the far-off moment.
+tests/test_kept_drafts.py::test_the_kept_moment_is_never_shown_as_a_date
