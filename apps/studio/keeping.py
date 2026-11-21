@@ -178,11 +178,13 @@ def made_from(draft_ids):
     from apps.core.models import Job
     from .domain import GENERATION_IDS
     ids = [str(value) for value in draft_ids]
-    if not ids:
-        return set()
-    rows = (Job.objects.filter(feature_id__in=GENERATION_IDS, status='succeeded', parameters__generation_draft_id__in=ids,
-                               artifacts__isnull=False).values_list('parameters', flat=True))
-    return {parameters['generation_draft_id'] for parameters in rows if (parameters or {}).get('stage') != 'outline'}
+    found = set()
+    # A day of drafts not kept yet can be thousands: asked about a few hundred at a time.
+    for start in range(0, len(ids), 500):
+        rows = (Job.objects.filter(feature_id__in=GENERATION_IDS, status='succeeded', parameters__generation_draft_id__in=ids[start:start + 500],
+                                   artifacts__isnull=False).values_list('parameters', flat=True))
+        found |= {parameters['generation_draft_id'] for parameters in rows if (parameters or {}).get('stage') != 'outline'}
+    return found
 
 
 def backfill():
