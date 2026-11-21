@@ -336,14 +336,17 @@ def result_controls(delivery):
     # A generated document can be changed by asking; a converted file cannot.
     revise = revisable_draft(delivery)
     if revise:
+        from apps.studio.keeping import button_until
         controls = BotCallback.objects.filter(account=delivery.account, action='ai_revise', payload={'draft_id': revise})
-        # One button for a draft however often it is sent: it lasts as long as the newest file.
-        controls.filter(expires_at__lt=delivery.artifact.file.expires_at).update(expires_at=delivery.artifact.file.expires_at)
+        # One button for a draft however often it is sent: it lasts as long as the draft, kept for good once a file
+        # is made from it (apps/studio/keeping.py), and never less than the newest file.
+        until = button_until(delivery.account, revise, delivery.artifact.file.expires_at)
+        controls.filter(expires_at__lt=until).update(expires_at=until)
         control = controls.first()
         if control is None:
             control = BotCallback.objects.create(
                 token=secrets.token_urlsafe(12), account=delivery.account, action='ai_revise',
-                payload={'draft_id': revise}, expires_at=delivery.artifact.file.expires_at,
+                payload={'draft_id': revise}, expires_at=until,
             )
         label = EDIT_BUTTON_COPY['ai_revise'] if flags['edit_buttons'] else 'ai_revise'
         rows.append([InlineKeyboardButton(text=UX[locale][label], callback_data=control.token)])

@@ -171,6 +171,11 @@ def me(request):
         a.deletion_requested_at=timezone.now()
         a.save(update_fields=['deletion_requested_at'])
         FileAsset.objects.filter(account=a).update(state='revoked',expires_at=timezone.now())
+        # Its drafts too: one a file was made from is kept for good otherwise (apps/studio/keeping.py).
+        from apps.studio.keeping import delete
+        from apps.studio.models import GenerationDraft
+        for draft in GenerationDraft.objects.filter(account=a):
+            delete(draft)
         request.session.pop('customer_account_id',None)
         return {'status':'deletion_requested'}
     if request.method=='PATCH':

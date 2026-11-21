@@ -273,6 +273,9 @@ def _write(account, draft_id, change, *, row=None, version=None, cap=None):
         draft.encrypted_data = pack(data)
         draft.version += 1
         draft.save(update_fields=['encrypted_data', 'version'])
+        # A kept deck keeps the pictures it now wears and offers; one it let go of goes on its own clock.
+        from .keeping import hold
+        hold(draft, data)
     return draft
 
 
@@ -396,8 +399,10 @@ def _usage(row, outcome):
 
 
 def _keep(account, draft, sid, source, jpeg, **facts):
+    """A picture for the deck, on the deck's clock; a kept deck's is kept once the deck wears or offers it (keeping.hold), not before."""
     from .execution import keep_picture
-    return keep_picture(account, draft.pk, sid, source, jpeg, expires_at=draft.expires_at, **facts)
+    from .keeping import is_kept
+    return keep_picture(account, draft.pk, sid, source, jpeg, expires_at=None if is_kept(draft.expires_at) else draft.expires_at, **facts)
 
 
 def _slide_text(section):

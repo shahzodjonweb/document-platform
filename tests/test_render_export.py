@@ -28,7 +28,7 @@ from apps.core.models import AnalyticsEvent, BotCallback, BotDraft, FileAsset, J
 from apps.core.policy import catalog
 from apps.core.serializers import job_data, quote_data
 from apps.core.services import cancel_job, cleanup_expired, execute_job, submit_job
-from apps.studio import batches, execution, photos as stock, quality, render_export, slide_fit, title_lines, variants
+from apps.studio import batches, execution, keeping, photos as stock, quality, render_export, slide_fit, title_lines, variants
 from apps.studio.deck_designs import DESIGNS
 from apps.studio.domain import CV, DOCUMENT, EXPORT, RENDER_IDS, SLIDES, create_draft, draft_jobs, generation_quote, pack, require, unpack, update_draft
 from apps.studio.models import GenerationDraft, ProviderUsage
@@ -877,6 +877,7 @@ def test_a_draft_rebuilt_during_the_send_gets_no_pins_from_it(customer, stock_ph
 
 
 def test_a_send_extends_the_draft_its_pictures_and_their_candidates_to_its_own_deadline(customer, stock_photos, clock):  # noqa: F811
+    """The deck and its pictures and their candidates are kept for good once made (keeping.py); what a send makes is a result like any other."""
     draft, first = generate(customer)
     pictures = list(kept_pictures(customer))
     assert len(pictures) == 6
@@ -885,10 +886,10 @@ def test_a_send_extends_the_draft_its_pictures_and_their_candidates_to_its_own_d
     job = send(customer, draft)
     assert job.status == 'succeeded', job.error_code
     deadline = job.artifacts.get().file.expires_at
-    assert deadline > first.artifacts.get().file.expires_at
+    assert deadline > first.artifacts.get().file.expires_at and not keeping.is_kept(deadline)
     draft.refresh_from_db()
-    assert draft.expires_at == deadline
-    assert all(FileAsset.objects.get(pk=picture_.pk).expires_at == deadline for picture_ in pictures)
+    assert draft.expires_at == keeping.KEPT_UNTIL
+    assert all(keeping.is_kept(FileAsset.objects.get(pk=picture_.pk).expires_at) for picture_ in pictures)
 
     clock(30)
     cleanup_expired()
@@ -897,13 +898,13 @@ def test_a_send_extends_the_draft_its_pictures_and_their_candidates_to_its_own_d
     assert again == job and media(delivered(again)) == as_delivered
     later = job.artifacts.get().file
     later.refresh_from_db()
-    draft.refresh_from_db()
-    assert later.expires_at > deadline and draft.expires_at == later.expires_at, 'the file sent again and what changes it end together'
-    assert all(FileAsset.objects.get(pk=picture_.pk).expires_at == later.expires_at for picture_ in pictures)
+    assert later.expires_at > deadline, 'the file sent again lasts a day from now'
+    assert all(keeping.is_kept(FileAsset.objects.get(pk=picture_.pk).expires_at) for picture_ in pictures)
 
     clock(60)
     cleanup_expired()
-    assert not GenerationDraft.objects.filter(pk=draft.pk).exists() and not kept_pictures(customer).exists()
+    assert FileAsset.objects.get(pk=later.pk).state == 'deleted'
+    assert GenerationDraft.objects.filter(pk=draft.pk).exists() and kept_pictures(customer).count() == len(pictures)
 
 
 def test_a_failed_send_moves_no_clock(customer, stock_photos, clock):  # noqa: F811
@@ -941,7 +942,7 @@ def test_a_send_takes_its_pictures_from_the_bucket_once_the_disk_has_let_them_go
     assert media(delivered(job)) == as_delivered
 
 
-def test_a_send_accepted_as_the_draft_ends_finds_all_it_draws_when_its_turn_comes(customer, stock_photos, clock):  # noqa: F811
+def test_a_send_waiting_through_a_cleanup_finds_all_it_draws_when_its_turn_comes(customer, stock_photos, clock):  # noqa: F811
     draft, first = generate(customer)
     as_delivered = media(delivered(first))
     clock(23.99)
@@ -952,26 +953,26 @@ def test_a_send_accepted_as_the_draft_ends_finds_all_it_draws_when_its_turn_come
     done = execute_job(job.id)
     assert done.status == 'succeeded', done.error_code
     assert media(delivered(done)) == as_delivered
-    assert done.artifacts.get().file.expires_at == GenerationDraft.objects.get(pk=draft.pk).expires_at
+    assert keeping.is_kept(GenerationDraft.objects.get(pk=draft.pk).expires_at) and not keeping.is_kept(done.artifacts.get().file.expires_at)
 
 
-def test_a_send_that_waited_too_long_says_so_and_counts_nothing(customer, stock_photos, clock):  # noqa: F811
+def test_a_send_whose_pictures_went_while_it_waited_says_so_and_counts_nothing(customer, stock_photos, clock):  # noqa: F811
     draft, _ = generate(customer)
-    clock(23.5)
+    clock(1)
     quote = quoted(customer, draft)
     job, _ = submit_job(customer, quote.id, 'waited-past-the-hour')
-    clock(25)
+    # As if its pictures' time had come meanwhile: the cleanup leaves them while it waits, whatever becomes of them after.
+    FileAsset.objects.filter(pk__in=quote.input_ids).update(expires_at=timezone.now() - timedelta(minutes=1))
+    clock(2)
     cleanup_expired()
-    # Its pictures are kept from cleanup while it waits, whatever becomes of the rest of the deck.
     assert all(asset.state == 'ready' and storage.exists(asset.object_key) for asset in FileAsset.objects.filter(pk__in=quote.input_ids))
-    assert kept_pictures(customer).count() == len(quote.input_ids)
     done = execute_job(job.id)
     assert (done.status, done.error_code) == ('failed', 'pinned_asset_expired')
     assert allowance.file_jobs_this_week(customer) == 0
 
 
 def test_a_deck_from_a_file_can_still_be_saved_and_changed_after_the_files_first_day(customer, clock):  # noqa: F811
-    """The draft outlives its first day only through a send: saving and asking for a change look for its file."""
+    """The draft is kept once a deck is made from it, and so is its file (keeping.py): saving and asking for a change look for it."""
     source = upload(customer)
     sections = [{**section, 'image_query': ''} for section in deck_sections()]
     made = create_draft(customer, {'feature_id': SLIDES, 'title': TITLE, 'source_text': 'Notes.', 'source_ids': [str(source.id)], 'options': {'pages': len(sections), 'deck_design': DESIGN}})
@@ -1003,14 +1004,15 @@ def branded_deck(customer, mark):  # noqa: F811
 def test_a_logo_is_read_again_and_lives_as_long_as_the_deck(customer, clock):  # noqa: F811
     mark = logo(customer)
     draft = branded_deck(customer, mark)
+    assert keeping.is_kept(FileAsset.objects.get(pk=mark.pk).expires_at), 'kept with the deck it was made with'
     clock(20)
     job = send(customer, draft)
     assert job.status == 'succeeded' and job.warnings == []
     assert media(delivered(job)), 'the logo is on it'
-    deadline = job.artifacts.get().file.expires_at
-    assert FileAsset.objects.get(pk=mark.pk).expires_at == deadline
-    # So an autosave a day later still finds it, as every save of a branded draft looks for it.
+    assert keeping.is_kept(FileAsset.objects.get(pk=mark.pk).expires_at)
+    # So an autosave a day later, or a year later, still finds it, as every save of a branded draft looks for it.
     clock(30)
+    cleanup_expired()
     assert edit_section(customer, draft, CARDS, heading='Reworded a day later')
     assert send(customer, draft).warnings == []
 
@@ -1093,27 +1095,27 @@ def test_the_new_errors_are_said_in_every_language(settings):
 # ---------------------------------------------------------------- the bot
 
 
-@pytest.mark.parametrize('sent_at', [20, 25], ids=['before_the_first_file_ends', 'past_it_with_the_button_not_yet_cleaned_up'])
-def test_the_change_button_lives_as_long_as_the_newest_file(customer, stock_photos, clock, sent_at):  # noqa: F811
+@pytest.mark.parametrize('sent_at', [20, 25], ids=['before_the_first_file_ends', 'past_it'])
+def test_the_change_button_lives_as_long_as_its_draft(customer, stock_photos, clock, sent_at):  # noqa: F811
     draft, first = generate(customer)
     enqueue(first.artifacts.get(), f'job:{first.id}')
     button = result_controls(BotDelivery.objects.get(artifact__job=first)).inline_keyboard[0][0].callback_data
     row = BotCallback.objects.filter(pk=button)
-    first_ends = row.get().expires_at
-    assert first_ends == first.artifacts.get().file.expires_at
+    assert row.get().expires_at == keeping.KEPT_UNTIL, 'the deck is kept, and so is the button that changes it'
     if sent_at > 24:
         clock(20)
         assert send(customer, draft).status == 'succeeded'
-        assert row.get().expires_at == first_ends, 'a send to the web has no button to move'
     clock(sent_at)
+    cleanup_expired()
+    assert row.exists()
     job = send(customer, draft, origin='bot') if sent_at <= 24 else resend(customer, draft, origin='bot')
     assert job.status == 'succeeded', job.error_code
     delivery = BotDelivery.objects.get(artifact__job=job)
     assert result_controls(delivery).inline_keyboard[0][0].callback_data == button
-    assert row.get().expires_at == job.artifacts.get().file.expires_at > timezone.now() and row.get().expires_at > first_ends
-    # Sent again for an older file, it keeps the later end.
+    assert row.get().expires_at == keeping.KEPT_UNTIL
+    # Sent again for an older file, it is the same button still.
     result_controls(BotDelivery.objects.get(artifact__job=first))
-    assert row.get().expires_at == job.artifacts.get().file.expires_at
+    assert row.get().expires_at == keeping.KEPT_UNTIL
     assert BotCallback.objects.filter(account=customer, action='ai_revise').count() == 1
 
 

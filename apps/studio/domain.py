@@ -1099,6 +1099,9 @@ def update_draft(account,draft_id,data,*,details=False):
     if cfg['mode']=='openai':
         enforce_budget(cfg,payload,d.feature_id,plan_limits(account)['max_ai_input_tokens'])
     d.encrypted_data=pack(payload);d.version+=1;d.save(update_fields=['encrypted_data','version'])
+    # A kept draft keeps what it needs now, a new logo say, and lets go of what it no longer does.
+    from .keeping import hold
+    hold(d,payload,before=original)
     return d
 
 def generation_quote(account,draft_id,version):

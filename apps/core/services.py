@@ -342,18 +342,22 @@ def submit_job(account, quote_id, idempotency_key, origin='web'):
     return job,True
 
 def _extend_draft(job, deadline):
-    """A generated result's draft, the deck pictures its pins name and its slides as last drawn, last as long as the result; never less than they already would.
+    """A result's draft, the deck pictures its pins name and its slides as last drawn, last as long as the result; never less than they already would.
 
     Only those: a picture from pins since replaced, or from an attempt that left none, goes by its own clock.
     The files the draft stands on (its sources and logo) go with it unless already expired, as a save or a change
     of it asks for them: a generation's result carries them on as its inputs, and a send has only its pictures.
+    A draft a file was made from is kept for good instead (apps/studio/keeping.py): nothing here shortens it, and
+    a send of one holds what it needs as it now stands.
     """
+    from apps.studio import keeping
     from apps.studio.branding import generation_inputs
     from apps.studio.domain import unpack
     from apps.studio.models import GenerationDraft
     draft_id = (job.parameters or {}).get('generation_draft_id')
     draft = GenerationDraft.objects.filter(pk=draft_id,account=job.account).first() if draft_id else None
     if not draft: return
+    if keeping.is_kept(draft.expires_at): return keeping.hold(draft)
     GenerationDraft.objects.filter(pk=draft.pk,expires_at__lt=deadline).update(expires_at=deadline)
     data = unpack(draft.encrypted_data)
     photos = (data.get('_render') or {}).get('photos') or {}
@@ -362,6 +366,14 @@ def _extend_draft(job, deadline):
     FileAsset.objects.filter(account=job.account,state='ready',pk__in=generation_inputs(data),expires_at__gt=timezone.now(),expires_at__lt=deadline).update(expires_at=deadline)
     from apps.studio.tasks import current_pictures
     FileAsset.objects.filter(account=job.account,state='ready',pk__in=current_pictures(draft),expires_at__lt=deadline).update(expires_at=deadline)
+
+def _keep_draft(job):
+    """The draft a document, deck or CV was just made from, kept for good: its ✏️ Make changes works however late (keeping.py)."""
+    from apps.studio import keeping
+    from apps.studio.models import GenerationDraft
+    draft_id = (job.parameters or {}).get('generation_draft_id')
+    draft = GenerationDraft.objects.filter(pk=draft_id,account=job.account).first() if draft_id else None
+    if draft: keeping.keep(draft)
 
 @transaction.atomic
 def settle_job(job_id, status, error_code='', outputs=None, warnings=None, engine=''):
@@ -387,9 +399,12 @@ def settle_job(job_id, status, error_code='', outputs=None, warnings=None, engin
             enqueue(artifact, f'job:{job.id}:{artifact.id}')
     from apps.studio.domain import GENERATION_IDS, RENDER_IDS
     # A send's inputs are its deck's pictures: they go with the deck, and only a file delivered moves it (_extend_draft).
-    if job.feature_id not in RENDER_IDS: FileAsset.objects.filter(account=job.account,id__in=job.input_ids).update(expires_at=deadline)
+    # An input a kept draft holds (its source, its logo) is never brought down to the task's day.
+    if job.feature_id not in RENDER_IDS: FileAsset.objects.filter(account=job.account,id__in=job.input_ids,expires_at__lt=deadline).update(expires_at=deadline)
     if status == 'succeeded' and outputs:
-        if job.feature_id in GENERATION_IDS|RENDER_IDS: _extend_draft(job,deadline)
+        # An outline is a plan, not a file: its draft keeps its own day (allowance.file_made).
+        if job.feature_id in GENERATION_IDS and (job.parameters or {}).get('stage') != 'outline': _keep_draft(job)
+        elif job.feature_id in GENERATION_IDS|RENDER_IDS: _extend_draft(job,deadline)
         from apps.studio.review import keep_output
         keep_output(job)
     job.status,job.error_code,job.completed_at = status,error_code,timezone.now()
@@ -519,6 +534,9 @@ def cleanup_expired():
     from . import storage
     now = timezone.now()
     count = 0
+    # First, before anything expires: drafts a file was made from before drafts were kept are kept now, with their files.
+    from apps.studio.keeping import backfill
+    backfill()
     time_left = storage.time_limit()
     for asset in FileAsset.objects.filter(expires_at__lte=now).exclude(state='deleted').iterator():
         # What is left waits for the next run: expired, it can no longer be opened.

@@ -849,9 +849,12 @@ def test_pictures_go_with_the_draft(deck, converted):
 
 
 def test_pictures_expire_with_the_draft_and_cleanup_leaves_no_row(deck, converted):
+    """A draft nothing was made from expires as ever: as this one would, its deck job undone."""
+    from apps.core.models import Job
     ask(deck)
     rendered(deck)
     keys = [render.file.object_key for render in SlideRender.objects.select_related('file')]
+    Job.objects.filter(parameters__generation_draft_id=str(deck.pk)).update(status='failed')
     FileAsset.objects.filter(metadata__kind='deck_slide').update(expires_at=timezone.now() - timedelta(seconds=1))
     GenerationDraft.objects.filter(pk=deck.pk).update(expires_at=timezone.now() - timedelta(seconds=1))
     cleanup_expired()
@@ -860,30 +863,36 @@ def test_pictures_expire_with_the_draft_and_cleanup_leaves_no_row(deck, converte
 
 
 def test_a_send_extends_the_pictures_with_the_draft(deck, converted):
+    """A made deck is kept for good (keeping.py), and its slides as last drawn with it: a send's deadline shortens neither."""
     from types import SimpleNamespace
     from apps.core.services import _extend_draft
+    from apps.studio.keeping import KEPT_UNTIL
     ask(deck)
     rendered(deck)
     deadline = timezone.now() + timedelta(days=9)
     _extend_draft(SimpleNamespace(parameters={'generation_draft_id': str(deck.pk)}, account=deck.account), deadline)
-    assert {asset.expires_at for asset in FileAsset.objects.filter(metadata__kind='deck_slide')} == {deadline}
+    assert {asset.expires_at for asset in FileAsset.objects.filter(metadata__kind='deck_slide')} == {KEPT_UNTIL}
+    assert GenerationDraft.objects.get(pk=deck.pk).expires_at == KEPT_UNTIL
 
 
 def test_a_send_leaves_pictures_no_render_uses_to_their_own_clock(deck, converted):
+    """Slides no render uses any more are the prune's, an hour after the last render that used them; the last render's stay."""
     from types import SimpleNamespace
     from apps.core.services import _extend_draft
+    from apps.studio.keeping import KEPT_UNTIL
     ask(deck)
     _, first = rendered(deck)
     edit_section(deck.account, deck, 's5', heading='Edited')
     ask(deck)
     _, second = rendered(deck)
-    deadline = timezone.now() + timedelta(days=9)
-    _extend_draft(SimpleNamespace(parameters={'generation_draft_id': str(deck.pk)}, account=deck.account), deadline)
+    _extend_draft(SimpleNamespace(parameters={'generation_draft_id': str(deck.pk)}, account=deck.account), timezone.now() + timedelta(days=9))
     stale = {slide['key'] for slide in first['slides']} - {slide['key'] for slide in second['slides']}
     assert stale
-    for render in SlideRender.objects.select_related('file', 'thumb').filter(draft=deck):
-        for asset in (render.file, render.thumb):
-            assert (asset.expires_at == deadline) is (render.key not in stale)
+    SlideRender.objects.filter(draft=deck, key__in=stale).update(used_at=F('used_at') - tasks.KEPT - timedelta(seconds=1))
+    tasks.prune()
+    assert not SlideRender.objects.filter(draft=deck, key__in=stale).exists()
+    current = SlideRender.objects.select_related('file', 'thumb').filter(draft=deck)
+    assert current.exists() and all(asset.expires_at == KEPT_UNTIL for render in current for asset in (render.file, render.thumb))
 
 
 # --- The conversion itself, through the real child -------------------------------------------

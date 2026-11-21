@@ -76,7 +76,12 @@ async def callback(account,action,payload=None):
     # Cleanup deletes a button once it expires, so one that opens a screen is
     # given long enough to still be there when someone scrolls back to it.
     lifetime=timedelta(days=30) if action in REUSABLE else timedelta(minutes=30)
-    await sync_to_async(BotCallback.objects.create)(token=token,account=account,action=action,payload=payload or {},expires_at=timezone.now()+lifetime)
+    expires=timezone.now()+lifetime
+    # ✏️ Make changes lasts as long as its draft: for good, once a file is made from it (apps/studio/keeping.py).
+    if action=='ai_revise':
+        from apps.studio.keeping import button_until
+        expires=await sync_to_async(button_until)(account,(payload or {}).get('draft_id'),expires)
+    await sync_to_async(BotCallback.objects.create)(token=token,account=account,action=action,payload=payload or {},expires_at=expires)
     return token
 async def web_url(account,route=''):
     from apps.commerce.providers import telegram_config

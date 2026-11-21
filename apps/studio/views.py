@@ -88,12 +88,9 @@ def draft_detail(request,pk):
     d=GenerationDraft.objects.filter(account=request.account,id=pk,expires_at__gt=timezone.now()).first()
     if not d:raise DomainError('not_found',404)
     if request.method=='DELETE':
-        from .tasks import drop_renders
-        # Under the draft's lock: a render storing its pictures finishes first and they are seen here, or it finds the draft gone.
-        with transaction.atomic():
-            GenerationDraft.objects.select_for_update().filter(pk=d.pk).first()
-            drop_renders(d)
-            d.delete()
+        # With its slides, its pictures and the uploads only it kept (a draft a file was made from is kept for good).
+        from .keeping import delete
+        delete(d)
         return {'deleted':True}
     if request.method=='PATCH':
         data=body(request,limit=DECK_PATCH_BYTES,too_large='payload_too_large') if d.feature_id==SLIDES else body(request)

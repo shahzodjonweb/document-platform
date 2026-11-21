@@ -27,7 +27,8 @@ def _source(account,asset,page,secret_id):
     if asset.mime_type!='application/pdf': raise DomainError('preview_unavailable',409)
     path=storage.local(asset.object_key)
     if not path.is_file(): raise DomainError('file_unavailable',404)
-    deadline=asset.expires_at
+    # A page's picture is a day's at most, however long its file is kept (a kept draft's source): it is drawn again when asked.
+    deadline=min(asset.expires_at,timezone.now()+timedelta(hours=24))
     password=None
     if asset.metadata.get('encrypted'):
         handle=get_secret(account,secret_id or asset.metadata.get('password_secret_id'),asset=asset)
