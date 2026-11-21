@@ -1379,7 +1379,7 @@ def _law_names(sentence):
                     why = 'word'
                     break
                 index, taken = index + 1, taken + 1
-        if opener and not _name_ends(sentence, tokens, index, why, word, _ru_verb_before(tokens, at)):
+        if opener and not _name_ends(sentence, tokens, index, why, word, _ru_verb_before(tokens, at, sentence)):
             name = opener + name  # the name goes on past what is read: its opening word is the name's, as c491da9's
         found += [(start, text) for start, text in name if _letters(text) >= 2
                   and not LAW_COUNTRY.fullmatch(normalised(text).casefold())]
@@ -1978,29 +1978,62 @@ RU_SUBORDINATOR = re.compile(r"котор\w*|чей|чья|чьё|чье|чьи|
                              r"|ибо|раз|будто|словно|как|кто|ли")
 
 
-def _ru_finite(word):
+# The endings `RU_VERB` reads as a verb's that a noun has too (`_ru_finite`): a present tense's bare -ит or -ят
+# ("следит", "говорят"; "Аудит", "Лимит", "Кредит", "Депозит"), a plural imperative's -ите ("храните"; "аудите",
+# "кредите"), a past plural's -ли ("соблюдали"; "Показатели", "Руководители").
+RU_NOUN_LIKE_VERB = re.compile(r"(.+?)(ит|ят|ите|[аие]ли)")
+# The infinitive's endings after the stem of a verb whose present tense ends in -ит, -ят or -ите (`_ru_finite`):
+# "следить", "говорить", "стоять", "видеть", "держать".
+RU_INFINITIVE_ENDINGS = ('ить', 'еть', 'ать', 'ять')
+# A dash between two words, which opens another clause (`_ru_verb_before`): "Бухгалтер ведёт учёт — Закон о ...".
+RU_DASH = re.compile(r"[—–―‒]|\s-|-\s")
+
+
+def _ru_finite(word, opening=False):
     """Whether a Russian word is a finite verb, a sentence's own (`_ru_verb_before`): a present, past or imperative
     form (`RU_LAW_VERB`, `RU_VERB`: "знает", "соблюдает", "ведётся", "руководствуется"), never a gerund nor an
-    infinitive (`RU_GERUND`: "Изучив", "Знать"), which leave the sentence's verb to come."""
+    infinitive (`RU_GERUND`: "Изучив", "Знать"), which leave the sentence's verb to come. A form in -ит, -ят, -ите or
+    -ли a noun has too (`RU_NOUN_LIKE_VERB`) is a verb only where the lexicon holds that verb's infinitive
+    (`RU_INFINITIVE_ENDINGS`: "следит" of "следить", "соблюдали" of "соблюдать"; never "Аудит", "Лимит", "Кредит",
+    "Показатели"), and never as the capitalised word opening the sentence (`opening`), its subject as often ("Аудит
+    Закона о ... проводится")."""
     low = normalised(word).casefold()
-    return re.search('[а-яё]', low) is not None and RU_GERUND.fullmatch(low) is None \
-        and (RU_LAW_VERB.fullmatch(low) is not None or RU_VERB.fullmatch(low) is not None)
+    if re.search('[а-яё]', low) is None or RU_GERUND.fullmatch(low) is not None:
+        return False
+    if RU_LAW_VERB.fullmatch(low) is not None:
+        return True
+    if RU_VERB.fullmatch(low) is None:
+        return False
+    shared = RU_NOUN_LIKE_VERB.fullmatch(low.replace('ё', 'е'))
+    if shared is None:
+        return True
+    if opening and word[0].isupper():
+        return False
+    stem, ending = shared.groups()
+    words = _ru_adjective_stems()[0]
+    if ending.endswith('ли'):
+        return stem + ending[0] + 'ть' in words
+    return any(stem + form in words for form in RU_INFINITIVE_ENDINGS)
 
 
-def _ru_verb_before(tokens, at):
-    """Whether a Russian finite verb (`_ru_finite`) stands before the law's stem at `at` in its clause, no mark
-    between, and no word opening a subordinate clause before it (`RU_SUBORDINATOR`): "Знает Закон о ...", "Бухгалтер
-    соблюдает Закон о ...", "Работа ведётся согласно Закону о ..."; never "Согласно Закону о ...", "Изучив Закон о
-    ...", "Бухгалтер, знающий Закон о ...", "Бухгалтер, который знает Закон о ...", "Если знает Закон о ...". The
-    sentence has its verb, so a verb after "и" and a noun past the law's name is another clause's (`_joined_ends`)."""
+def _ru_verb_before(tokens, at, source):
+    """Whether a Russian finite verb (`_ru_finite`) stands before the law's stem at `at` of `source` in its clause, no
+    mark or dash between (`RU_DASH`), no "и", "а", "но" or "или" between it and the stem, and no word opening a
+    subordinate clause before it (`RU_SUBORDINATOR`): "Знает Закон о ...", "Бухгалтер соблюдает Закон о ...", "Работа
+    ведётся согласно Закону о ...", "Бухгалтер знает и соблюдает Закон о ..."; never "Согласно Закону о ...", "Изучив
+    Закон о ...", "Бухгалтер, знающий Закон о ...", "Бухгалтер, который знает Закон о ...", "Если знает Закон о ...",
+    "Бухгалтер знает своё дело и Закон о ...", "Бухгалтер ведёт учёт — Закон о ...", "Аудит Закона о ...". The
+    sentence has its verb, so a verb after "и" and a noun past the law's name is another clause's (`_joined_ends`);
+    where the law opens a conjunct or a clause of its own, the verb after the name may be its, and the name's."""
     verb = False
     for index in range(at - 1, -1, -1):
         text = tokens[index][1]
-        if not WORD.fullmatch(text):
+        if not WORD.fullmatch(text) or RU_DASH.search(source[tokens[index][0] + len(text):tokens[index + 1][0]]):
             break
-        if RU_SUBORDINATOR.fullmatch(normalised(text).casefold()):
+        low = normalised(text).casefold()
+        if RU_SUBORDINATOR.fullmatch(low) or (not verb and LAW_AND.fullmatch(low)):
             return False
-        verb = verb or _ru_finite(text)
+        verb = verb or _ru_finite(text, _starts(source, tokens[index][0]))
     return verb
 
 
@@ -2231,7 +2264,7 @@ def _law_head_ends(sentence, start, word):
     before = [(match.start(), match.group(0)) for match in LAW_TOKEN.finditer(sentence[:start])]
     at = next((index for index in range(len(before) - 1, -1, -1)
                if any(stem.fullmatch(before[index][1]) for stem in NAMED_STEMS)), None)
-    after_verb = at is not None and _ru_verb_before(before, at)
+    after_verb = at is not None and _ru_verb_before(before, at, sentence)
     adverb = re.match(r"[ \u00a0]+([^\W\d_]+)(?![^\W\d_])", rest)
     while adverb is not None and _passed(adverb.group(1)) \
             and not LAW_NAME_PREPOSITION.fullmatch(normalised(adverb.group(1)).casefold()):
