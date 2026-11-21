@@ -5835,6 +5835,48 @@ for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING
                        f'{direction}-keep', KEEP, brief, 'ru', 'Бухгалтер как специалист знает Закон о бухгалтерском '
                        'учёте и сальдо не путает.', translated=True))
 
+# ---- An adverb in -имо, -емо, -исто or -ато after the customer's law (pr78-r3 k, k2): "зримо", "неумолимо",
+# "непоколебимо", "предсказуемо", "смекалисто", "напористо", "угловато", "простовато", "солоно". Round 15 read none as
+# an adverb, so it was a noun that keeps its -о and the customer's law blanked; 28c1b69 passed every lower-case word in
+# -о over and keeps them. The nouns of those shapes still go on the name ("эскимо", "мемо", "стаккато", "фортиссимо",
+# "маккиато").
+SHAPED_ADVERBS_IN_O_RU = (
+    ('relentlessly', 'Соблюдает Закон о бухгалтерском учёте неумолимо.'),
+    ('visibly', 'Применяет Закон о бухгалтерском учёте зримо.'),
+    ('unshakeably-and-a-clause', 'Соблюдает Закон о бухгалтерском учёте непоколебимо и умеет вести книги.'),
+    ('predictably', 'Применяет Закон о бухгалтерском учёте предсказуемо.'),
+    ('shrewdly-and-applies-it', 'Знает Закон о бухгалтерском учёте и смекалисто применяет его.'),
+    ('assertively-and-upholds-it', 'Знает Закон о бухгалтерском учёте и напористо отстаивает его нормы.'),
+    ('awkwardly', 'Соблюдает Закон о бухгалтерском учёте угловато.'),
+    ('simplistically-a-comma-clause', 'Знает Закон о бухгалтерском учёте, простовато толкуя его.'),
+    ('vaguely-having-studied', 'Изучив Закон о бухгалтерском учёте расплывчато, бухгалтер ведёт книги.'))
+for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
+    for slug, sentence in SHAPED_ADVERBS_IN_O_RU:
+        CASES += [
+            guard(f'laws-the-customers-law-before-an-adverb-in-imo-isto-or-ato-{slug}-{direction}-keep', KEEP, brief,
+                  'ru', sentence, translated=direction != 'ru'),
+            gp(f'laws-the-customers-law-before-an-adverb-in-imo-isto-or-ato-{slug}-in-a-grounded-part-{direction}-keep',
+               KEEP, brief, 'ru', sentence),
+        ]
+    CASES.append(body(f'laws-the-customers-law-before-an-adverb-in-imo-isto-or-ato-unshakeably-and-a-clause-in-a-report-'
+                      f'{direction}-keep', KEEP, 'pdf.biz.hisobot', brief, 'ru', 'work_done', SHAPED_ADVERBS_IN_O_RU[2][1]))
+for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING_UZ_RU),
+                         ('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU)):
+    for slug, sentence in (('relentlessly', 'Бухгалтер соблюдает Закон о бухгалтерском учёте неумолимо.'),
+                           ('assertively-and-a-clause', 'Бухгалтер применяет Закон о бухгалтерском учёте напористо и ведёт '
+                                                   'книги.')):
+        CASES.append(guard(f'laws-the-customers-translated-law-before-an-adverb-in-imo-isto-or-ato-{slug}-{direction}-'
+                           f'keep', KEEP, brief, 'ru', sentence, translated=True))
+for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
+    for slug, sentence, gone in (
+            ('and-an-eskimo', 'Знает Закон о бухгалтерском учёте и эскимо.', ('эскимо',)),
+            ('and-a-memo', 'Соблюдает Закон о бухгалтерском учёте и мемо.', ('мемо',)),
+            ('staccato-as-a-genitive', 'Знает Закон о бухгалтерском учёте стаккато.', ('стаккато',)),
+            ('and-fortissimo', 'Знает Закон о бухгалтерском учёте и фортиссимо.', ('фортиссимо',)),
+            ('as-well-as-a-macchiato', 'Применяет Закон о бухгалтерском учёте, а также маккиато.', ('маккиато',))):
+        CASES.append(guard(f'laws-a-noun-of-an-adverbs-shape-in-imo-or-ato-after-a-named-law-{slug}-{direction}-blank',
+                           BLANK, brief, 'ru', sentence, gone=gone, translated=direction != 'ru'))
+
 CASE_IDS = [case.id for case in CASES]
 
 
