@@ -5,26 +5,14 @@ and retried with backoff when Telegram is unavailable, so an approval is never
 silently lost and never announced twice.
 """
 from datetime import timedelta
-from urllib.parse import urlsplit
 
 from asgiref.sync import sync_to_async
 from aiogram.exceptions import TelegramForbiddenError, TelegramRetryAfter
-from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
 MAX_ATTEMPTS = 5
 CUSTOMER_KINDS = ('approved', 'rejected', 'renewal_reminder')
-
-
-def admin_url(path):
-    """A link into the admin, on the admin origin the deployment already trusts."""
-    for origin in settings.CSRF_TRUSTED_ORIGINS:
-        origin = origin.strip().rstrip('/')
-        host = urlsplit(origin).hostname or ''
-        if origin.startswith('https://') and 'admin' in host.split('.')[0]:
-            return origin + path
-    return ''
 
 
 @transaction.atomic
@@ -64,6 +52,7 @@ def compose(notice):
         owner = manual_payment_config()['alert_telegram_id']
         if not owner:
             return None, 'no_alert_recipient'
+        from apps.core.links import admin_url
         link = admin_url(f'/ops/payments/manual/{payment.id}')
         lines = ['💳 New card payment to review',
                  f"{payment.plan.title()} · {money(payment.amount)} so'm · {payment.reference}",

@@ -92,6 +92,10 @@ def _alert(healthy, problems):
     else:
         text = '⚠️ File storage needs attention.\n' + '\n'.join(f'• {describe(p)}' for p in problems) + \
                '\nFiles are kept on the server meanwhile and uploaded once the bucket answers.\nAdmin → Integrations → File storage'
+        from .links import admin_url
+        link = admin_url('/ops/integrations')
+        if link:
+            text += f': {link}'
         kind = 'storage_failing'
     StaffAlert.objects.create(kind=kind, text=text)
 
