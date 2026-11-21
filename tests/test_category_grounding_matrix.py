@@ -5664,6 +5664,8 @@ LAW_VERB_TAILS_RU = (
     ('knows-and-a-casino-initiates', 'Знает Закон о бухгалтерском учёте, казино не инициирует.', ('казино',)))
 LAW_VERB_RADIO = 'laws-a-verb-a-law-may-take-after-an-indeclinable-tail-knows-and-radio-does-not-break-ru-blank'
 LAW_VERB_COMMA = 'laws-a-verb-a-law-may-take-after-an-indeclinable-tail-according-to-and-a-show-does-not-regulate-ru-blank'
+LAW_VERB_SEMICOLON = ('laws-a-verb-a-law-may-take-after-an-indeclinable-tail-according-to-a-semicolon-and-an-llc-sets-'
+                      'ru-blank')
 for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
     for slug, sentence, gone in LAW_VERB_TAILS_RU:
         CASES += [
@@ -5721,7 +5723,8 @@ for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_U
                            KEEP, brief, 'ru', sentence, translated=direction != 'ru'))
 # What the owner's decision costs against 28c1b69: the customer's law before an abbreviation or such a noun opening a
 # clause whose verb a law may take ("Соблюдает Закон ... и НДС не нарушает", "Согласно Закону ..., ИП освобождается от
-# учёта", "..., НДС учитывается отдельно", "..., ООО применяет упрощённую систему", "..., НДС следует начислять"):
+# учёта", "..., НДС учитывается отдельно", "..., ООО применяет упрощённую систему", "..., НДС следует начислять", the
+# sweep's "...; УСН применяется малыми предприятиями"):
 # the same words in the same place may name an invented law, so the opening word is the name's and blanks.
 for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
     for slug, sentence, gone, pair in (
@@ -5733,7 +5736,9 @@ for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_U
             ('an-llc-applies-a-system', 'Согласно Закону о бухгалтерском учёте, ООО применяет упрощённую систему.',
              ('ООО',), LAW_VERB_COMMA),
             ('vat-should-be-charged', 'Согласно Закону о бухгалтерском учёте, НДС следует начислять ежемесячно.',
-             ('НДС',), LAW_VERB_COMMA)):
+             ('НДС',), LAW_VERB_COMMA),
+            ('a-semicolon-the-simplified-tax-is-applied', 'Согласно Закону о бухгалтерском учёте; УСН применяется '
+                                                          'малыми предприятиями.', ('УСН',), LAW_VERB_SEMICOLON)):
         CASES.append(guard(f'laws-the-customers-law-before-a-clause-whose-verb-a-law-may-take-{slug}-{direction}-'
                            f'accepted_false_blank', ACCEPTED, brief, 'ru', sentence, gone=gone,
                            translated=direction != 'ru', pair=pair))
