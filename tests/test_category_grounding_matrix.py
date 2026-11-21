@@ -6042,6 +6042,48 @@ for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_U
         CASES.append(guard(f'laws-the-customers-law-before-a-clause-28c1b69-ended-the-name-at-{slug}-{direction}-keep',
                            KEEP, brief, 'ru', sentence, translated=direction != 'ru'))
 
+# ---- A compound with a hyphen read by its last part where 28c1b69 read its first (pr79-r4b g_c): a first part that
+# declines ("Ростове-на-Дону", "Гвинее-Бисау", whose case is the first part's) or "кое-" before a pronoun in the name's
+# case ("кое-чём", ё not in LAW_OF_CASE). Round 16 judged them by the last part, which cannot go on a law's name, so the
+# name ended before them and "Согласно Закону о бухгалтерском учёте и Ростове-на-Дону" or "Знает Закон о бухгалтерском
+# учёте и кое-чём" printed; 28c1b69 read the first part as a word in the name's case and blanked; c491da9 blanks. The
+# last part decides only after a first part that takes no case ("вице", "кое", "мини", "кафе").
+COMPOUNDS_28C1B69_WENT_ON_RU = (
+    ('and-rostov-on-don', 'Согласно Закону о бухгалтерском учёте и Ростове-на-Дону.', ('Ростове',)),
+    ('and-guinea-bissau', 'Согласно Закону о бухгалтерском учёте и Гвинее-Бисау.', ('Гвинее',)),
+    ('and-rostov-on-don-too', 'Согласно Закону о бухгалтерском учёте и Ростове-на-Дону ещё.', ('Ростове',)),
+    ('as-well-as-guinea-bissau-before-a-verb', 'Согласно Закону о бухгалтерском учёте, а также Гвинее-Бисау регулирует '
+                                               'учёт.', ('Гвинее',)),
+    ('and-something-prepositional', 'Знает Закон о бухгалтерском учёте и кое-чём.', ('кое-чём',)),
+    ('a-comma-something-prepositional-before-a-verb', 'Знает Закон о бухгалтерском учёте, кое-чём регулирует учёт.',
+     ('кое-чём',)),
+    ('and-something-prepositional-and-audit', 'Знает Закон о бухгалтерском учёте и кое-чём и аудите.', ('кое-чём',)))
+for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
+    for slug, sentence, gone in COMPOUNDS_28C1B69_WENT_ON_RU:
+        CASES += [
+            guard(f'laws-a-compound-after-a-named-law-where-28c1b69-went-on-{slug}-{direction}-blank', BLANK, brief,
+                  'ru', sentence, gone=gone, translated=direction != 'ru'),
+            gp(f'laws-a-compound-after-a-named-law-where-28c1b69-went-on-{slug}-in-a-grounded-part-{direction}-blank',
+               BLANK, brief, 'ru', sentence, gone=gone),
+        ]
+    CASES.append(body(f'laws-a-compound-after-a-named-law-where-28c1b69-went-on-and-something-prepositional-in-a-'
+                      f'qualification-{direction}-blank', BLANK, 'pdf.biz.lavozim_yoriqnomasi', brief, 'ru',
+                      'qualification', COMPOUNDS_28C1B69_WENT_ON_RU[4][1], gone=('кое-чём',)))
+# The keeps a first part that takes no case has (round 16's, which 28c1b69 blanked): its last part in no case of the
+# name's, so no conjunct of it.
+for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
+    for slug, sentence in (('a-deputy-prime-minister-approves', 'Знает Закон о бухгалтерском учёте и вице-премьер его '
+                                                                'одобряет.'),
+                           ('learned-something', 'Знает Закон о бухгалтерском учёте и кое-чему научился.'),
+                           ('a-mini-hotel', 'Знает Закон о бухгалтерском учёте и мини-отель.'),
+                           ('opened-a-cafe-bar', 'Знает Закон о бухгалтерском учёте и кафе-бар открыл.')):
+        CASES += [
+            guard(f'laws-the-customers-law-before-a-compound-whose-first-part-takes-no-case-{slug}-{direction}-keep',
+                  KEEP, brief, 'ru', sentence, translated=direction != 'ru'),
+            gp(f'laws-the-customers-law-before-a-compound-whose-first-part-takes-no-case-{slug}-in-a-grounded-part-'
+               f'{direction}-keep', KEEP, brief, 'ru', sentence),
+        ]
+
 CASE_IDS = [case.id for case in CASES]
 
 

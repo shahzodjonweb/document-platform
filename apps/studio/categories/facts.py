@@ -1984,7 +1984,9 @@ def _joined_ends(tokens, at, conjoined, source='', after_verb=False):
     and this applies to banks"), and after a comma a capitalised word may ("..., the Auditing of Banks"), never a
     clause's subject ("..., the accountant keeps the books", "..., its rules apply to banks", `_clause_follows`: "...,
     teachers must protect pupils"). A Russian compound with a hyphen is read by its last part (`_compound_end`: "... и
-    интернет-торговле", "... и ток-шоу" go on; "... и интернет-банкинг" does not).
+    интернет-торговле", "... и ток-шоу" go on; "... и интернет-банкинг" does not), which ends the name only where
+    28c1b69's reading of the first part ended it too or the first part takes no case (`_compound_takes_no_case`: "...
+    и вице-премьер его одобряет", "... и кое-что об аудите"; never "... и Ростове-на-Дону", "... и кое-чём").
 
     A Russian clause read after the comma or the conjunction (`_ru_clause_follows`) ends the name only where 28c1b69
     ended it too (`_ended_28c1b69`): every clause that ended a name 28c1b69 let go on, after a noun that keeps its form
@@ -2005,7 +2007,10 @@ def _joined_ends(tokens, at, conjoined, source='', after_verb=False):
     # reading ended the name too.
     if (not conjoined or after_verb) and _ru_clause_follows(tokens, last) and _ended_28c1b69(tokens, at, conjoined):
         return True
-    return not _may_go_on(tokens[last][1])
+    # A compound's last part ends the name where 28c1b69's reading of its first part did too, or where the first part
+    # takes no case (`_compound_takes_no_case`).
+    return not _may_go_on(tokens[last][1]) and (
+        last == at or _ended_28c1b69(tokens, at, conjoined) or _compound_takes_no_case(tokens, at, last))
 
 
 def _joined_word(tokens, at, conjoined, passed):
@@ -2062,6 +2067,24 @@ def _ended_28c1b69(tokens, at, conjoined):
     if decided is not None:
         return decided
     return (not conjoined and _clause_follows(tokens, at)) or not _may_go_on(tokens[at][1], unchanged=False)
+
+
+# The first parts of a Russian compound with a hyphen that take no case of their own, so its last part says which case
+# it stands in (`_compound_takes_no_case`): "вице-премьер", "кое-что", "мини-отель", "кафе-бар".
+RU_CASELESS_FIRST_PART = re.compile(r"вице|кое|мини|макси|мульти|кафе")
+
+
+def _compound_takes_no_case(tokens, at, last):
+    """Whether the Russian compound with a hyphen from `at` to its last part at `last` (`_compound_end`) opens with a
+    part that takes no case of its own (`RU_CASELESS_FIRST_PART`), and its last part stands in no case the name's
+    words take after "о", ё read as е (`LAW_OF_CASE`, `_may_go_on`): "... и вице-премьер его одобряет", "... и кое-что
+    об аудите"; never "... и кое-чём", "... и вице-премьере", "... и мини-радио". Such a word is no conjunct of the
+    name, so the name ends before it, where 28c1b69 read the first part as a word in the name's case (`_joined_ends`).
+    A first part that declines ("Ростове-на-Дону", "Гвинее-Бисау") or any other leaves 28c1b69's reading standing."""
+    if last == at or not RU_CASELESS_FIRST_PART.fullmatch(normalised(tokens[at][1]).casefold()):
+        return False
+    low = normalised(tokens[last][1]).casefold().replace('ё', 'е')
+    return LAW_OF_CASE.fullmatch(low) is None and not _may_go_on(tokens[last][1])
 
 
 # The words that open a Russian subordinate clause, whose verb leaves the sentence's to come (`_ru_verb_before`): the
