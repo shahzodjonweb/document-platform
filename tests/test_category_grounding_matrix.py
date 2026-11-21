@@ -5736,6 +5736,67 @@ for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_U
                            f'accepted_false_blank', ACCEPTED, brief, 'ru', sentence, gone=gone,
                            translated=direction != 'ru', pair=pair))
 
+# ---- A word in capitals in the name's case after "и" before a verb (b1 S, SM, b3): round 15 read every word in capitals
+# as an abbreviation that may open a clause, so "Знает Закон о бухгалтерском учёте и АУДИТЕ ведёт книги" printed with
+# "аудите" read as a clause's subject, and with a word between, "Знает Закон о телевидении и СМИ редактор освещает
+# события" with "редактор" its subject; 28c1b69 read the word as one in the name's case and blanked; c491da9 blanks.
+# Only a short abbreviation (two to four letters, no word of the lexicon nor a case of one) opens a clause, its verb
+# right after it or after "не".
+CAPITALS_IN_CASE_TAILS_RU = (
+    ('knows-and-audit-keeps-books', 'Знает Закон о бухгалтерском учёте и АУДИТЕ ведёт книги.', ('АУДИТЕ',)),
+    ('keeps-and-taxes-reports', 'Соблюдает Закон о бухгалтерском учёте и НАЛОГАХ отчитывается вовремя.',
+     ('НАЛОГАХ',)),
+    ('knows-and-the-media-an-editor-covers', 'Знает Закон о бухгалтерском учёте и СМИ редактор освещает события.',
+     ('СМИ',)),
+    ('knows-and-the-media-does-not-break', 'Знает Закон о бухгалтерском учёте и СМИ не нарушает.', ('СМИ',)),
+    ('keeps-and-an-institute-regulates', 'Соблюдает Закон о бухгалтерском учёте и НИИ регулирует отчётность.',
+     ('НИИ',)),
+    ('guided-and-the-traffic-police-strictly-keeps', 'Руководствуется Законом о бухгалтерском учёте и ГАИ строго '
+                                                     'соблюдает.', ('ГАИ',)))
+for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
+    for slug, sentence, gone in CAPITALS_IN_CASE_TAILS_RU:
+        CASES += [
+            guard(f'laws-a-word-in-capitals-in-the-names-case-after-a-named-law-{slug}-{direction}-blank', BLANK, brief,
+                  'ru', sentence, gone=gone, translated=direction != 'ru'),
+            gp(f'laws-a-word-in-capitals-in-the-names-case-after-a-named-law-{slug}-in-a-grounded-part-{direction}-'
+               f'blank', BLANK, brief, 'ru', sentence, gone=gone),
+        ]
+    CASES.append(fact(f'laws-a-word-in-capitals-in-the-names-case-after-a-named-law-knows-and-audit-in-a-fact-'
+                      f'{direction}-blank', BLANK, 'pdf.biz.lavozim_yoriqnomasi', brief, 'ru', 'knowledge',
+                      'Знает Закон о бухгалтерском учёте и АУДИТЕ не нарушает.', gone=('АУДИТЕ',)))
+CASES += [
+    guard('laws-a-word-in-capitals-in-the-names-case-after-the-law-on-television-and-the-media-ru-blank', BLANK,
+          JOB_RU_KNOWS_TV, 'ru', 'Соблюдает Закон о телевидении и СМИ регулирует вещание.', gone=('СМИ',),
+          translated=False),
+    guard('laws-a-word-in-capitals-in-the-names-case-after-the-law-on-television-the-media-and-an-editor-ru-blank',
+          BLANK, JOB_RU_KNOWS_TV, 'ru', 'Знает Закон о телевидении и СМИ редактор освещает события.', gone=('СМИ',),
+          translated=False),
+]
+for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING_UZ_RU),
+                         ('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU)):
+    for slug, sentence, gone in (
+            ('knows-and-audit-keeps-books', 'Бухгалтер знает Закон о бухгалтерском учёте и АУДИТЕ ведёт книги.',
+             ('АУДИТЕ',)),
+            ('knows-and-the-media-an-editor-covers', 'Бухгалтер знает Закон о бухгалтерском учёте и СМИ редактор '
+                                                     'освещает события.', ('СМИ',))):
+        CASES += [
+            guard(f'laws-a-translated-head-noun-before-a-word-in-capitals-in-the-names-case-{slug}-{direction}-blank',
+                  BLANK, brief, 'ru', sentence, gone=gone, translated=True),
+            gp(f'laws-a-translated-head-noun-before-a-word-in-capitals-in-the-names-case-{slug}-in-a-grounded-part-'
+               f'{direction}-blank', BLANK, brief, 'ru', sentence, gone=gone),
+        ]
+# The keeps a short abbreviation opening a clause has in a translated paper (eb8b05c keeps them; 28c1b69 read the
+# abbreviation as a word in the name's case): its verb, one that takes no law, right after it or after "не".
+for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING_UZ_RU),
+                         ('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU)):
+    for slug, sentence in (('the-tax-inspectorate-checks', 'Согласно Закону о бухгалтерском учёте, ГНИ проверяет '
+                                                           'отчётность.'),
+                           ('the-media-covers', 'Знает Закон о бухгалтерском учёте и СМИ освещает события.'),
+                           ('the-traffic-police-does-not-fine', 'Знает Закон о бухгалтерском учёте и ГАИ не штрафует '
+                                                                'бухгалтера.')):
+        CASES.append(guard(f'laws-the-customers-law-before-a-short-abbreviation-in-capitals-opening-a-clause-{slug}-'
+                           f'{direction}-keep', KEEP, brief, 'ru', sentence, translated=True))
+
 CASE_IDS = [case.id for case in CASES]
 
 

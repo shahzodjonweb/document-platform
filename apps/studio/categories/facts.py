@@ -2144,13 +2144,18 @@ def _ru_clause_follows(tokens, at):
     finite or not, with "не" or without (the owner's decision): the law may be its subject or its object, the noun the
     name's last word ("Знает Закон о ... и радио не нарушает", "Руководствуется при этом Законом о ... и ПО регулируется
     работа", "..., радио не регулирует"); one that cannot take a law leaves the clause ("... и НДС начисляет вовремя",
-    "..., сальдо переносится на следующий период", "..., бюро ведёт учёт самостоятельно")."""
+    "..., сальдо переносится на следующий период", "..., бюро ведёт учёт самостоятельно"). A word in the name's case
+    is the name's (`LAW_OF_CASE`: "... и АУДИТЕ ведёт книги", "... и кафе ..."), in capitals too, unless it is a short
+    abbreviation (`_ru_case_abbreviation`: "..., ГНИ проверяет отчётность"), which takes its verb right after it or
+    after "не": a word between may be the clause's own subject, the abbreviation the name's ("... и СМИ редактор
+    освещает ...")."""
     text = tokens[at][1]
     low = normalised(text).casefold()
-    if not WORD.fullmatch(text) or not re.search('[а-яё]', low) or (LAW_OF_CASE.fullmatch(low) and not text.isupper()) \
+    in_case = LAW_OF_CASE.fullmatch(low) is not None
+    if not WORD.fullmatch(text) or not re.search('[а-яё]', low) or (in_case and not _ru_case_abbreviation(text)) \
             or not _ru_indeclinable(text):
         return False
-    between = False
+    between = in_case
     for index in range(at + 1, min(at + 4, len(tokens))):
         following = tokens[index][1]
         word = normalised(following).casefold()
@@ -2166,6 +2171,18 @@ def _ru_clause_follows(tokens, at):
             return False
         between = True
     return False
+
+
+def _ru_case_abbreviation(text):
+    """Whether a word in capitals with the letters of a word in the name's case (`LAW_OF_CASE`: "СМИ", "НИИ", "ГАИ",
+    "ГНИ") is an abbreviation, which stands in no case (`_ru_clause_follows`): two to four letters, neither a word of
+    the lexicon (words/ru.txt) nor a case of one ("ИХ", "ДОМЕ"); never a word written in capitals ("АУДИТЕ",
+    "НАЛОГАХ")."""
+    low = normalised(text).casefold().replace('ё', 'е')
+    if not text.isupper() or not 2 <= _letters(text) <= 4:
+        return False
+    words = _lexicon()['ru'][0]
+    return low not in words and not (len(low) > 3 and low[:3] in words and low[3:] in SHORT_ENDINGS['ru'])
 
 
 def _ru_law_verb(word):
