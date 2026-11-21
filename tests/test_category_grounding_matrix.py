@@ -4948,7 +4948,9 @@ for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING
                BLANK, brief, 'ru', sentence, gone=gone),
         ]
 # A compound whose last part takes no case of a name is read as that part is: the name ended before it, as 28c1b69 reads
-# "... и интернет-банкинг", "..., бизнес-план составляет сам", "..., нетто-активы рассчитываются ежегодно".
+# "... и интернет-банкинг", "..., бизнес-план составляет сам", "..., нетто-активы рассчитываются ежегодно". "... и
+# кое-что знает об аудите", whose first part takes no case, 28c1b69 blanks: an accepted false blank since round 18
+# (`REMARKED_CASELESS`).
 for slug, sentence in (('an-object', 'Знает Закон о бухгалтерском учёте и интернет-банкинг.'),
                        ('a-comma-clause', 'Знает Закон о бухгалтерском учёте, бизнес-план составляет сам.'),
                        ('a-clause-after-and', 'Соблюдает Закон о бухгалтерском учёте и кое-что знает об аудите.')):
@@ -5277,7 +5279,8 @@ for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING
                f'blank', BLANK, brief, 'ru', sentence, gone=gone),
         ]
 # The particle's word decides where it cannot go on the name: an adverb or a pronoun before it ("... и когда-то
-# применял его", "... и как-то применяет его", "... и кое-что об аудите"); 28c1b69 keeps these.
+# применял его", "... и как-то применяет его"); 28c1b69 keeps these. "... и кое-что об аудите", whose first part takes
+# no case, 28c1b69 blanks: an accepted false blank since round 18 (`REMARKED_CASELESS`).
 for slug, sentence in (('and-once-applied-it', 'Знает Закон о бухгалтерском учёте и когда-то применял его.'),
                        ('and-somehow-applies-it', 'Соблюдает Закон о бухгалтерском учёте и как-то применяет его.'),
                        ('and-something-of-audit', 'Знает Закон о бухгалтерском учёте и кое-что об аудите.')):
@@ -6069,8 +6072,9 @@ for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_U
     CASES.append(body(f'laws-a-compound-after-a-named-law-where-28c1b69-went-on-and-something-prepositional-in-a-'
                       f'qualification-{direction}-blank', BLANK, 'pdf.biz.lavozim_yoriqnomasi', brief, 'ru',
                       'qualification', COMPOUNDS_28C1B69_WENT_ON_RU[4][1], gone=('кое-чём',)))
-# The keeps a first part that takes no case has (round 16's, which 28c1b69 blanked): its last part in no case of the
-# name's, so no conjunct of it.
+# The keeps a first part that takes no case had (round 16's, which 28c1b69 blanked): its last part in no case of the
+# name's, so no conjunct of it after a prepositional name. After a genitive or a dative name such a last part is one
+# (pr79-r5a, pr79-r5b), so these are accepted false blanks since round 18 (`REMARKED_CASELESS`), as 28c1b69 has them.
 for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
     for slug, sentence in (('a-deputy-prime-minister-approves', 'Знает Закон о бухгалтерском учёте и вице-премьер его '
                                                                 'одобряет.'),
@@ -6141,6 +6145,167 @@ for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_U
         CASES.append(guard(f'laws-the-customers-law-before-an-abbreviation-and-a-verb-a-law-may-take-{slug}-{direction}-'
                            f'accepted_false_blank', ACCEPTED, brief, 'ru', sentence, gone=gone,
                            translated=direction != 'ru', pair=pair))
+
+# ---- A compound whose first part takes no case ("вице", "кое", "мини", "макси", "мульти", "кафе") after a law's name
+# whose last word is a genitive or a dative (pr79-r5a g_gen, g_gen_e2e; pr79-r5b d3_gen, d3_more, d3_e2e). 0261dac
+# ended the name before such a compound whose last part stands in no case of LAW_OF_CASE's shape, an argument that
+# holds only after a prepositional last word: after "о защите конкуренции", "о защите потребителей", "о статусе
+# судей", "о статусе военнослужащих", "о поддержке малых предприятий" or "о помощи семье" a genitive or a dative
+# conjunct is the name's ("Закон о защите конкуренции и мини-рынков", "... о помощи семье и мини-предприятиям"), and
+# the invented name printed (22,860 lines new versus 28c1b69 in g_gen, 99,658 in d3_gen, d3_more and d3_e2e). 28c1b69
+# read the first part as a word in the name's case and blanked; the compound's last part now ends the name only where
+# 28c1b69 ended it.
+COMPETITION_RU = 'Составьте должностную инструкцию юриста. Он должен знать Закон о защите конкуренции.'
+COMPETITION_EN_RU = ('Write a job description for a lawyer in Russian. He must know the Law on Protection of '
+                     'Competition.')
+COMPETITION_UZ_RU = ('Yurist uchun rus tilida lavozim yo‘riqnomasi yozing. U Raqobatni himoya qilish to‘g‘risidagi '
+                     'qonunni bilishi kerak.')
+COMPETITION_UZC_RU = ('Юрист учун рус тилида лавозим йўриқномаси ёзинг. У Рақобатни ҳимоя қилиш тўғрисидаги қонунни '
+                      'билиши керак.')
+COMPETITION_BRIEFS = (('ru', COMPETITION_RU), ('en-to-ru', COMPETITION_EN_RU), ('uz-to-ru', COMPETITION_UZ_RU),
+                      ('uz-cyrillic-to-ru', COMPETITION_UZC_RU))
+CONSUMERS_BRIEFS = (
+    ('en-to-ru', 'Write a job description for a lawyer in Russian. He must know the Law on Consumer Protection.'),
+    ('uz-to-ru', 'Yurist uchun rus tilida lavozim yo‘riqnomasi yozing. U Iste’molchilarning huquqlarini himoya qilish '
+                 'to‘g‘risidagi qonunni bilishi kerak.'),
+    ('uz-cyrillic-to-ru', 'Юрист учун рус тилида лавозим йўриқномаси ёзинг. У Истеъмолчиларнинг ҳуқуқларини ҳимоя '
+                          'қилиш тўғрисидаги қонунни билиши керак.'))
+SMALL_FIRMS_RU = 'Составьте должностную инструкцию юриста. Он должен знать Закон о поддержке малых предприятий.'
+SERVICEMEN_RU = 'Составьте должностную инструкцию юриста. Он должен знать Закон о статусе военнослужащих.'
+JUDGES_RU = 'Составьте должностную инструкцию помощника судьи. Он должен знать Закон о статусе судей.'
+FAMILY_RU = 'Составьте должностную инструкцию юриста. Он должен знать Закон о помощи семье.'
+CASELESS_COMPOUND = 'laws-a-compound-with-a-caseless-first-part-joining-a-genitive-or-dative-name'
+CASELESS_COMPOUND_COMPETITION = (
+    ('competition-and-mini-markets', 'Знает Закон о защите конкуренции и мини-рынков.', ('мини-рынков',)),
+    ('competition-and-vice-presidents', 'Знает Закон о защите конкуренции и вице-президентов.', ('вице-президентов',)),
+    ('competition-and-cafe-bars', 'Знает Закон о защите конкуренции и кафе-баров.', ('кафе-баров',)),
+    ('competition-and-something-genitive', 'Знает Закон о защите конкуренции и кое-чего.', ('кое-чего',)),
+    ('competition-as-well-as-mini-marts-before-a-comma-clause', 'Согласно Закону о защите конкуренции, а также '
+                                                                'мини-маркетов, цены не согласуются.',
+     ('мини-маркетов',)),
+    ('competition-a-comma-cafe-bars', 'Знает Закон о защите конкуренции, кафе-баров.', ('кафе-баров',)),
+    ('competition-is-guided-and-mini-markets', 'Руководствуется Законом о защите конкуренции и мини-рынков.',
+     ('мини-рынков',)))
+for direction, brief in COMPETITION_BRIEFS:
+    for slug, sentence, gone in CASELESS_COMPOUND_COMPETITION:
+        CASES += [
+            guard(f'{CASELESS_COMPOUND}-{slug}-{direction}-blank', BLANK, brief, 'ru', sentence, gone=gone,
+                  translated=direction != 'ru'),
+            gp(f'{CASELESS_COMPOUND}-{slug}-in-a-grounded-part-{direction}-blank', BLANK, brief, 'ru', sentence,
+               gone=gone),
+        ]
+    CASES += [
+        body(f'{CASELESS_COMPOUND}-competition-and-mini-markets-in-a-qualification-{direction}-blank', BLANK,
+             'pdf.biz.lavozim_yoriqnomasi', brief, 'ru', 'qualification', CASELESS_COMPOUND_COMPETITION[0][1],
+             gone=('мини-рынков',)),
+        body(f'{CASELESS_COMPOUND}-competition-and-vice-presidents-in-an-introduction-{direction}-blank', BLANK,
+             'pdf.biz.lavozim_yoriqnomasi', brief, 'ru', 'intro', CASELESS_COMPOUND_COMPETITION[1][1],
+             gone=('вице-президентов',)),
+    ]
+for direction, brief in CONSUMERS_BRIEFS:
+    for slug, sentence, gone in (
+            ('consumers-and-mini-marts', 'Знает Закон о защите потребителей и мини-маркетов.', ('мини-маркетов',)),
+            ('consumers-and-cafe-bars-before-a-comma-clause', 'Согласно Закону о защите потребителей и кафе-баров, '
+                                                              'жалобы рассматриваются в срок.', ('кафе-баров',)),
+            ('consumers-having-studied-and-mini-marts', 'Изучив Закон о защите потребителей и мини-маркетов, юрист '
+                                                        'готовит ответ.', ('мини-маркетов',))):
+        CASES += [
+            guard(f'{CASELESS_COMPOUND}-{slug}-{direction}-blank', BLANK, brief, 'ru', sentence, gone=gone,
+                  translated=True),
+            gp(f'{CASELESS_COMPOUND}-{slug}-in-a-grounded-part-{direction}-blank', BLANK, brief, 'ru', sentence,
+               gone=gone),
+        ]
+    CASES.append(body(f'{CASELESS_COMPOUND}-consumers-and-mini-marts-in-a-qualification-{direction}-blank', BLANK,
+                      'pdf.biz.lavozim_yoriqnomasi', brief, 'ru', 'qualification',
+                      'Знает Закон о защите потребителей и мини-маркетов.', gone=('мини-маркетов',)))
+# Other names ending in a genitive or a dative, comma lists that go on past the compound, and a particle after it.
+for slug, brief, sentence, gone in (
+        ('small-firms-and-mini-bakeries-before-a-comma-clause', SMALL_FIRMS_RU, 'Согласно Закону о поддержке малых '
+         'предприятий и мини-пекарен, бизнес получает льготы.', ('мини-пекарен',)),
+        ('small-firms-a-comma-list-mini-hotels-and-farms', SMALL_FIRMS_RU, 'Знает Закон о поддержке малых предприятий, '
+         'мини-гостиниц и фермерских хозяйств.', ('мини-гостиниц',)),
+        ('small-firms-a-comma-list-mini-bakeries-and-cafes', SMALL_FIRMS_RU, 'Знает Закон о поддержке малых '
+         'предприятий, мини-пекарен и кафе.', ('мини-пекарен',)),
+        ('small-firms-a-semicolon-mini-hotels-and-farms', SMALL_FIRMS_RU, 'Знает Закон о поддержке малых предприятий; '
+         'мини-гостиниц и ферм.', ('мини-гостиниц',)),
+        ('small-firms-and-mini-hotels-as-well-as-farms', SMALL_FIRMS_RU, 'Знает Закон о поддержке малых предприятий и '
+         'мини-гостиниц, а также фермерских хозяйств.', ('мини-гостиниц',)),
+        ('small-firms-is-guided-and-mini-plants', SMALL_FIRMS_RU, 'Руководствуется Законом о поддержке малых '
+         'предприятий и мини-заводов.', ('мини-заводов',)),
+        ('servicemen-and-vice-admirals', SERVICEMEN_RU, 'Знает Закон о статусе военнослужащих и вице-адмиралов.',
+         ('вице-адмиралов',)),
+        ('servicemen-and-vice-admirals-with-a-particle', SERVICEMEN_RU, 'Знает Закон о статусе военнослужащих и '
+         'вице-адмиралов-то.', ('вице-адмиралов',)),
+        ('servicemen-and-vice-admirals-retired', SERVICEMEN_RU, 'Знает Закон о статусе военнослужащих и '
+         'вице-адмиралов в отставке.', ('вице-адмиралов',)),
+        ('servicemen-and-vice-admirals-and-their-families', SERVICEMEN_RU, 'Знает Закон о статусе военнослужащих и '
+         'вице-адмиралов и членов их семей.', ('вице-адмиралов',)),
+        ('servicemen-and-someone-else', SERVICEMEN_RU, 'Знает Закон о статусе военнослужащих и кое-кого ещё.',
+         ('кое-кого',)),
+        ('servicemen-a-comma-vice-admirals', SERVICEMEN_RU, 'Знает Закон о статусе военнослужащих, вице-адмиралов.',
+         ('вице-адмиралов',)),
+        ('judges-and-a-vice-chairman', JUDGES_RU, 'Знает Закон о статусе судей и вице-председателя.',
+         ('вице-председателя',)),
+        ('judges-and-vice-presidents', JUDGES_RU, 'Соблюдает Закон о статусе судей и вице-президентов.',
+         ('вице-президентов',)),
+        ('competition-and-vice-presidents-with-a-particle', COMPETITION_RU, 'Знает Закон о защите конкуренции и '
+         'вице-президентов-то.', ('вице-президентов',)),
+        ('competition-a-semicolon-mini-marts', COMPETITION_RU, 'Согласно Закону о защите конкуренции; мини-маркетов.',
+         ('мини-маркетов',)),
+        ('competition-a-comma-list-mini-markets-and-fairs', COMPETITION_RU, 'Знает Закон о защите конкуренции, '
+         'мини-рынков и ярмарок.', ('мини-рынков',)),
+        ('competition-and-especially-vice-presidents', COMPETITION_RU, 'Знает Закон о защите конкуренции и особенно '
+         'вице-президентов.', ('вице-президентов',)),
+        ('family-dative-and-mini-firms', FAMILY_RU, 'Знает Закон о помощи семье и мини-предприятиям.',
+         ('мини-предприятиям',)),
+        ('family-dative-and-vice-governors', FAMILY_RU, 'Знает Закон о помощи семье и вице-губернаторам.',
+         ('вице-губернаторам',)),
+        ('family-dative-a-comma-cafe-bars', FAMILY_RU, 'Знает Закон о помощи семье, кафе-барам.', ('кафе-барам',))):
+    CASES += [
+        guard(f'{CASELESS_COMPOUND}-{slug}-ru-blank', BLANK, brief, 'ru', sentence, gone=gone, translated=False),
+        gp(f'{CASELESS_COMPOUND}-{slug}-in-a-grounded-part-ru-blank', BLANK, brief, 'ru', sentence, gone=gone),
+    ]
+# End to end on a job description: a qualification's body and the introduction's.
+for slug, brief, sentence, gone in (
+        ('small-firms-and-mini-bakeries-before-a-comma-clause', SMALL_FIRMS_RU, 'Согласно Закону о поддержке малых '
+         'предприятий и мини-пекарен, бизнес получает льготы.', ('мини-пекарен',)),
+        ('servicemen-and-vice-admirals', SERVICEMEN_RU, 'Знает Закон о статусе военнослужащих и вице-адмиралов.',
+         ('вице-адмиралов',)),
+        ('judges-and-a-vice-chairman', JUDGES_RU, 'Знает Закон о статусе судей и вице-председателя.',
+         ('вице-председателя',)),
+        ('family-dative-and-mini-firms', FAMILY_RU, 'Знает Закон о помощи семье и мини-предприятиям.',
+         ('мини-предприятиям',))):
+    CASES += [
+        body(f'{CASELESS_COMPOUND}-{slug}-in-a-qualification-ru-blank', BLANK, 'pdf.biz.lavozim_yoriqnomasi', brief,
+             'ru', 'qualification', sentence, gone=gone),
+        body(f'{CASELESS_COMPOUND}-{slug}-in-an-introduction-ru-blank', BLANK, 'pdf.biz.lavozim_yoriqnomasi', brief,
+             'ru', 'intro', sentence, gone=gone),
+    ]
+# What dropping 0261dac's exemption costs: its keeps after a prepositional name ("... учёте и вице-премьер его
+# одобряет", "... и кое-чему научился", "... и мини-отель", "... и кафе-бар открыл") and round 16's "... и кое-что
+# знает об аудите", "... и кое-что об аудите". 28c1b69 (PR77) blanks every one of them too, so none is a false blank
+# against it; eb8b05c keeps them. The reader cannot tell a caseless first part's compound that is no conjunct of the
+# name from one that is (the cases above: the same words in the same place), so the customer's law before it blanks,
+# the owner's tie-break. The ids the core list names stay, repointed to the customer's own words, each with its
+# accepted false blank paid for by the blank of the same first part and direction above.
+REMARKED_CASELESS = {}
+for direction, _ in COMPETITION_BRIEFS:
+    for slug, gone, paid in (('a-deputy-prime-minister-approves', ('вице-премьер',), 'competition-and-vice-presidents'),
+                             ('learned-something', ('кое-чему',), 'competition-and-something-genitive'),
+                             ('a-mini-hotel', ('мини-отель',), 'competition-and-mini-markets'),
+                             ('opened-a-cafe-bar', ('кафе-бар',), 'competition-and-cafe-bars')):
+        keep = f'laws-the-customers-law-before-a-compound-whose-first-part-takes-no-case-{slug}'
+        REMARKED_CASELESS[f'{keep}-{direction}-keep'] = (gone, f'{CASELESS_COMPOUND}-{paid}-{direction}-blank')
+        REMARKED_CASELESS[f'{keep}-in-a-grounded-part-{direction}-keep'] = (
+            gone, f'{CASELESS_COMPOUND}-{paid}-in-a-grounded-part-{direction}-blank')
+    REMARKED_CASELESS[f'laws-the-customers-law-before-a-hyphenated-word-out-of-the-names-case-a-clause-after-and-'
+                      f'{direction}-keep'] = (('кое-что',), f'{CASELESS_COMPOUND}-competition-and-something-genitive-'
+                                                            f'{direction}-blank')
+    REMARKED_CASELESS[f'laws-the-customers-law-before-a-pronoun-or-adverb-with-a-particle-and-something-of-audit-'
+                      f'{direction}-keep'] = (('кое-что',), f'{CASELESS_COMPOUND}-competition-and-something-genitive-'
+                                                            f'{direction}-blank')
+CASES = [made for case in CASES
+         for made in (repointed(case, *REMARKED_CASELESS[case.id]) if case.id in REMARKED_CASELESS else [case])]
 
 CASE_IDS = [case.id for case in CASES]
 
