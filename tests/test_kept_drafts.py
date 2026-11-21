@@ -838,6 +838,14 @@ HELD = {
     'ru': 'Этот файл хранится только для изменения сделанного по нему ИИ-документа, поэтому открыть его здесь больше нельзя. '
           'Чтобы отредактировать, пришлите его снова.',
 }
+# The chat's own words for it: the chat sends files and opens none, so it says the file is sent there no more.
+CHAT_HELD = {
+    'en': '⌛ This file is kept only for changing the AI document made from it, so it can no longer be sent here. Send the file again to use it.',
+    'uz': '⌛ Bu fayl faqat undan yaratilgan AI hujjatni o‘zgartirish uchun saqlanadi, shuning uchun uni bu yerga endi yuborib bo‘lmaydi. '
+          'Undan foydalanish uchun faylni qayta yuboring.',
+    'ru': '⌛ Этот файл хранится только для изменения сделанного по нему ИИ-документа, поэтому прислать его сюда больше нельзя. '
+          'Чтобы воспользоваться им, отправьте файл снова.',
+}
 
 
 def refused_as(answer):
@@ -875,7 +883,7 @@ def test_a_file_held_for_a_document_is_said_to_be_kept_never_deleted(customer, c
     held = DomainError('file_expired', 410, {'reason': keeping.KEPT_FOR_DOCUMENT})
     for locale in ('en', 'uz', 'ru'):
         assert error_data(held, locale)['message'] == HELD[locale]
-        assert bot_error(held, locale) == UX[locale]['result_held'] == f'⌛ {HELD[locale]}'
+        assert bot_error(held, locale) == UX[locale]['result_held'] == CHAT_HELD[locale]
         assert bot_error(DomainError('file_expired', 410), locale) != bot_error(held, locale)
 
 
@@ -1170,3 +1178,18 @@ def test_what_names_no_copy_in_the_chat_is_said_in_every_language():
         assert all(said) and not any('chat' in line or 'чат' in line for line in said), said
         assert not re.search('[А-Яа-яЁё]', UX['uz'][key]) and "'" not in UX['uz'][key], UX['uz'][key]
     assert all('{format}' in UX[locale]['ai_edited_not_kept_unsent'] for locale in ('en', 'uz', 'ru'))
+
+
+def test_the_chat_says_in_its_own_words_that_a_held_file_is_sent_there_no_more():
+    """A task's screen and a refusal in the chat: the file is sent no more and is sent again to be used, never the
+    editor's "opened here" and "edit it"; the web and the editor keep their own words."""
+    import re
+    from apps.core.errors import DomainError, error_data
+    from telegram.errors import bot_error
+    from telegram.ux_copy import UX
+    held = DomainError('file_expired', 410, {'reason': keeping.KEPT_FOR_DOCUMENT})
+    for locale in ('en', 'uz', 'ru'):
+        assert UX[locale]['result_held'] == CHAT_HELD[locale] == bot_error(held, locale)
+        assert error_data(held, locale)['message'] == HELD[locale]
+    assert 'opened' not in UX['en']['result_held'] and 'edit' not in UX['en']['result_held']
+    assert not re.search('[А-Яа-яЁё]', UX['uz']['result_held']) and "'" not in UX['uz']['result_held']

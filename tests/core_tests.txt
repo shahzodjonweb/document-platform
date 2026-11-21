@@ -4526,3 +4526,7 @@ tests/test_kept_drafts.py::test_a_deck_never_sent_to_the_chat_asked_for_as_a_pdf
 tests/test_kept_drafts.py::test_a_deck_never_sent_to_the_chat_without_its_editor_is_offered_a_change
 tests/test_kept_drafts.py::test_an_edited_deck_never_sent_to_the_chat_names_no_older_file_there
 tests/test_kept_drafts.py::test_what_names_no_copy_in_the_chat_is_said_in_every_language
+
+# After the fifth review: the chat says in its own words that a file kept only for an AI document's changes past its
+# day is sent there no more.
+tests/test_kept_drafts.py::test_the_chat_says_in_its_own_words_that_a_held_file_is_sent_there_no_more

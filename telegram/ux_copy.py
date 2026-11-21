@@ -97,7 +97,9 @@ MESSAGES = {
     'result_expired': ('⌛ This result is no longer stored. Send the original file to try again.', '⌛ Natijaning saqlash muddati tugagan. Asl faylni qayta yuboring.', '⌛ Срок хранения истёк. Отправьте исходный файл ещё раз.'),
     # A file kept only as an AI document's source, past its own day (apps/studio/keeping.py): still stored, so never
     # "no longer stored". Its task's screen, and every refusal of it in the chat (errors.bot_error), say this.
-    'result_held': ('⌛ This file is kept only for changing the AI document made from it, so it can no longer be opened here. Send it again to edit it.', '⌛ Bu fayl faqat undan yaratilgan AI hujjatni o‘zgartirish uchun saqlanadi, shuning uchun uni bu yerda endi ochib bo‘lmaydi. Tahrirlash uchun uni qayta yuboring.', '⌛ Этот файл хранится только для изменения сделанного по нему ИИ-документа, поэтому открыть его здесь больше нельзя. Чтобы отредактировать, пришлите его снова.'),
+    # The chat's own words for a file kept only for changing an AI document past its own day: a task's screen and a
+    # refusal in the chat (telegram/errors.py). The chat sends files and opens none; the editor's words are its own.
+    'result_held': ('⌛ This file is kept only for changing the AI document made from it, so it can no longer be sent here. Send the file again to use it.', '⌛ Bu fayl faqat undan yaratilgan AI hujjatni o‘zgartirish uchun saqlanadi, shuning uchun uni bu yerga endi yuborib bo‘lmaydi. Undan foydalanish uchun faylni qayta yuboring.', '⌛ Этот файл хранится только для изменения сделанного по нему ИИ-документа, поэтому прислать его сюда больше нельзя. Чтобы воспользоваться им, отправьте файл снова.'),
     'retry_task': ('🔄 Review & retry', '🔄 Tekshirib qayta urinish', '🔄 Проверить и повторить'),
     'link_methods': ('🔑 Sign-in methods', '🔑 Kirish usullari', '🔑 Способы входа'),
     'linked_methods': ('Sign in with', 'Kirish usullari', 'Способы входа'),
@@ -139,7 +141,6 @@ MESSAGES = {
     # The home screen's way to the plans: an invitation, not a status page.
     'subscribe_button': ('💎 Subscribe', '💎 Obuna bo‘lish', '💎 Оформить подписку'),
     'limits': ('📎 Bot limit: 20 MB per file. Use the website for larger files.', '📎 Botda: har fayl 20 MB gacha. Kattaroq fayl uchun saytdan foydalaning.', '📎 В боте: до 20 МБ на файл. Для больших файлов используйте сайт.'),
-    'retention': ('🕒 Server files are stored for 24 hours. Copies sent here stay in your chat.', '🕒 Server fayllari 24 soat saqlanadi. Bu yerga yuborilgan nusxalar chatda qoladi.', '🕒 Файлы на сервере хранятся 24 часа. Отправленные сюда копии остаются в чате.'),
     # AI generation. The studio's own errors are translated in errors.py.
     'ai_ask_topic': ('✍️ Describe what you want. Say everything in one message: the subject, who it is for, the tone, and how many pages.', '✍️ Nima kerakligini yozing. Hammasini bitta xabarda ayting: mavzu, kim uchun, uslub va necha sahifa.', '✍️ Опишите, что нужно. Всё одним сообщением: тема, для кого, тон и сколько страниц.'),
     # The count a description that names none is given (apps/studio/pages.py
@@ -444,7 +445,6 @@ MESSAGES = {
 # Keep the older keys for commands, saved controls and transport compatibility.
 # They share the same tone as the primary flow instead of exposing command syntax.
 LEGACY_MESSAGES = {
-    'welcome': ('👋 Welcome to DocMaster! Send a file to begin. Server copies are kept for 24 hours.', '👋 DocMaster’ga xush kelibsiz! Boshlash uchun fayl yuboring. Serverdagi nusxalar 24 soat saqlanadi.', '👋 Добро пожаловать в DocMaster! Отправьте файл. Копии на сервере хранятся 24 часа.'),
     'tools': ('🧰 Choose what to do with your file.', '🧰 Fayl bilan nima qilishni tanlang.', '🧰 Выберите действие с файлом.'),
     'received': ('📎 File added. Send more or tap Start when ready.', '📎 Fayl qo‘shildi. Yana yuboring yoki Boshlashni bosing.', '📎 Файл добавлен. Отправьте ещё или нажмите «Начать».'),
     'done': ('✅ Check your files, then tap Start.', '✅ Fayllarni tekshirib, Boshlashni bosing.', '✅ Проверьте файлы и нажмите «Начать».'),
