@@ -5106,6 +5106,129 @@ for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING
         CASES.append(guard(f'laws-a-translated-head-noun-before-an-abbreviation-with-no-verb-before-the-law-{slug}-'
                            f'{direction}-blank', BLANK, brief, 'ru', sentence, gone=gone, translated=True))
 
+# ---------------------------------------------------------------- the re-check of round 14 (pr78-r2), both ways
+# Round 14 left three readings that print what c491da9 blanks (c1, c2, c3, c4), pinned here as blanks under the briefs
+# the re-check used, with the keeps 28c1b69 has for the same readings.
+REPORT_RU_ACCOUNTING = ('Напишите отчёт о работе бухгалтерии за 2025 год на русском языке. Отдел соблюдал Закон о '
+                        'бухгалтерском учёте.')
+REPORT_EN_RU_ACCOUNTING = ('Write a report on the accounting department for 2025 in Russian. The department followed '
+                           'the Law on Accounting.')
+REPORT_UZ_RU_ACCOUNTING = ('Buxgalteriya bo‘limining 2025 yildagi ishi haqida rus tilida hisobot yozing. Bo‘lim '
+                           'Buxgalteriya hisobi to‘g‘risidagi qonunga amal qildi.')
+REPORTS_ON_ACCOUNTING = (('ru', REPORT_RU_ACCOUNTING), ('en-to-ru', REPORT_EN_RU_ACCOUNTING),
+                         ('uz-to-ru', REPORT_UZ_RU_ACCOUNTING))
+COURSE_EN_RU_ACCOUNTING = ('Write a course paper in Russian on "Accounting in small firms". It must cover the Law on '
+                           'Accounting.')
+COURSE_UZ_RU_ACCOUNTING = ('Rus tilida "Kichik firmalarda buxgalteriya hisobi" mavzusida kurs ishi yozing. Unda '
+                           'Buxgalteriya hisobi to‘g‘risidagi qonun yoritilsin.')
+COURSES_ON_ACCOUNTING = (('en-to-ru', COURSE_EN_RU_ACCOUNTING), ('uz-to-ru', COURSE_UZ_RU_ACCOUNTING))
+
+# ---- A noun that keeps its form in every case outside round 14's lists (c1): in -а after a vowel ("медиа",
+# "мультимедиа"), in -у, -ю or -а ("авеню", "тофу", "хайку", "ню", "инженю", "бижу", "тирамису", "ультра"), "мумиё", and
+# a loan in -о of an adverb's shape or an adjective's stem ("пиано", "франко", "инкогнито", "нано", "порно", "жиро").
+# Round 14 read none as able to go on a law's name, or passed the loan in -о over as an adverb, so the name ended before
+# it: an opening word was dropped or a translated head noun "учёте" passed as the customer's, and "Знает Закон о
+# бухгалтерском учёте и медиа" printed; c491da9 holds the opening word or the head noun and blanks.
+MORE_INDECLINABLE_TAILS_RU = (
+    ('and-media', 'Знает Закон о бухгалтерском учёте и медиа.', ('медиа',)),
+    ('media-and-audit', 'Знает Закон о бухгалтерском учёте, медиа и аудите.', ('медиа', 'аудите')),
+    ('and-multimedia-before-a-comma-clause', 'Согласно Закону о бухгалтерском учёте и мультимедиа, бухгалтер ведёт '
+                                             'книги.', ('мультимедиа',)),
+    ('as-well-as-an-avenue', 'Применяет Закон о бухгалтерском учёте, а также авеню.', ('авеню',)),
+    ('and-especially-tofu', 'Руководствуется Законом о бухгалтерском учёте и особенно тофу.', ('тофу',)),
+    ('a-semicolon-haiku-and-taxes', 'Знает Закон о бухгалтерском учёте; хайку и налогах.', ('хайку',)),
+    ('having-studied-and-an-ingenue', 'Изучив Закон о бухгалтерском учёте и инженю, бухгалтер ведёт книги.',
+     ('инженю',)),
+    ('and-a-nude', 'Соблюдает Закон о бухгалтерском учёте и ню.', ('ню',)),
+    ('and-bijou', 'Знает Закон о бухгалтерском учёте и бижу.', ('бижу',)),
+    ('and-tiramisu', 'Знает Закон о бухгалтерском учёте и тирамису.', ('тирамису',)),
+    ('and-ultra', 'Знает Закон о бухгалтерском учёте и ультра.', ('ультра',)),
+    ('and-mumiyo', 'Соблюдает Закон о бухгалтерском учёте и мумиё.', ('мумиё',)),
+    ('and-a-piano', 'Знает Закон о бухгалтерском учёте и пиано.', ('пиано',)),
+    ('and-franco-strictly', 'Знает Закон о бухгалтерском учёте и франко строго.', ('франко',)),
+    ('as-well-as-incognito', 'Применяет Закон о бухгалтерском учёте, а также инкогнито.', ('инкогнито',)),
+    ('and-of-course-nano', 'Знает Закон о бухгалтерском учёте и, конечно, нано.', ('нано',)),
+    ('as-well-as-porn', 'Согласно Закону о бухгалтерском учёте, а также порно, бухгалтер ведёт книги.', ('порно',)),
+    ('a-giro-as-a-genitive', 'Знает Закон о бухгалтерском учёте жиро.', ('жиро',)))
+for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
+    for slug, sentence, gone in MORE_INDECLINABLE_TAILS_RU:
+        CASES += [
+            guard(f'laws-a-further-indeclinable-tail-after-a-named-law-{slug}-{direction}-blank', BLANK, brief, 'ru',
+                  sentence, gone=gone, translated=direction != 'ru'),
+            gp(f'laws-a-further-indeclinable-tail-after-a-named-law-{slug}-in-a-grounded-part-{direction}-blank',
+               BLANK, brief, 'ru', sentence, gone=gone),
+        ]
+    CASES.append(body(f'laws-a-further-indeclinable-tail-after-a-named-law-and-media-in-a-qualification-{direction}-'
+                      f'blank', BLANK, 'pdf.biz.lavozim_yoriqnomasi', brief, 'ru', 'qualification',
+                      MORE_INDECLINABLE_TAILS_RU[0][1], gone=('медиа',)))
+    if direction != 'ru':
+        CASES.append(guard(f'laws-a-further-indeclinable-tail-after-a-named-law-and-media-capitalised-{direction}-'
+                           f'blank', BLANK, brief, 'ru', 'Знает Закон о бухгалтерском учёте и Медиа.', gone=('Медиа',),
+                           translated=True))
+for direction, brief in (('ru', JOB_RU_KNOWS_ACCOUNTING_DATED), ('en-to-ru', ACCOUNTING_EN_RU_NUMBERED)):
+    for slug, sentence, gone in (
+            ('date-and-media', 'Знает Закон о бухгалтерском учёте от 13 апреля 2016 года и медиа.', ('медиа',)),
+            ('number-and-tofu', 'Соблюдает Закон о бухгалтерском учёте № 404 и тофу.', ('тофу',)),
+            ('number-and-a-piano', 'Соблюдает Закон о бухгалтерском учёте № 404 и пиано.', ('пиано',))):
+        CASES += [
+            guard(f'laws-a-further-indeclinable-tail-after-a-named-laws-{slug}-{direction}-blank', BLANK, brief, 'ru',
+                  sentence, gone=gone, translated=direction != 'ru'),
+            gp(f'laws-a-further-indeclinable-tail-after-a-named-laws-{slug}-in-a-grounded-part-{direction}-blank',
+               BLANK, brief, 'ru', sentence, gone=gone),
+        ]
+CASES += [
+    guard('laws-a-further-indeclinable-tail-after-the-law-on-television-and-media-ru-blank', BLANK, JOB_RU_KNOWS_TV,
+          'ru', 'Знает Закон о телевидении и медиа.', gone=('медиа',), translated=False),
+    gp('laws-a-further-indeclinable-tail-after-the-law-on-television-and-media-in-a-grounded-part-ru-blank', BLANK,
+       JOB_RU_KNOWS_TV, 'ru', 'Знает Закон о телевидении и медиа.', gone=('медиа',)),
+    body('laws-a-further-indeclinable-tail-after-the-law-on-television-and-media-in-a-qualification-ru-blank', BLANK,
+         'pdf.biz.lavozim_yoriqnomasi', JOB_RU_KNOWS_TV, 'ru', 'qualification', 'Знает Закон о телевидении и медиа.',
+         gone=('медиа',)),
+    guard('laws-a-further-indeclinable-tail-after-the-law-on-television-multimedia-and-print-ru-blank', BLANK,
+          JOB_RU_KNOWS_TV, 'ru', 'Соблюдает Закон о телевидении, мультимедиа и печати.', gone=('мультимедиа',),
+          translated=False),
+    guard('laws-a-further-indeclinable-tail-after-the-law-on-television-and-porn-ru-blank', BLANK, JOB_RU_KNOWS_TV,
+          'ru', 'Изучив Закон о телевидении и порно, редактор готовит выпуск.', gone=('порно',), translated=False),
+]
+MORE_INDECLINABLE_HEAD_TAILS = (
+    ('and-media', 'Бухгалтер знает Закон о бухгалтерском учёте и медиа.', ('медиа',)),
+    ('in-lower-case-as-well-as-multimedia', 'Бухгалтер знает закон о бухгалтерском учёте, а также мультимедиа.',
+     ('мультимедиа',)),
+    ('and-especially-a-piano', 'Работа ведётся согласно Закону о бухгалтерском учёте и особенно пиано.', ('пиано',)),
+    ('and-tofu', 'Бухгалтер руководствуется Законом о бухгалтерском учёте и тофу.', ('тофу',)),
+    ('and-mumiyo', 'Бухгалтер знает Закон о бухгалтерском учёте и мумиё.', ('мумиё',)),
+    ('and-franco', 'Бухгалтер знает Закон о бухгалтерском учёте и франко.', ('франко',)),
+    ('and-media-capitalised', 'Бухгалтер знает Закон о бухгалтерском учёте и Медиа.', ('Медиа',)))
+for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING_UZ_RU),
+                         ('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU)):
+    for slug, sentence, gone in MORE_INDECLINABLE_HEAD_TAILS:
+        CASES += [
+            guard(f'laws-a-translated-head-noun-before-a-further-indeclinable-tail-{slug}-{direction}-blank', BLANK,
+                  brief, 'ru', sentence, gone=gone, translated=True),
+            gp(f'laws-a-translated-head-noun-before-a-further-indeclinable-tail-{slug}-in-a-grounded-part-'
+               f'{direction}-blank', BLANK, brief, 'ru', sentence, gone=gone),
+        ]
+    CASES.append(body(f'laws-a-translated-head-noun-before-a-further-indeclinable-tail-and-media-in-a-qualification-'
+                      f'{direction}-blank', BLANK, 'pdf.biz.lavozim_yoriqnomasi', brief, 'ru', 'qualification',
+                      MORE_INDECLINABLE_HEAD_TAILS[0][1], gone=('медиа',)))
+# End to end on a report's work done and a course paper's relevance (c3); a Russian paper's law after its subject, no
+# opening word, is read by the translated head noun alone (in a Russian brief c491da9 prints it too).
+for direction, brief in REPORTS_ON_ACCOUNTING:
+    for slug, sentence, gone in (
+            ('and-media', 'Отдел соблюдал Закон о бухгалтерском учёте и медиа.', ('медиа',)),
+            ('and-media-before-a-comma-clause', 'Согласно Закону о бухгалтерском учёте и медиа, отдел вёл книги.',
+             ('медиа',)),
+            ('and-multimedia', 'Отдел вёл книги согласно Закону о бухгалтерском учёте и мультимедиа.',
+             ('мультимедиа',))):
+        if direction == 'ru' and not sentence.startswith('Согласно'):
+            continue
+        CASES.append(body(f'laws-a-further-indeclinable-tail-after-a-named-law-{slug}-in-a-report-{direction}-blank',
+                          BLANK, 'pdf.biz.hisobot', brief, 'ru', 'work_done', sentence, gone=gone))
+for direction, brief in COURSES_ON_ACCOUNTING:
+    CASES.append(body(f'laws-a-further-indeclinable-tail-after-a-named-law-and-media-in-a-course-paper-{direction}-'
+                      f'blank', BLANK, 'pdf.kurs_ishi', brief, 'ru', 'relevance',
+                      'Согласно Закону о бухгалтерском учёте и медиа, отдел вёл книги.', gone=('медиа',)))
+
 CASE_IDS = [case.id for case in CASES]
 
 

@@ -1763,20 +1763,25 @@ LAW_PASS_RU = re.compile(r"т|е|есть|как|лишь|уж|вот|ведь|�
 RU_NEUTER = re.compile(r"[а-яё]+ство|правило|право|дело|число|слово|место|лицо|письмо")
 # The Russian nouns that keep their form in every case, loans: one stands in the case a law's name takes after "о"
 # ("... о телевидении и радио", "..., бюро и аудите", "... и интервью") or as a genitive after it ("... учёте казино"),
-# so it is no adverb passed over (`_ru_adverb`) and may go on the name (`_may_go_on`), as c491da9 holds the name. In -о,
-# a vowel before it makes one ("радио", "видео", "портфолио", "какао"); the others are the loans words/ru.txt or the
-# adverbs' shapes would read as adverbs ("сопрано", "шапито" of a participle's, "фиаско", "бунгало", "лего" of an
-# adverb's, "плато", "тако" of an adjective's stem), and the usual ones. In -у, -ю and -а, the usual ones ("шоу",
-# "меню", "интервью", "тату", "буржуа", the last parts of "кунг-фу" and "ноу-хау"), as a case of a noun that changes
-# ends so ("учёту", "работу", "налогообложению"); in -э, any ("каратэ", "алоэ"). One in -е or -и is in the name's case
-# already (`LAW_OF_CASE`: "резюме", "такси").
+# so it is no adverb passed over (`_ru_adverb`) and may go on the name (`_may_go_on`), as c491da9 holds the name. In -о
+# and in -а, a vowel before it makes one ("радио", "видео", "портфолио", "какао", "медиа", "мультимедиа", "буржуа",
+# "амплуа"); the others in -о are the loans words/ru.txt or the adverbs' shapes would read as adverbs ("сопрано",
+# "пиано", "шапито", "инкогнито" of a participle's, "фиаско", "франко", "порно", "бунгало", "жиголо", "лего" of an
+# adverb's, "плато", "тако", "жиро" of an adjective's stem), and the usual ones. In -у, -ю, -а and -я, the usual ones
+# ("шоу", "меню", "интервью", "авеню", "тофу", "хайку", "тату", "па", "ультра", the last parts of "кунг-фу", "ноу-хау"
+# and "фуа-гра"), as a case of a noun that changes ends so ("учёту", "работу", "налогообложению", "учёта"); "мумиё",
+# read as "мумие"; in -э, any ("каратэ", "алоэ"). One in -е or -и is in the name's case already (`LAW_OF_CASE`:
+# "резюме", "такси").
 RU_INDECLINABLE = re.compile(
-    r"[а-яё]*[аеёиоуыэюя]о|кино|казино|метро|евро|авто|мото|фото|лото|депо|бюро|сальдо|нетто|брутто|пальто|табло"
+    r"[а-яё]*[аеёиоуыэюя][оа]|кино|казино|метро|евро|авто|мото|фото|лото|депо|бюро|сальдо|нетто|брутто|пальто|табло"
     r"|лого|карго|эмбарго|рококо|панно|техно|промо|демо|ретро|диско|барокко|мокко|электро|соло|поло|кило|тремоло"
-    r"|инкассо|авизо|сопрано|фортепиано|гуано|чинзано|американо|орегано|шапито|мохито|буррито|шато|фиаско|фламенко"
-    r"|сирокко|фреско|альфреско|бунгало|мерло|пуэбло|пикколо|лимончелло|лего|плато|тако|граффито"
+    r"|инкассо|авизо|сопрано|фортепиано|пиано|гуано|чинзано|американо|орегано|шапито|мохито|буррито|инкогнито|шато"
+    r"|фиаско|фламенко|франко|писко|порно|нано|моно|жиро|сирокко|фреско|альфреско|бунгало|мерло|пуэбло|пикколо|пиколо"
+    r"|жиголо|лимончелло|лего|плато|тако|граффито"
     r"|шоу|меню|интервью|ревю|тату|табу|рагу|кенгуру|гуру|какаду|кешью|барбекю|фондю|иглу|марабу|зебу|эму|гну"
-    r"|дежавю|парвеню|рандеву|ушу|фу|хау|буржуа|амплуа|боа|бра|фейхоа|[а-яё]+э")
+    r"|дежавю|парвеню|рандеву|ушу|фу|хау|авеню|инженю|ню|вагю|тофу|хайку|хокку|бижу|тирамису|зулу|вуду|судоку|кудзу"
+    r"|джитсу|ниндзюцу|дзюдзюцу|сэппуку|манту|паспарту|фрау|бра|па|фа|спа|гала|ультра|экстра|антраша|гра|ля|мумие"
+    r"|[а-яё]+э")
 # The lower-case Russian adverbs, particles and pronouns in -о passed over as LAW_PASS_RU's are (`_ru_adverb`), named
 # where the lexicon or an adverb's shape may not give them: "то есть", "это", "что", "либо", "ибо", "около", "свято",
 # "будто", "надолго".
