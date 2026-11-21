@@ -1766,9 +1766,9 @@ RU_NEUTER = re.compile(r"[а-яё]+ство|правило|право|дело|�
 # so it is no adverb passed over (`_ru_adverb`) and may go on the name (`_may_go_on`), as c491da9 holds the name. In -о,
 # a vowel before it makes one ("радио", "видео", "портфолио", "какао"); the others are the loans words/ru.txt or the
 # adverbs' shapes would read as adverbs ("сопрано", "шапито" of a participle's, "фиаско", "бунгало", "лего" of an
-# adverb's, "плато", "тако" of an adjective's stem), and the usual ones. In -у, -ю and -а,
-# the usual ones ("шоу", "меню", "интервью", "тату", "буржуа"), as a case of a noun that changes ends so ("учёту",
-# "работу", "налогообложению"); in -э, any ("каратэ", "алоэ"). One in -е or -и is in the name's case already
+# adverb's, "плато", "тако" of an adjective's stem), and the usual ones. In -у, -ю and -а, the usual ones ("шоу", "меню",
+# "интервью", "тату", "буржуа", the last parts of "кунг-фу" and "ноу-хау"), as a case of a noun that changes ends so
+# ("учёту", "работу", "налогообложению"); in -э, any ("каратэ", "алоэ"). One in -е or -и is in the name's case already
 # (`LAW_OF_CASE`: "резюме", "такси").
 RU_INDECLINABLE = re.compile(
     r"[а-яё]*[аеёиоуыэюя]о|кино|казино|метро|евро|авто|мото|фото|лото|депо|бюро|сальдо|нетто|брутто|пальто|табло"
@@ -1776,7 +1776,7 @@ RU_INDECLINABLE = re.compile(
     r"|инкассо|авизо|сопрано|фортепиано|гуано|чинзано|американо|орегано|шапито|мохито|буррито|шато|фиаско|фламенко"
     r"|сирокко|фреско|альфреско|бунгало|мерло|пуэбло|пикколо|лимончелло|лего|плато|тако|граффито"
     r"|шоу|меню|интервью|ревю|тату|табу|рагу|кенгуру|гуру|какаду|кешью|барбекю|фондю|иглу|марабу|зебу|эму|гну"
-    r"|дежавю|парвеню|рандеву|ушу|буржуа|амплуа|боа|бра|фейхоа|[а-яё]+э")
+    r"|дежавю|парвеню|рандеву|ушу|фу|хау|буржуа|амплуа|боа|бра|фейхоа|[а-яё]+э")
 # The lower-case Russian adverbs, particles and pronouns in -о passed over as LAW_PASS_RU's are (`_ru_adverb`), named
 # where the lexicon or an adverb's shape may not give them: "то есть", "это", "что", "либо", "ибо", "около", "свято",
 # "будто", "надолго".
@@ -1831,7 +1831,7 @@ def _name_ends(sentence, tokens, index, why, word):
     if why == 'stop':
         following = [normalised(text).casefold() for _, text in tokens[index + 1:index + 3]]
         if (low == 'as' and following == ['well', 'as']) or (low == 'i' and following[:1] == ['e']):
-            return _joined_ends(tokens, index, low == 'as')  # "as well as" joins as "and" does, "i.e." as a comma
+            return _joined_ends(tokens, index, low == 'as', sentence)  # "as well as" joins as "and", "i.e." as a comma
         return LAW_NAME_PREPOSITION.fullmatch(low) is None  # a verb, a pronoun, a conjunction of a clause
     if why == 'word':
         # An adverb after the name ends it where the sentence or its clause ends or a verb follows ("... учёте хорошо.",
@@ -1845,12 +1845,12 @@ def _name_ends(sentence, tokens, index, why, word):
             if at >= len(tokens) or LAW_HEAD_END.match(sentence[start + len(last):]):
                 return True
             if tokens[at][1] in ',;' or LAW_AND.fullmatch(normalised(tokens[at][1]).casefold()):
-                return _joined_ends(tokens, at, tokens[at][1] not in ',;')
+                return _joined_ends(tokens, at, tokens[at][1] not in ',;', sentence)
             low = normalised(tokens[at][1]).casefold()
         return RU_LAW_VERB.fullmatch(low) is not None
     if token not in ',;' and not LAW_AND.fullmatch(low):
         return any(stem.fullmatch(token) for stem in NAMED_STEMS)  # another law, read on its own; a mark goes on
-    return _joined_ends(tokens, index + 1, token not in ',;')
+    return _joined_ends(tokens, index + 1, token not in ',;', sentence)
 
 
 def _dated_ends(rest):
@@ -1871,7 +1871,7 @@ def _dated_ends(rest):
     text = tokens[0][1]
     low = normalised(text).casefold()
     if text in ',;' or LAW_AND.fullmatch(low):
-        return _joined_ends(tokens, 0, False)
+        return _joined_ends(tokens, 0, False, rest)
     if re.search('[а-яё]', low):
         return RU_LAW_VERB.fullmatch(low) is not None or (
             RU_VERB.fullmatch(low) is not None and LAW_OF_CASE.fullmatch(low) is None)
@@ -1916,9 +1916,10 @@ def _ru_adverb(low):
     return low in words or low[:-1] in stems or low[:-1] + 'н' in stems
 
 
-def _joined_ends(tokens, at, conjoined):
+def _joined_ends(tokens, at, conjoined, source=''):
     """Whether a law's name ends past the comma, the semicolon or the conjunction before the token at `at`
-    (`_name_ends`, `_law_head_ends`; `conjoined`: a conjunction, which takes what follows into a list).
+    (`_name_ends`, `_law_head_ends`; `conjoined`: a conjunction, which takes what follows into a list; `source`: what
+    `tokens` were read from).
 
     Past the conjunctions and their fillers ("а также", "as well as") and the words that open no clause (`_passed`:
     "особенно", "а именно", "то есть", "т. е.", "как и", "лишь", "even", "only", "i.e.", "that is"), with a
@@ -1930,7 +1931,8 @@ def _joined_ends(tokens, at, conjoined):
     clause's verb ("... and the Auditing of Banks", "... and its auditing rules"; never "... and the Labour Code", "...
     and this applies to banks"), and after a comma a capitalised word may ("..., the Auditing of Banks"), never a
     clause's subject ("..., the accountant keeps the books", "..., its rules apply to banks", `_clause_follows`: "...,
-    teachers must protect pupils")."""
+    teachers must protect pupils"). A Russian compound with a hyphen is read by its last part (`_compound_end`: "... и
+    интернет-торговле", "... и ток-шоу" go on; "... и интернет-банкинг" does not)."""
     while at < len(tokens):
         text = tokens[at][1]
         low = normalised(text).casefold()
@@ -1953,9 +1955,25 @@ def _joined_ends(tokens, at, conjoined):
         if _another_law(tokens, at) or LAW_AUX.fullmatch(normalised(tokens[at][1]).casefold()):
             return True
         return not (conjoined or tokens[at][1][0].isupper())
-    if not conjoined and (_clause_follows(tokens, at) or _ru_clause_follows(tokens, at)):
+    last = _compound_end(tokens, at, source)
+    if not conjoined and (_clause_follows(tokens, at) or _ru_clause_follows(tokens, last)):
         return True
-    return not _may_go_on(tokens[at][1])
+    return not _may_go_on(tokens[last][1])
+
+
+def _compound_end(tokens, at, source):
+    """The index of the last part of the Russian compound with a hyphen the word at `at` opens in `source`
+    ("интернет-торговле", "бизнес-планах", "ток-шоу", "ноу-хау"), or `at`: its first part takes no case of its own
+    ("интернет", "бизнес", "ток"), so the last part says whether a law's name may go on with it (`_joined_ends`)."""
+    while at + 1 < len(tokens) and re.search('[а-яё]', normalised(tokens[at][1]).casefold()):
+        start, word = tokens[at]
+        end = start + len(word)
+        following = tokens[at + 1][1]
+        if source[end:end + 1] not in ('-', '‐', '‑') or tokens[at + 1][0] != end + 1 or not WORD.fullmatch(following) \
+                or not re.search('[а-яё]', normalised(following).casefold()):
+            break
+        at += 1
+    return at
 
 
 def _clause_follows(tokens, at):
@@ -2170,7 +2188,7 @@ def _law_head_ends(sentence, start, word):
     # кодекс"); never "... учёте и аудите", "... учёте и особенно аудите", "... учёте, как и об аудите".
     joined = re.match(r"[ \u00a0]*[,;]|[ \u00a0]+(?:и|а|или)(?![^\W\d_])", rest)
     tokens = [(match.start(), match.group(0)) for match in LAW_TOKEN.finditer(rest)]
-    return joined is not None and _joined_ends(tokens, 0, False)
+    return joined is not None and _joined_ends(tokens, 0, False, rest)
 
 
 def _legal_known(sentence, concepts, trusted, translated, *, names=True):

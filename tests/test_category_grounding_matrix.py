@@ -4903,6 +4903,61 @@ for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING
                f'blank', BLANK, brief, 'ru', sentence, gone=gone),
         ]
 
+# ---- A Russian compound with a hyphen after the customer's law is read by its last part (the fixer's own probe, the
+# same family as p1): "интернет-торговле", "бизнес-планах", "пресс-службе" stand in the name's case and "ток-шоу",
+# "ноу-хау", "кунг-фу" keep their form, so the name may go on with them. 28c1b69, eb8b05c and round 13 read the first
+# part, which takes no case ("интернет", "бизнес", "ток"), ended the name before it, and "Знает Закон о бухгалтерском
+# учёте и интернет-торговле" printed; c491da9 holds the opening word or the head noun and blanks.
+COMPOUND_TAILS_RU = (
+    ('and-internet-trade', 'Знает Закон о бухгалтерском учёте и интернет-торговле.', ('торговле',)),
+    ('business-plans-and-audit', 'Применяет Закон о бухгалтерском учёте, бизнес-планах и аудите.', ('планах',)),
+    ('as-well-as-a-press-office', 'Согласно Закону о бухгалтерском учёте, а также пресс-службе, бухгалтер ведёт '
+                                  'книги.', ('службе',)),
+    ('and-especially-online-tills', 'Руководствуется Законом о бухгалтерском учёте и особенно онлайн-кассах.',
+     ('кассах',)),
+    ('and-a-talk-show', 'Соблюдает Закон о бухгалтерском учёте и ток-шоу.', ('шоу',)),
+    ('a-semicolon-and-know-how', 'Знает Закон о бухгалтерском учёте; ноу-хау.', ('хау',)),
+    ('having-studied-and-kung-fu', 'Изучив Закон о бухгалтерском учёте и кунг-фу, бухгалтер ведёт книги.', ('фу',)))
+for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
+    for slug, sentence, gone in COMPOUND_TAILS_RU:
+        CASES += [
+            guard(f'laws-a-hyphenated-tail-after-a-named-law-{slug}-{direction}-blank', BLANK, brief, 'ru', sentence,
+                  gone=gone, translated=direction != 'ru'),
+            gp(f'laws-a-hyphenated-tail-after-a-named-law-{slug}-in-a-grounded-part-{direction}-blank', BLANK, brief,
+               'ru', sentence, gone=gone),
+        ]
+    CASES.append(body(f'laws-a-hyphenated-tail-after-a-named-law-and-internet-trade-in-a-qualification-{direction}-'
+                      f'blank', BLANK, 'pdf.biz.lavozim_yoriqnomasi', brief, 'ru', 'qualification',
+                      COMPOUND_TAILS_RU[0][1], gone=('торговле',)))
+for direction, brief in (('ru', JOB_RU_KNOWS_ACCOUNTING_DATED), ('en-to-ru', ACCOUNTING_EN_RU_NUMBERED)):
+    CASES.append(guard(f'laws-a-hyphenated-tail-after-a-named-laws-date-and-internet-trade-{direction}-blank', BLANK,
+                       brief, 'ru', 'Знает Закон о бухгалтерском учёте от 13 апреля 2016 года и интернет-торговле.',
+                       gone=('торговле',), translated=direction != 'ru'))
+CASES.append(guard('laws-a-hyphenated-tail-after-the-law-on-television-and-a-talk-show-ru-blank', BLANK,
+                   JOB_RU_KNOWS_TV, 'ru', 'Знает Закон о телевидении и ток-шоу.', gone=('шоу',), translated=False))
+for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING_UZ_RU),
+                         ('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU)):
+    for slug, sentence, gone in (
+            ('and-internet-trade', 'Бухгалтер знает Закон о бухгалтерском учёте и интернет-торговле.', ('торговле',)),
+            ('as-well-as-business-processes', 'Работа ведётся согласно Закону о бухгалтерском учёте, а также '
+                                              'бизнес-процессах.', ('процессах',)),
+            ('and-internet-trade-capitalised', 'Бухгалтер знает Закон о бухгалтерском учёте и Интернет-торговле.',
+             ('торговле',))):
+        CASES += [
+            guard(f'laws-a-translated-head-noun-before-a-hyphenated-tail-{slug}-{direction}-blank', BLANK, brief, 'ru',
+                  sentence, gone=gone, translated=True),
+            gp(f'laws-a-translated-head-noun-before-a-hyphenated-tail-{slug}-in-a-grounded-part-{direction}-blank',
+               BLANK, brief, 'ru', sentence, gone=gone),
+        ]
+# A compound whose last part takes no case of a name is read as that part is: the name ended before it, as 28c1b69 reads
+# "... и интернет-банкинг", "..., бизнес-план составляет сам", "..., нетто-активы рассчитываются ежегодно".
+for slug, sentence in (('an-object', 'Знает Закон о бухгалтерском учёте и интернет-банкинг.'),
+                       ('a-comma-clause', 'Знает Закон о бухгалтерском учёте, бизнес-план составляет сам.'),
+                       ('a-clause-after-and', 'Соблюдает Закон о бухгалтерском учёте и кое-что знает об аудите.')):
+    for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
+        CASES.append(guard(f'laws-the-customers-law-before-a-hyphenated-word-out-of-the-names-case-{slug}-{direction}-'
+                           f'keep', KEEP, brief, 'ru', sentence, translated=direction != 'ru'))
+
 CASE_IDS = [case.id for case in CASES]
 
 
