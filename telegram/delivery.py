@@ -1,6 +1,7 @@
 """Independent durable result delivery. Retrying never reprocesses or recharges a job."""
 import asyncio
 import html
+import logging
 import re
 import secrets
 from datetime import timedelta
@@ -10,7 +11,7 @@ from aiogram import Bot
 from aiogram.exceptions import TelegramForbiddenError,TelegramRetryAfter
 from aiogram.types import BufferedInputFile,InlineKeyboardButton,InlineKeyboardMarkup,WebAppInfo
 from cryptography.fernet import InvalidToken
-from django.db import transaction
+from django.db import close_old_connections, connection, transaction
 from django.utils import timezone
 from apps.core.errors import DomainError
 from apps.core.models import BotCallback
@@ -197,6 +198,12 @@ def enqueue(artifact,key):
     return delivery
 
 
+# Sends tried before a file is given up, whatever stopped them. attempt gives up on its
+# own after five refusals; this ends a file whose send fails before attempt's guard,
+# which a look would otherwise take again every two minutes for good.
+MAX_ATTEMPTS = 10
+
+
 @transaction.atomic
 def claim(delivery_id):
     delivery=BotDelivery.objects.select_for_update().select_related('account','artifact__file').get(pk=delivery_id)
@@ -204,6 +211,10 @@ def claim(delivery_id):
     if delivery.status in ('delivered','failed','blocked'): return None
     if delivery.status=='sending' and delivery.lease_until and delivery.lease_until>now: return None
     if delivery.next_attempt_at>now: return None
+    if delivery.attempts>=MAX_ATTEMPTS:
+        delivery.status,delivery.error_code,delivery.lease_until='failed','telegram_delivery_attempts_exhausted',None
+        delivery.save(update_fields=['status','error_code','lease_until'])
+        return None
     delivery.status='sending';delivery.lease_until=now+timedelta(seconds=120);delivery.attempts+=1
     delivery.save(update_fields=['status','lease_until','attempts'])
     return delivery
@@ -387,23 +398,75 @@ async def attempt(delivery_id,bot):
         await sync_to_async(finish)(delivery.id,status='failed' if delivery.attempts>=5 else 'retrying',error='telegram_delivery_failed',delay=min(3600,2**delivery.attempts*10))
 
 
+logger = logging.getLogger(__name__)
+
+
+def _reset_connection():
+    """After an error, drop a database connection that is broken or too old, so the next query opens a new one.
+
+    The bot runs every query on one thread (sync_to_async) and nothing else ever
+    recycles that thread's connection: once Postgres dropped it, every query failed
+    until a restart. Never inside a transaction, a test's or a caller's: closing
+    the connection would end it.
+    """
+    if not connection.in_atomic_block:
+        close_old_connections()
+
+
+# The kinds of step failing now. While Postgres is down every look fails every step:
+# the first failure of a run is logged with its traceback, which names the cause,
+# and the next ones in a line each, so the traceback is not rotated out of the log.
+_failing = set()
+
+
+async def _step(kind, run, name=''):
+    """One step of a look: an error is logged and the look goes on, so it never holds back the steps after it."""
+    try:
+        result = await run()
+    except Exception as exc:
+        if kind in _failing:
+            logger.error('%s could not be sent again (%s)', name or kind, type(exc).__name__)
+        else:
+            _failing.add(kind)
+            logger.exception('%s could not be sent', name or kind)
+        await sync_to_async(_reset_connection)()
+        return None
+    _failing.discard(kind)
+    return result
+
+
 async def drain(bot):
-    ids=await sync_to_async(lambda:list(BotDelivery.objects.filter(account__is_test=False,status__in=('pending','retrying','sending'),next_attempt_at__lte=timezone.now()).order_by('created_at').values_list('id',flat=True)[:20]))()
-    for identifier in ids: await attempt(identifier,bot)
+    """One look at everything the bot sends on its own: result files first, then the notices.
+
+    Each file and each kind of notice is a step of its own (_step): a dropped
+    connection or a row that cannot be read loses that step on this look, never the
+    files and notices after it, and the next look tries it again.
+    """
+    ids=await _step('Result files',sync_to_async(lambda:list(BotDelivery.objects.filter(account__is_test=False,status__in=('pending','retrying','sending'),next_attempt_at__lte=timezone.now()).order_by('created_at').values_list('id',flat=True)[:20]))) or []
+    for identifier in ids: await _step('A result file',lambda identifier=identifier:attempt(identifier,bot),f'Result file {identifier}')
     from .notifications import drain_notices
-    await drain_notices(bot)
     from .payment_notices import drain as drain_payment_notices
-    await drain_payment_notices(bot)
     from .referral_notices import drain as drain_referral_notices
-    await drain_referral_notices(bot)
     from .staff_alerts import drain as drain_staff_alerts
-    await drain_staff_alerts(bot)
+    for what,run in (('Job notices',drain_notices),('Payment notices',drain_payment_notices),
+                     ('Referral notices',drain_referral_notices),('Staff alerts',drain_staff_alerts)):
+        await _step(what,lambda run=run:run(bot))
 
 
 async def delivery_loop(bot):
+    """The polling bot's sender of result files and notices, for as long as the bot runs.
+
+    Nothing that goes wrong on one look may end it. It is an asyncio task nobody
+    awaits before shutdown, so an error that escaped it once stopped every later
+    file and notice, without a line in the log, while the bot still answered taps.
+    """
     from apps.core import wakeups
     while True:
-        await drain(bot)
+        try:
+            await drain(bot)
+        except Exception:
+            logger.exception('Deliveries could not be sent')
+            await sync_to_async(_reset_connection)()
         # Woken the moment a job settles with something to send; a look every 2 s regardless.
         await wakeups.wait_async([wakeups.DELIVERIES], 2)
 
