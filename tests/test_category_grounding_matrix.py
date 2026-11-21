@@ -5493,6 +5493,71 @@ for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING
                            f'{direction}-accepted_false_blank', ACCEPTED, brief, 'ru', sentence, gone=gone,
                            translated=True, pair=pair))
 
+# ---------------------------------------------------------------- the re-check of round 15 (pr78-r3), both ways
+# Round 15 left four readings that print what c491da9 blanks (b1, b2, b3), and the owner decided a fifth (pr78-r2's c2
+# groups O and A13), pinned here as blanks under the briefs the re-check used, with the keeps 28c1b69 has for the same
+# readings and the false blanks against it the owner's tie-break accepts.
+JOB_RU_KNOWS_LANGUAGE = 'Составьте должностную инструкцию переводчика. Он должен знать Закон о государственном языке.'
+
+# ---- A loan in -о that an adverb's shape, the lexicon or an adjective's stem reads as an adverb ("фортепьяно",
+# "просекко", "инферно", "москито", "бонито", "пармиджано", "кено", "бронко", "челло", "дьябло", b1 R), and a noun in -у
+# that keeps its form ("урду", "банту", "пушту", "Баку", b1 U): round 15 passed the loan over, or read the noun as
+# unable to go on a law's name, so the name ended before it and "Знает Закон о бухгалтерском учёте и фортепьяно"
+# printed (28c1b69 and eb8b05c print it too); c491da9 blanks.
+LOAN_TAILS_R16 = (
+    ('and-a-fortepiano', 'Знает Закон о бухгалтерском учёте и фортепьяно.', ('фортепьяно',)),
+    ('prosecco-as-a-genitive', 'Знает Закон о бухгалтерском учёте просекко.', ('просекко',)),
+    ('as-well-as-an-inferno', 'Соблюдает Закон о бухгалтерском учёте, а также инферно.', ('инферно',)),
+    ('and-especially-a-mosquito', 'Согласно Закону о бухгалтерском учёте и особенно москито, бухгалтер ведёт книги.',
+     ('москито',)),
+    ('and-a-bonito', 'Знает Закон о бухгалтерском учёте и бонито.', ('бонито',)),
+    ('parmigiano-and-audit', 'Соблюдает Закон о бухгалтерском учёте, пармиджано и аудите.', ('пармиджано',)),
+    ('and-keno', 'Знает Закон о бухгалтерском учёте и кено.', ('кено',)),
+    ('and-a-cello', 'Руководствуется Законом о бухгалтерском учёте и челло.', ('челло',)),
+    ('and-diablo', 'Знает Закон о бухгалтерском учёте и дьябло.', ('дьябло',)),
+    ('and-baku-capitalised', 'Знает Закон о бухгалтерском учёте и Баку.', ('Баку',)))
+for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
+    for slug, sentence, gone in LOAN_TAILS_R16:
+        CASES += [
+            guard(f'laws-a-loan-read-as-an-adverb-after-a-named-law-{slug}-{direction}-blank', BLANK, brief, 'ru',
+                  sentence, gone=gone, translated=direction != 'ru'),
+            gp(f'laws-a-loan-read-as-an-adverb-after-a-named-law-{slug}-in-a-grounded-part-{direction}-blank', BLANK,
+               brief, 'ru', sentence, gone=gone),
+        ]
+    CASES.append(body(f'laws-a-loan-read-as-an-adverb-after-a-named-law-and-a-fortepiano-in-a-qualification-'
+                      f'{direction}-blank', BLANK, 'pdf.biz.lavozim_yoriqnomasi', brief, 'ru', 'qualification',
+                      LOAN_TAILS_R16[0][1], gone=('фортепьяно',)))
+for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING_UZ_RU),
+                         ('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU)):
+    for slug, sentence, gone in (
+            ('and-a-fortepiano', 'Бухгалтер знает Закон о бухгалтерском учёте и фортепьяно.', ('фортепьяно',)),
+            ('a-bronco-as-a-genitive', 'Бухгалтер соблюдает Закон о бухгалтерском учёте бронко.', ('бронко',)),
+            ('and-toro', 'Бухгалтер знает Закон о бухгалтерском учёте и торо.', ('торо',))):
+        CASES += [
+            guard(f'laws-a-translated-head-noun-before-a-loan-read-as-an-adverb-{slug}-{direction}-blank', BLANK,
+                  brief, 'ru', sentence, gone=gone, translated=True),
+            gp(f'laws-a-translated-head-noun-before-a-loan-read-as-an-adverb-{slug}-in-a-grounded-part-{direction}-'
+               f'blank', BLANK, brief, 'ru', sentence, gone=gone),
+        ]
+for slug, sentence, gone in (
+        ('and-urdu', 'Знает Закон о государственном языке и урду.', ('урду',)),
+        ('bantu-and-hindi', 'Соблюдает Закон о государственном языке, банту и хинди.', ('банту',)),
+        ('and-pashto-before-a-comma-clause', 'Согласно Закону о государственном языке и пушту, переводчик ведёт '
+                                             'перевод.', ('пушту',))):
+    CASES += [
+        guard(f'laws-a-language-in-u-after-the-law-on-the-state-language-{slug}-ru-blank', BLANK,
+              JOB_RU_KNOWS_LANGUAGE, 'ru', sentence, gone=gone, translated=False),
+        gp(f'laws-a-language-in-u-after-the-law-on-the-state-language-{slug}-in-a-grounded-part-ru-blank', BLANK,
+           JOB_RU_KNOWS_LANGUAGE, 'ru', sentence, gone=gone),
+    ]
+CASES.append(body('laws-a-language-in-u-after-the-law-on-the-state-language-and-urdu-in-a-qualification-ru-blank',
+                  BLANK, 'pdf.biz.lavozim_yoriqnomasi', JOB_RU_KNOWS_LANGUAGE, 'ru', 'qualification',
+                  'Знает Закон о государственном языке и урду.', gone=('урду',)))
+# An adverb in -ьяно is still passed over ("рьяно"): 28c1b69 keeps the customer's law before it.
+for direction, brief in RUSSIAN_ACCOUNTING:
+    CASES.append(guard(f'laws-the-customers-law-before-an-adverb-in-yano-zealously-{direction}-keep', KEEP, brief, 'ru',
+                       'Соблюдает Закон о бухгалтерском учёте рьяно.', translated=direction != 'ru'))
+
 CASE_IDS = [case.id for case in CASES]
 
 
