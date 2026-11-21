@@ -2004,10 +2004,18 @@ def _ru_verb_before(tokens, at):
     return verb
 
 
+# The Russian particles a word takes after a hyphen ("аудите-то", "налогах-таки", "что-нибудь", "аудите-ка"), never the
+# part of a compound that says whether a law's name may go on with it (`_compound_end`).
+RU_PARTICLE_PART = re.compile(r"то|либо|нибудь|ка|таки|де|с")
+
+
 def _compound_end(tokens, at, source):
     """The index of the last part of the Russian compound with a hyphen the word at `at` opens in `source`
     ("интернет-торговле", "бизнес-планах", "ток-шоу", "ноу-хау"), or `at`: its first part takes no case of its own
-    ("интернет", "бизнес", "ток"), so the last part says whether a law's name may go on with it (`_joined_ends`)."""
+    ("интернет", "бизнес", "ток"), so the last part says whether a law's name may go on with it (`_joined_ends`). A
+    particle after the hyphen says nothing (`RU_PARTICLE_PART`): the part before it does ("... и аудите-то" goes on as
+    "... и аудите" does; "... и что-то" ends as "... и что" does)."""
+    first = at
     while at + 1 < len(tokens) and re.search('[а-яё]', normalised(tokens[at][1]).casefold()):
         start, word = tokens[at]
         end = start + len(word)
@@ -2016,6 +2024,8 @@ def _compound_end(tokens, at, source):
                 or not re.search('[а-яё]', normalised(following).casefold()):
             break
         at += 1
+    while at > first and RU_PARTICLE_PART.fullmatch(normalised(tokens[at][1]).casefold()):
+        at -= 1
     return at
 
 

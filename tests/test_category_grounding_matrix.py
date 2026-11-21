@@ -5229,6 +5229,61 @@ for direction, brief in COURSES_ON_ACCOUNTING:
                       f'blank', BLANK, 'pdf.kurs_ishi', brief, 'ru', 'relevance',
                       'Согласно Закону о бухгалтерском учёте и медиа, отдел вёл книги.', gone=('медиа',)))
 
+# ---- A particle after a hyphen ("аудите-то", "налогах-таки", "аудиторской-то деятельности", "аудите-ка", c2 C, c3):
+# round 14 read the compound by its last part, the particle, which cannot go on a law's name, so the name ended before
+# the word in its case, an opening word was dropped or a translated head noun passed as the customer's, and "Знает Закон
+# о бухгалтерском учёте и аудите-то" printed; c491da9 blanks. The part before the particle says.
+PARTICLE_COMPOUND_TAILS_RU = (
+    ('and-audit-to', 'Знает Закон о бухгалтерском учёте и аудите-то.', ('аудите',)),
+    ('audit-to-and-taxes', 'Согласно Закону о бухгалтерском учёте, аудите-то и налогах.', ('аудите',)),
+    ('and-auditing-to-activity', 'Изучив Закон о бухгалтерском учёте и аудиторской-то деятельности.',
+     ('аудиторской',)),
+    ('and-taxes-to', 'Знает Закон о бухгалтерском учёте и налогах-то.', ('налогах',)),
+    ('and-audit-ka', 'Знает Закон о бухгалтерском учёте и аудите-ка.', ('аудите',)),
+    ('and-audit-taki', 'Соблюдает Закон о бухгалтерском учёте и аудите-таки.', ('аудите',)),
+    ('as-well-as-audit-de', 'Применяет Закон о бухгалтерском учёте, а также аудите-де.', ('аудите',)),
+    ('and-especially-audit-s', 'Руководствуется Законом о бухгалтерском учёте и особенно аудите-с.', ('аудите',)),
+    ('and-media-to', 'Знает Закон о бухгалтерском учёте и медиа-то.', ('медиа',)))
+for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
+    for slug, sentence, gone in PARTICLE_COMPOUND_TAILS_RU:
+        CASES += [
+            guard(f'laws-a-particle-after-a-hyphen-in-a-tail-after-a-named-law-{slug}-{direction}-blank', BLANK, brief,
+                  'ru', sentence, gone=gone, translated=direction != 'ru'),
+            gp(f'laws-a-particle-after-a-hyphen-in-a-tail-after-a-named-law-{slug}-in-a-grounded-part-{direction}-'
+               f'blank', BLANK, brief, 'ru', sentence, gone=gone),
+        ]
+    CASES.append(body(f'laws-a-particle-after-a-hyphen-in-a-tail-after-a-named-law-and-audit-to-in-a-qualification-'
+                      f'{direction}-blank', BLANK, 'pdf.biz.lavozim_yoriqnomasi', brief, 'ru', 'qualification',
+                      PARTICLE_COMPOUND_TAILS_RU[0][1], gone=('аудите',)))
+for direction, brief in REPORTS_ON_ACCOUNTING:
+    CASES.append(body(f'laws-a-particle-after-a-hyphen-in-a-tail-after-a-named-law-and-audit-to-in-a-report-'
+                      f'{direction}-blank', BLANK, 'pdf.biz.hisobot', brief, 'ru', 'work_done',
+                      'Согласно Закону о бухгалтерском учёте и аудите-то, отдел вёл книги.', gone=('аудите',)))
+for direction, brief in (('ru', JOB_RU_KNOWS_ACCOUNTING_DATED), ('en-to-ru', ACCOUNTING_EN_RU_NUMBERED)):
+    CASES.append(guard(f'laws-a-particle-after-a-hyphen-in-a-tail-after-a-named-laws-date-and-audit-to-{direction}-'
+                       f'blank', BLANK, brief, 'ru', 'Знает Закон о бухгалтерском учёте от 13 апреля 2016 года и '
+                       'аудите-то.', gone=('аудите',), translated=direction != 'ru'))
+for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING_UZ_RU),
+                         ('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU)):
+    for slug, sentence, gone in (
+            ('and-audit-to', 'Бухгалтер знает Закон о бухгалтерском учёте и аудите-то.', ('аудите',)),
+            ('as-well-as-taxes-taki', 'Работа ведётся согласно Закону о бухгалтерском учёте, а также налогах-таки.',
+             ('налогах',))):
+        CASES += [
+            guard(f'laws-a-translated-head-noun-before-a-particle-after-a-hyphen-{slug}-{direction}-blank', BLANK,
+                  brief, 'ru', sentence, gone=gone, translated=True),
+            gp(f'laws-a-translated-head-noun-before-a-particle-after-a-hyphen-{slug}-in-a-grounded-part-{direction}-'
+               f'blank', BLANK, brief, 'ru', sentence, gone=gone),
+        ]
+# The particle's word decides where it cannot go on the name: an adverb or a pronoun before it ("... и когда-то
+# применял его", "... и как-то применяет его", "... и кое-что об аудите"); 28c1b69 keeps these.
+for slug, sentence in (('and-once-applied-it', 'Знает Закон о бухгалтерском учёте и когда-то применял его.'),
+                       ('and-somehow-applies-it', 'Соблюдает Закон о бухгалтерском учёте и как-то применяет его.'),
+                       ('and-something-of-audit', 'Знает Закон о бухгалтерском учёте и кое-что об аудите.')):
+    for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
+        CASES.append(guard(f'laws-the-customers-law-before-a-pronoun-or-adverb-with-a-particle-{slug}-{direction}-keep',
+                           KEEP, brief, 'ru', sentence, translated=direction != 'ru'))
+
 CASE_IDS = [case.id for case in CASES]
 
 
