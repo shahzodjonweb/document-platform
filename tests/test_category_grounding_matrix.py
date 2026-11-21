@@ -6121,6 +6121,26 @@ for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_U
         CASES.append(guard(f'laws-the-customers-law-before-a-past-form-and-a-verb-a-law-may-take-{slug}-{direction}-'
                            f'accepted_false_blank', ACCEPTED, brief, 'ru', sentence, gone=('НДС',),
                            translated=direction != 'ru', pair=LAW_VERB_RADIO))
+# What the owner's decision costs against 28c1b69 in the round-17 sweep (pr79-r4a k5, 124 lines): the customer's law,
+# "и", a comma or a semicolon, an accounting abbreviation and a verb a law may take with its own complement ("НДС
+# учитывает отдельно", "НДС принимает к вычету", "ОС принимает к учёту", "УСН применяет правильно", "МСФО применяет на
+# практике"). The kind is the recorded "... и НДС не нарушает", "..., НДС учитывается отдельно"; these sentences are
+# named here.
+for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
+    for slug, sentence, gone, pair in (
+            ('vat-taken-into-account-separately', 'Знает Закон о бухгалтерском учёте и НДС учитывает отдельно.',
+             ('НДС',), LAW_VERB_RADIO),
+            ('vat-accepted-for-deduction', 'Соблюдает Закон о бухгалтерском учёте и НДС принимает к вычету.', ('НДС',),
+             LAW_VERB_RADIO),
+            ('fixed-assets-accepted', 'Согласно Закону о бухгалтерском учёте, ОС принимает к учёту вовремя.', ('ОС',),
+             LAW_VERB_COMMA),
+            ('a-semicolon-the-simplified-tax-applied-correctly', 'Знает Закон о бухгалтерском учёте; УСН применяет '
+                                                                 'правильно.', ('УСН',), LAW_VERB_SEMICOLON),
+            ('ifrs-applied-in-practice', 'Согласно Закону о бухгалтерском учёте, МСФО применяет на практике.',
+             ('МСФО',), LAW_VERB_COMMA)):
+        CASES.append(guard(f'laws-the-customers-law-before-an-abbreviation-and-a-verb-a-law-may-take-{slug}-{direction}-'
+                           f'accepted_false_blank', ACCEPTED, brief, 'ru', sentence, gone=gone,
+                           translated=direction != 'ru', pair=pair))
 
 CASE_IDS = [case.id for case in CASES]
 
