@@ -4467,3 +4467,6 @@ tests/test_kept_drafts.py::test_the_kept_moment_is_never_shown_as_a_date
 # never a trusted origin named admin that may be long gone; a storage alert links the admin the same way.
 tests/test_bot_manual_payments.py::test_the_review_link_is_on_the_admins_own_host_never_a_trusted_origin_named_admin
 tests/test_bot_manual_payments.py::test_a_storage_alert_links_the_admins_file_storage_settings
+
+# What a kept draft keeps with it: its quote's sources and logo and a CV's photo, never a CV's own files.
+tests/test_kept_drafts.py::test_what_a_change_reads_again_is_what_is_kept

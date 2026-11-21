@@ -8,6 +8,7 @@ of that change too. A draft never generated, the results themselves and uploads
 no kept draft needs still go after 24 hours.
 """
 import json
+import uuid
 from datetime import timedelta
 
 import pytest
@@ -412,3 +413,12 @@ def test_the_kept_moment_is_never_shown_as_a_date(customer, stock_photos):  # no
     job = client.get(f'/api/v1/jobs/{made.id}').json()
     assert job['artifacts'][0]['expires_at'], 'the file it was sent as still says when it goes'
     assert [row['expires_at'] for row in job['input_files']] == [None], 'its logo, kept with it, says nothing'
+
+def test_what_a_change_reads_again_is_what_is_kept():
+    """Its quote's files (sources and logo) and a CV's photo; a CV's own files never, as what they gave is in the draft."""
+    logo_id, source_id, photo_id = (str(uuid.uuid4()) for _ in range(3))
+    document = {'source_ids': [source_id], 'options': {'branding': {'logo_asset_id': logo_id}}}
+    cv = {'source_ids': [source_id], 'options': {'cv_source': 'file', 'portrait_asset_id': photo_id}}
+    assert keeping._uploads(document) == {source_id, logo_id}
+    assert keeping._uploads(cv) == {photo_id}
+    assert keeping.shown(keeping.KEPT_UNTIL) is None and keeping.shown(timezone.now()) is not None
