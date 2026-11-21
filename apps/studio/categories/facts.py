@@ -1809,10 +1809,20 @@ RU_ADVERB_SHAPE = re.compile(r"[а-яё]+(?:[ое]го|ло|[бвгджзйкл�
 RU_ADJECTIVE_ENDINGS = ('ый', 'ий', 'ой', 'ая', 'яя', 'ое', 'ее', 'ые', 'ие', 'ого', 'его', 'ому', 'ему', 'ым', 'им',
                         'ую', 'юю', 'ых', 'их', 'ыми', 'ими')
 # The verbs of a Russian clause after its subject that `RU_LAW_VERB` and `RU_VERB` do not give (`_ru_clause_follows`): a
-# modal, a short form or a predicate ("может", "должно", "обязано", "вправе", "нужно") and a present tense in -ёт or -ут
-# ("ведёт", "несут", "даёт").
+# modal, a short form or a predicate ("может", "должно", "обязано", "вправе", "нужно"), a present tense in -ёт or -ут
+# ("ведёт", "несут", "даёт"), one in -ёт after a vowel ("сдаёт", "подаёт", "создаёт", "поёт"), one in -ет or -ут after a
+# hushing consonant ("пишет", "ищет", "хочет", "пишут"), and the past forms `_ru_past` cannot read from an infinitive
+# the lexicon holds ("вёл", "перенёс", "перенесли", "шла", "начислил").
 RU_CLAUSE_VERB = re.compile(r"мо(?:жет|гут|г|гл[аои])|долж(?:ен|н[аоы])|обязан[аоы]?|вправе|нужно|надо|можно|нельзя"
-                            r"|вед[её]т|ведут|нес[её]т|несут|да[её]т|дают|ид[её]т|идут|бер[её]т|берут")
+                            r"|вед[её]т|ведут|нес[её]т|несут|да[её]т|дают|ид[её]т|идут|бер[её]т|берут"
+                            r"|[а-яё]+[аеиоуюя]ёт|[а-яё]*(?:пиш|ищ|хоч|плач|пряч|маш|пляш|реж)(?:ет|ут)"
+                            r"|[а-яё]*(?:вёл|нёс|вёз|шёл|вел[аио]|несл[аио]|везл[аио]|шл[аио]|числил[аио]?)")
+# A Russian past form in -л, -ла or -ло, its stem ending in a vowel (`_ru_past`: "платил", "сдала", "считало").
+RU_PAST = re.compile(r"([а-я]{2,}[аеиоуыя])л[ао]?")
+# The prefixes a Russian verb takes before a stem the lexicon holds as an infinitive (`_ru_past`: "оплатил" of
+# "платить", "списал" of "писать").
+RU_VERB_PREFIXES = ('пере', 'недо', 'рас', 'раз', 'под', 'над', 'при', 'про', 'пред', 'из', 'ис', 'вы', 'вз', 'вс',
+                    'воз', 'вос', 'до', 'за', 'на', 'об', 'от', 'по', 'со', 'с', 'у', 'о', 'в')
 # The verbs a law itself may be the subject or the object of, any form (`_ru_law_verb`, the owner's decision on the
 # re-check of round 15): what a law does ("регулирует", "устанавливает", "предусматривает", "определяет", "требует",
 # "запрещает", "разрешает", "гласит", "действует", "распространяется", "вступает", "содержит", "служит", "вводит",
@@ -2210,7 +2220,7 @@ def _ru_clause_follows(tokens, at):
     """Whether the Russian word at `at` is a clause's subject (`_joined_ends`: after a comma or a semicolon, or after
     "и" past the sentence's own verb): a noun that keeps its form in every case or an abbreviation
     (`_ru_indeclinable`), which the law's name could go on with, its verb after it (`RU_LAW_VERB`, `RU_VERB`,
-    `RU_CLAUSE_VERB`), "не" or one word between that is no conjunction, preposition or word in the name's case ("...,
+    `RU_CLAUSE_VERB`, `_ru_past`: "... и НДС сдаёт вовремя", "..., ООО оплатил вовремя"), "не" or one word between that is no conjunction, preposition or word in the name's case ("...,
     сальдо переносится на следующий период", "..., сальдо счёта переносится ...", "...; бюро ведёт учёт", "..., видео
     не является ...", "..., ООО обязано вести учёт"). A list in a law's name joins its last word with "и", never a
     comma alone, so the name ended at the comma, as 28c1b69 read it; never "..., сальдо и аудите регулируется ..." nor
@@ -2239,7 +2249,7 @@ def _ru_clause_follows(tokens, at):
         word = normalised(following).casefold()
         if not WORD.fullmatch(following) or not re.search('[а-яё]', word) or _ru_law_verb(word):
             return False
-        if RU_CLAUSE_VERB.fullmatch(word) or RU_LAW_VERB.fullmatch(word) \
+        if RU_CLAUSE_VERB.fullmatch(word) or RU_LAW_VERB.fullmatch(word) or _ru_past(word) \
                 or (RU_VERB.fullmatch(word) and not LAW_OF_CASE.fullmatch(word) and not RU_GERUND.fullmatch(word)):
             return not _ru_law_verb_follows(tokens, index)
         if word == 'не':
@@ -2249,6 +2259,20 @@ def _ru_clause_follows(tokens, at):
             return False
         between = True
     return False
+
+
+def _ru_past(word):
+    """Whether a Russian word (lower case) is a past form in -л, -ла or -ло whose infinitive in -ть the lexicon holds
+    (words/ru.txt), with or without a verbal prefix (`RU_PAST`, `RU_VERB_PREFIXES`): "платил" of "платить", "сдала" of
+    "сдать", "оплатил" of "платить", "списал" of "писать" (`_ru_clause_follows`); never a noun of that shape ("канал",
+    "журнал", "протокол", "отдел", "персонал") nor a neuter noun ("правило", `RU_NEUTER`)."""
+    low = word.replace('ё', 'е')
+    shaped = RU_PAST.fullmatch(low)
+    if shaped is None or RU_NEUTER.fullmatch(low):
+        return False
+    stem, words = shaped.group(1), _ru_adjective_stems()[0]
+    return stem + 'ть' in words or any(stem.startswith(prefix) and len(stem) - len(prefix) >= 2
+                                       and stem[len(prefix):] + 'ть' in words for prefix in RU_VERB_PREFIXES)
 
 
 def _ru_case_abbreviation(text):

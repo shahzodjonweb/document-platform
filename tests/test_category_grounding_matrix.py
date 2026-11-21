@@ -6084,6 +6084,44 @@ for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_U
                f'{direction}-keep', KEEP, brief, 'ru', sentence),
         ]
 
+# ---- A clause's verb the clause reader did not read as one (pr79-r4b k_fb, g_a): a present tense in -ёт after a vowel
+# ("сдаёт", "подаёт", "создаёт"), one in -ет after a hushing consonant ("пишет", "ищет", "хочет") and a past form
+# ("платил", "оплатил", "сдавал", "перенёс", "начислил"). Round 16 read the noun that keeps its form or the
+# abbreviation before it as the law's last word and blanked the customer's law (2,196 lines); 28c1b69 ended the name
+# there and kept them, and no law can take those verbs.
+CLAUSE_VERBS_UNREAD_RU = (
+    ('vat-filed-on-time', 'Соблюдает Закон о бухгалтерском учёте и НДС сдаёт вовремя.'),
+    ('an-llc-paid-on-time', 'Согласно Закону о бухгалтерском учёте, ООО оплатил вовремя.'),
+    ('a-bureau-writes-reports', 'Знает Закон о бухгалтерском учёте и бюро пишет отчёты.'),
+    ('a-balance-carried-over', 'Соблюдает Закон о бухгалтерском учёте и сальдо перенёс вовремя.'),
+    ('a-sole-trader-paid', 'Знает Закон о бухгалтерском учёте и ИП платил вовремя.'),
+    ('vat-charged', 'Согласно Закону о бухгалтерском учёте, НДС начислил вовремя.'),
+    ('vat-not-filed-late', 'Соблюдает Закон о бухгалтерском учёте и НДС не сдавал с опозданием.'))
+for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
+    for slug, sentence in CLAUSE_VERBS_UNREAD_RU:
+        CASES += [
+            guard(f'laws-the-customers-law-before-a-clause-whose-verb-was-unread-{slug}-{direction}-keep', KEEP, brief,
+                  'ru', sentence, translated=direction != 'ru'),
+            gp(f'laws-the-customers-law-before-a-clause-whose-verb-was-unread-{slug}-in-a-grounded-part-{direction}-'
+               f'keep', KEEP, brief, 'ru', sentence),
+        ]
+for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING_UZ_RU),
+                         ('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU)):
+    for slug, sentence in (('vat-filed-on-time', 'Бухгалтер соблюдает Закон о бухгалтерском учёте и НДС сдаёт вовремя.'),
+                           ('an-llc-paid-on-time', 'Бухгалтер соблюдает Закон о бухгалтерском учёте, ООО оплатила '
+                                                   'вовремя.')):
+        CASES.append(guard(f'laws-the-customers-translated-law-before-a-clause-whose-verb-was-unread-{slug}-{direction}-'
+                           f'keep', KEEP, brief, 'ru', sentence, translated=True))
+# A past form or a noun of its shape before a verb a law may take, and a past form of one, still open no clause (the
+# owner's decision; 28c1b69 keeps them, the tie-break of "... и радио не нарушает").
+for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
+    for slug, sentence in (('vat-began-to-apply', 'Знает Закон о бухгалтерском учёте и НДС начал применять.'),
+                           ('vat-rules-kept', 'Знает Закон о бухгалтерском учёте и НДС правила соблюдает.'),
+                           ('vat-taken-into-account', 'Соблюдает Закон о бухгалтерском учёте и НДС учёл.')):
+        CASES.append(guard(f'laws-the-customers-law-before-a-past-form-and-a-verb-a-law-may-take-{slug}-{direction}-'
+                           f'accepted_false_blank', ACCEPTED, brief, 'ru', sentence, gone=('НДС',),
+                           translated=direction != 'ru', pair=LAW_VERB_RADIO))
+
 CASE_IDS = [case.id for case in CASES]
 
 
