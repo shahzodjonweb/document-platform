@@ -5558,6 +5558,87 @@ for direction, brief in RUSSIAN_ACCOUNTING:
     CASES.append(guard(f'laws-the-customers-law-before-an-adverb-in-yano-zealously-{direction}-keep', KEEP, brief, 'ru',
                        'Соблюдает Закон о бухгалтерском учёте рьяно.', translated=direction != 'ru'))
 
+# ---- An infinitive after "и" and a noun that keeps its form (b1 I, IH, IM, b2, b3): a verb before the law that governs
+# an infinitive ("Умеет", "Старается", "Стремится", "Обязуется") makes the law the infinitive's fronted object, so "Умеет
+# Закон о телевидении и радио не нарушать" names "Закон о телевидении и радио". Round 15 took the infinitive for the
+# verb of a clause the noun opens and ended the name at "и", so an opening word was dropped or a translated head noun
+# passed as the customer's (28c1b69 blanked the lines with "не", reading it as a word in the name's case); c491da9 blanks.
+INFINITIVE_TAILS_RU = (
+    ('can-and-radio-not-break', 'Умеет Закон о бухгалтерском учёте и радио не нарушать.', ('радио',)),
+    ('tries-and-a-casino-strictly-keep', 'Старается Закон о бухгалтерском учёте и казино строго соблюдать.',
+     ('казино',)),
+    ('strives-and-video-apply', 'Стремится Закон о бухгалтерском учёте и видео применять на практике.', ('видео',)),
+    ('undertakes-and-a-bureau-never-break', 'Обязуется Закон о бухгалтерском учёте и бюро не нарушать никогда.',
+     ('бюро',)),
+    ('tries-by-the-law-and-radio-not-neglect', 'Старается Законом о бухгалтерском учёте и радио не пренебрегать.',
+     ('радио',)),
+    ('can-and-radio-not-confuse', 'Умеет Закон о бухгалтерском учёте и радио не путать с другими.', ('радио',)))
+INFINITIVE_RADIO = 'laws-an-infinitive-after-an-indeclinable-tail-after-a-named-law-can-and-radio-not-break-ru-blank'
+for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
+    for slug, sentence, gone in INFINITIVE_TAILS_RU:
+        CASES += [
+            guard(f'laws-an-infinitive-after-an-indeclinable-tail-after-a-named-law-{slug}-{direction}-blank', BLANK,
+                  brief, 'ru', sentence, gone=gone, translated=direction != 'ru'),
+            gp(f'laws-an-infinitive-after-an-indeclinable-tail-after-a-named-law-{slug}-in-a-grounded-part-'
+               f'{direction}-blank', BLANK, brief, 'ru', sentence, gone=gone),
+        ]
+    CASES += [
+        body(f'laws-an-infinitive-after-an-indeclinable-tail-after-a-named-law-can-and-radio-not-break-in-a-'
+             f'qualification-{direction}-blank', BLANK, 'pdf.biz.lavozim_yoriqnomasi', brief, 'ru', 'qualification',
+             INFINITIVE_TAILS_RU[0][1], gone=('радио',)),
+        fact(f'laws-an-infinitive-after-an-indeclinable-tail-after-a-named-law-can-and-a-casino-not-break-in-a-fact-'
+             f'{direction}-blank', BLANK, 'pdf.biz.lavozim_yoriqnomasi', brief, 'ru', 'requirements',
+             'Умеет Закон о бухгалтерском учёте и казино не нарушать.', gone=('казино',)),
+    ]
+for direction, brief in (('ru', JOB_RU_KNOWS_ACCOUNTING_DATED), ('en-to-ru', ACCOUNTING_EN_RU_NUMBERED)):
+    CASES.append(guard(f'laws-an-infinitive-after-an-indeclinable-tail-after-a-named-laws-date-and-video-{direction}-'
+                       f'blank', BLANK, brief, 'ru', 'Умеет Закон о бухгалтерском учёте от 13 апреля 2016 года и видео '
+                       'не нарушать.', gone=('видео',), translated=direction != 'ru'))
+CASES += [
+    guard('laws-an-infinitive-after-an-indeclinable-tail-after-the-law-on-television-and-radio-ru-blank', BLANK,
+          JOB_RU_KNOWS_TV, 'ru', 'Старается Закон о телевидении и радио не нарушать.', gone=('радио',),
+          translated=False),
+    gp('laws-an-infinitive-after-an-indeclinable-tail-after-the-law-on-television-and-radio-in-a-grounded-part-ru-'
+       'blank', BLANK, JOB_RU_KNOWS_TV, 'ru', 'Старается Закон о телевидении и радио не нарушать.', gone=('радио',)),
+    body('laws-an-infinitive-after-an-indeclinable-tail-after-the-law-on-television-and-radio-in-a-report-ru-blank',
+         BLANK, 'pdf.biz.hisobot', JOB_RU_KNOWS_TV, 'ru', 'work_done', 'Умеет Закон о телевидении и казино не нарушать.',
+         gone=('казино',)),
+]
+for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING_UZ_RU),
+                         ('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU)):
+    for slug, sentence, gone in (
+            ('strives-and-video-not-break', 'Бухгалтер стремится Закон о бухгалтерском учёте и видео не нарушать.',
+             ('видео',)),
+            ('tries-by-the-law-and-radio-be-guided', 'Бухгалтер старается Законом о бухгалтерском учёте и радио '
+                                                     'руководствоваться.', ('радио',)),
+            ('can-and-a-casino-not-confuse', 'Бухгалтер умеет Закон о бухгалтерском учёте и казино не путать.',
+             ('казино',))):
+        CASES += [
+            guard(f'laws-a-translated-head-noun-before-an-indeclinable-tail-and-an-infinitive-{slug}-{direction}-blank',
+                  BLANK, brief, 'ru', sentence, gone=gone, translated=True),
+            gp(f'laws-a-translated-head-noun-before-an-indeclinable-tail-and-an-infinitive-{slug}-in-a-grounded-part-'
+               f'{direction}-blank', BLANK, brief, 'ru', sentence, gone=gone),
+        ]
+# 28c1b69's keep the reading holds: a modal after the infinitive in a comma clause is that clause's verb.
+for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
+    CASES.append(guard(f'laws-the-customers-law-before-an-infinitive-and-a-modal-a-balance-may-not-be-carried-'
+                       f'{direction}-keep', KEEP, brief, 'ru', 'Согласно Закону о бухгалтерском учёте, сальдо переносить '
+                       'нельзя.', translated=direction != 'ru'))
+# What the reading costs against 28c1b69 (pr78-r3 k F): after a verb that governs an infinitive, an abbreviation or a
+# noun that keeps its form before the infinitive is the law's last word as the radio is ("Умеет Закон о бухгалтерском
+# учёте и НДС применять на практике" may name "Закон о бухгалтерском учёте и НДС"), the tie-break family of "Знает Закон
+# о бухгалтерском учёте и МСФО"; the opening word is the name's and blanks.
+for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
+    for slug, sentence, gone in (
+            ('can-and-vat-apply', 'Умеет Закон о бухгалтерском учёте и НДС применять на практике.', ('НДС',)),
+            ('tries-and-a-balance-not-break', 'Старается Закон о бухгалтерском учёте и сальдо не нарушать.',
+             ('сальдо',)),
+            ('strives-and-ifrs-apply', 'Стремится Закон о бухгалтерском учёте и МСФО применять на практике.',
+             ('МСФО',))):
+        CASES.append(guard(f'laws-the-customers-law-before-an-abbreviation-or-indeclinable-and-an-infinitive-{slug}-'
+                           f'{direction}-accepted_false_blank', ACCEPTED, brief, 'ru', sentence, gone=gone,
+                           translated=direction != 'ru', pair=INFINITIVE_RADIO))
+
 CASE_IDS = [case.id for case in CASES]
 
 

@@ -2105,7 +2105,10 @@ def _ru_clause_follows(tokens, at):
     сальдо переносится на следующий период", "..., сальдо счёта переносится ...", "...; бюро ведёт учёт", "..., видео
     не является ...", "..., ООО обязано вести учёт"). A list in a law's name joins its last word with "и", never a
     comma alone, so the name ended at the comma, as 28c1b69 read it; never "..., сальдо и аудите регулируется ..." nor
-    "..., бюро в банках ..."."""
+    "..., бюро в банках ...". An infinitive or a gerund is no clause's verb (`RU_GERUND`): after a verb that governs it
+    the law is its fronted object ("Умеет Закон о телевидении и радио не нарушать", "Старается Законом о ... и радио
+    не пренебрегать"), so the name may go on with the noun; a modal after it still is ("..., сальдо переносить
+    нельзя")."""
     text = tokens[at][1]
     low = normalised(text).casefold()
     if not WORD.fullmatch(text) or not re.search('[а-яё]', low) or (LAW_OF_CASE.fullmatch(low) and not text.isupper()) \
@@ -2118,7 +2121,7 @@ def _ru_clause_follows(tokens, at):
         if not WORD.fullmatch(following) or not re.search('[а-яё]', word):
             return False
         if RU_CLAUSE_VERB.fullmatch(word) or RU_LAW_VERB.fullmatch(word) \
-                or (RU_VERB.fullmatch(word) and not LAW_OF_CASE.fullmatch(word)):
+                or (RU_VERB.fullmatch(word) and not LAW_OF_CASE.fullmatch(word) and not RU_GERUND.fullmatch(word)):
             return True
         if word == 'не':
             continue
