@@ -120,7 +120,7 @@ def bot_mock():
 
 
 def test_the_owner_is_alerted_once_with_a_link_to_the_review_page(customer, settings):
-    settings.CSRF_TRUSTED_ORIGINS = ['https://docmaster-admin.example.live', 'https://docmaster.example.live']
+    settings.ADMIN_ORIGIN = 'https://ops.docmaster.example'
     configure()
     payment = manual.attach_receipt(customer, manual.create(customer, 'premium')[0].id, png(), note='card 4421')
     bot = bot_mock()
@@ -129,8 +129,40 @@ def test_the_owner_is_alerted_once_with_a_link_to_the_review_page(customer, sett
     assert bot.send_message.await_count == 1
     chat, text = bot.send_message.await_args.args
     assert chat == 1234567 and payment.reference in text and "60 000 so'm" in text and 'card 4421' in text
-    assert f'https://docmaster-admin.example.live/ops/payments/manual/{payment.id}' in text
+    assert f'https://ops.docmaster.example/ops/payments/manual/{payment.id}' in text
     assert PaymentNotice.objects.get(kind='staff_new').status == 'delivered'
+
+
+def test_the_review_link_is_on_the_admins_own_host_never_a_trusted_origin_named_admin(customer, settings):
+    """An old admin host still listed among the trusted origins is gone: the link is the API host, which serves the admin."""
+    settings.ADMIN_ORIGIN = ''
+    settings.SITE_HOSTS = ['docmaster.live', 'www.docmaster.live', 'api.docmaster.live']
+    settings.CSRF_TRUSTED_ORIGINS = ['https://pdfmaster-admin.orderdesk.live', 'https://docmaster-admin.example.live', 'https://docmaster.live']
+    configure()
+    payment = manual.attach_receipt(customer, manual.create(customer, 'plus')[0].id, png())
+    bot = bot_mock()
+    run_notices(bot)
+    _, text = bot.send_message.await_args.args
+    assert f'https://api.docmaster.live/ops/payments/manual/{payment.id}' in text
+    assert 'orderdesk' not in text and 'admin.example' not in text
+
+    from apps.core.links import admin_url
+    settings.SITE_HOSTS = ['docmaster.example']
+    assert admin_url('/ops/payments') == 'https://docmaster.example/ops/payments', 'with no API host, the first site host'
+    settings.SITE_HOSTS = []
+    assert admin_url('/ops/payments') == '', 'no host known: the alert says where to go instead of linking'
+    settings.ADMIN_ORIGIN = 'https://ops.docmaster.example/'
+    assert admin_url('/ops/payments') == 'https://ops.docmaster.example/ops/payments'
+
+
+def test_a_storage_alert_links_the_admins_file_storage_settings(settings):
+    from apps.core.models import StaffAlert
+    from apps.core.storage_health import _alert
+    settings.ADMIN_ORIGIN = ''
+    settings.SITE_HOSTS = ['docmaster.live', 'api.docmaster.live']
+    settings.CSRF_TRUSTED_ORIGINS = ['https://pdfmaster-admin.orderdesk.live']
+    _alert(False, [{'code': 'canary_failed'}])
+    assert 'https://api.docmaster.live/ops/integrations' in StaffAlert.objects.get().text
 
 
 def test_no_alert_id_means_the_alert_is_skipped_not_retried(customer):

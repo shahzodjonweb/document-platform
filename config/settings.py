@@ -38,6 +38,10 @@ SESSION_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_SECURE = not DEBUG
 CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000').split(',')
 CSRF_TRUSTED_ORIGINS += [f'https://{host}' for host in SITE_HOSTS if f'https://{host}' not in CSRF_TRUSTED_ORIGINS]
+# Where links into the admin point (the owner's payment alerts, staff alerts): the admin's own origin, such as
+# https://api.docmaster.live. Unset, it is the SITE_HOSTS host serving the API and the admin (apps/core/links.py),
+# never one guessed from CSRF_TRUSTED_ORIGINS, which may still list hosts that are gone.
+ADMIN_ORIGIN = os.getenv('ADMIN_ORIGIN', '').strip()
 CSRF_FAILURE_VIEW = 'apps.core.views.csrf_failure'
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
