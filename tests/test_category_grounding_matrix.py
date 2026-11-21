@@ -5797,6 +5797,44 @@ for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING
         CASES.append(guard(f'laws-the-customers-law-before-a-short-abbreviation-in-capitals-opening-a-clause-{slug}-'
                            f'{direction}-keep', KEEP, brief, 'ru', sentence, translated=True))
 
+# ---- A subordinate clause with its comma left out before the law (b1 Q): "как" after a verb ("Бухгалтер знает как
+# Закон о ..."), and "почему", "зачем", "насколько", "каким образом", "сразу как", "чем" open a clause whose subject is
+# the law, so its verb after the name may be the law's own. Round 15 read "как" after a verb as a role and lacked the
+# others, so the verb before the law was the law's sentence's and "и радио работает" another clause: "Бухгалтер знает
+# как Закон о бухгалтерском учёте и радио работает на практике" printed; c491da9 blanks.
+SUBORDINATE_LAW_TAILS_RU = (
+    ('knows-how-and-radio-works', 'Бухгалтер знает как Закон о бухгалтерском учёте и радио работает на практике.',
+     ('радио',)),
+    ('understands-why-and-a-casino-exists', 'Бухгалтер понимает почему Закон о бухгалтерском учёте и казино '
+                                            'существует.', ('казино',)),
+    ('explains-what-for-and-ifrs-appeared', 'Бухгалтер объясняет зачем Закон о бухгалтерском учёте и МСФО появились.',
+     ('МСФО',)),
+    ('knows-how-far-and-radio-works', 'Бухгалтер знает насколько Закон о бухгалтерском учёте и радио работает '
+                                      'эффективно.', ('радио',)),
+    ('understands-in-what-way-and-video-works', 'Бухгалтер понимает каким образом Закон о бухгалтерском учёте и видео '
+                                                'работает.', ('видео',)),
+    ('starts-as-soon-as-and-the-media-appears', 'Бухгалтер начинает работу сразу как Закон о бухгалтерском учёте и '
+                                                'СМИ появляются.', ('СМИ',)),
+    ('works-better-than-and-a-bureau-works', 'Бухгалтер работает лучше чем Закон о бухгалтерском учёте и бюро '
+                                             'работает.', ('бюро',)))
+for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING_UZ_RU),
+                         ('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU)):
+    for slug, sentence, gone in SUBORDINATE_LAW_TAILS_RU:
+        CASES += [
+            guard(f'laws-a-translated-head-noun-before-a-tail-in-a-subordinate-clause-{slug}-{direction}-blank', BLANK,
+                  brief, 'ru', sentence, gone=gone, translated=True),
+            gp(f'laws-a-translated-head-noun-before-a-tail-in-a-subordinate-clause-{slug}-in-a-grounded-part-'
+               f'{direction}-blank', BLANK, brief, 'ru', sentence, gone=gone),
+        ]
+    CASES.append(body(f'laws-a-translated-head-noun-before-a-tail-in-a-subordinate-clause-knows-how-and-radio-works-in-'
+                      f'a-qualification-{direction}-blank', BLANK, 'pdf.biz.lavozim_yoriqnomasi', brief, 'ru',
+                      'qualification', SUBORDINATE_LAW_TAILS_RU[0][1], gone=('радио',)))
+# "как" after the subject still names a role (round 15's keep, 28c1b69 keeps it): the verb is the law's sentence's.
+for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING_UZ_RU)):
+    CASES.append(guard(f'laws-the-customers-translated-law-after-a-role-with-kak-and-a-clause-whose-verb-takes-no-law-'
+                       f'{direction}-keep', KEEP, brief, 'ru', 'Бухгалтер как специалист знает Закон о бухгалтерском '
+                       'учёте и сальдо не путает.', translated=True))
+
 CASE_IDS = [case.id for case in CASES]
 
 
