@@ -90,7 +90,9 @@ def keep_picture(account,draft_id,section_id,source,jpeg,expires_at=None,**facts
     """One picture of a deck as a file of the account's, so a later redraw needs no network.
 
     It expires by its own clock (cleanup_expired), 24 hours unless `expires_at`
-    says longer; settle_job moves that with the deck while the pins name it.
+    says longer. Once a file is made from the deck its draft is kept for good
+    (settle_job, keeping.keep), and so is each picture its pins name, on a slide
+    or on offer; one they stop naming goes back on its own clock (keeping.hold).
     `later`: a job with sixty of these never waits on the bucket.
     """
     name=uuid.uuid4().hex

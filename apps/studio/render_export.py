@@ -51,8 +51,9 @@ def _editable(draft,data):
 def chosen_photos(data):
     """{section id: asset id} of the pictures the deck draws: none for a slide removed or laid out without one.
 
-    The candidates are not among them. They only wait to be chosen, and go by
-    the draft's clock (services._extend_draft).
+    The candidates are not among them. They only wait to be chosen, and are
+    kept while the draft offers them: a kept deck's for good (keeping.hold),
+    any other's by the draft's clock (services._extend_draft).
     """
     from .slide_layouts import PHOTO_ZONES
     from .slides import prepare_slides
