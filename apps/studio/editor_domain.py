@@ -158,8 +158,12 @@ def _send_when_made(job):
 def _keep(job):
     """A file sent again lasts as long as one just made, and so do the files it came from, as settle_job has it."""
     deadline=timezone.now()+timedelta(hours=24)
-    # Never shorter than it already was: a file a kept draft holds stays kept (apps/studio/keeping.py).
-    FileAsset.objects.filter(account=job.account,state='ready',id__in=[*job.input_ids,*job.artifacts.values_list('file_id',flat=True)],expires_at__lt=deadline).update(expires_at=deadline)
+    # Never shorter than it already was: a file a kept draft holds stays kept, and is served to the new day's end
+    # unless its own day is over (apps/studio/keeping.py).
+    files=[*job.input_ids,*job.artifacts.values_list('file_id',flat=True)]
+    FileAsset.objects.filter(account=job.account,state='ready',id__in=files,expires_at__lt=deadline).update(expires_at=deadline)
+    from .keeping import used
+    used(job.account_id,files,deadline)
     # A deck's draft and all it draws go with its file, or the file would outlive what changes it.
     if job.feature_id in RENDER_IDS:
         from apps.core.services import _extend_draft

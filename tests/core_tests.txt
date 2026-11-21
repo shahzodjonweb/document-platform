@@ -4512,3 +4512,17 @@ tests/test_kept_drafts.py::test_a_kept_decks_send_a_day_later_offers_make_change
 
 # A CV without its photo says the photo is no longer stored, in every language.
 tests/test_kept_drafts.py::test_a_cv_without_its_photo_says_the_photo_is_no_longer_stored_in_every_language
+
+# After the fourth review: a held upload past its day is never put on a slide by the deck editor; a held upload's own
+# day runs to the end of the latest task it went into while it lasted (the AI document, a file tool, an editor send and
+# its send again, a kept deck's send), and no further; the chat names a copy of a document in the chat only when one
+# went there as itself, else its editor or a change is offered, in every language.
+tests/test_kept_drafts.py::test_a_held_upload_past_its_day_is_never_put_on_a_slide
+tests/test_kept_drafts.py::test_a_file_made_into_an_ai_document_is_served_as_long_as_any_file_used_then
+tests/test_kept_drafts.py::test_a_held_file_sent_again_from_its_editor_is_served_a_day_from_then
+tests/test_kept_drafts.py::test_a_kept_decks_send_moves_its_sources_day_as_it_moves_any
+tests/test_kept_drafts.py::test_a_document_never_sent_to_the_chat_asked_for_as_a_pdf_names_no_copy_there
+tests/test_kept_drafts.py::test_a_deck_never_sent_to_the_chat_asked_for_as_a_pdf_is_sent_to_its_editor
+tests/test_kept_drafts.py::test_a_deck_never_sent_to_the_chat_without_its_editor_is_offered_a_change
+tests/test_kept_drafts.py::test_an_edited_deck_never_sent_to_the_chat_names_no_older_file_there
+tests/test_kept_drafts.py::test_what_names_no_copy_in_the_chat_is_said_in_every_language

@@ -269,12 +269,20 @@ def editable_pdf(asset):
 CHAT_FILE_BYTES = 50 * 1024 * 1024
 
 
-def sent_in_chat(job):
+def sent_in_chat(job, kind=None):
     """Whether a file of this task was sent into the chat as itself, so a copy of it is there however long the server
     keeps it: a delivery that went out, not as the link a file over CHAT_FILE_BYTES goes as. A task made on the web has
-    none unless the customer sent its file here (Send to Telegram)."""
-    return BotDelivery.objects.filter(account_id=job.account_id, artifact__job=job, status='delivered',
-                                      artifact__file__size_bytes__lte=CHAT_FILE_BYTES).exists()
+    none unless the customer sent its file here (Send to Telegram).
+
+    `job` may be several tasks (a queryset of the account's: those made from one draft), and `kind` ('pdf', 'pptx')
+    asks for a file of that kind only.
+    """
+    from apps.core.models import Job
+    sent = BotDelivery.objects.filter(status='delivered', artifact__file__size_bytes__lte=CHAT_FILE_BYTES)
+    sent = sent.filter(account_id=job.account_id, artifact__job=job) if isinstance(job, Job) else sent.filter(artifact__job__in=job)
+    if kind:
+        sent = sent.filter(artifact__file__metadata__kind=kind)
+    return sent.exists()
 
 
 def results_left(job):

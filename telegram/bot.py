@@ -2170,7 +2170,9 @@ def build_dispatcher():
     async def deck_as_pdf(message,account,draft_id):
         """The PDF the deck was last sent as; else the delivered deck in PowerPoint
         → PDF, ready to start; or, once the server no longer keeps it, the same
-        tool offered for the copy in the chat, unless that copy lacks an edit."""
+        tool offered for the copy in the chat, unless that copy lacks an edit.
+        With no copy in the chat (a deck made on the web), its editor sends the PDF;
+        where the editor cannot open it, a change makes a new file."""
         job,_=await sync_to_async(ai.delivered)(account,draft_id,'pdf')
         if job is not None: return await send_again(message,account,draft_id,'pdf')
         await sync_to_async(set_prompt)(account)
@@ -2178,9 +2180,22 @@ def build_dispatcher():
         except DomainError as exc: return await safe_error(message,account,exc)
         if draft: return await controls(message,account,draft,True,notice=text(account,'ai_deck_as_pdf'))
         if await sync_to_async(ai.sent_edited)(account,draft_id): return await send_again(message,account,draft_id,'pdf')
+        if not await sync_to_async(ai.in_chat)(account,draft_id,'pptx'):
+            opener=await deck_editor_button(message,account,draft_id)
+            if not opener: return await send_again(message,account,draft_id,'pdf')
+            return await render(message,html.escape(text(account,'ai_deck_gone_unsent')),[[opener],[await button(account,'home','home')]],True)
         waiting=await sync_to_async(draft_for)(account)
         rows=[[await tool_button(account,waiting,ai.CONVERTER)],[await button(account,'home','home')]]
         await render(message,html.escape(text(account,'ai_deck_gone')),rows,True)
+
+    async def deck_editor_button(message,account,draft_id):
+        """✏️ Edit opening this deck in its editor, as under its file; None where the editor cannot open it."""
+        from operations.integrations import editor_flags
+        from .delivery import deck_route,edit_url
+        route=await sync_to_async(deck_route)(account,str(draft_id),await sync_to_async(editor_flags)())
+        url=await sync_to_async(edit_url)(account,route)
+        if not url: return None
+        return app_button(text(account,'edit'),url) if private_chat(message) else InlineKeyboardButton(text=text(account,'edit'),url=url)
 
     async def document_as_slides(message,account,draft_id):
         """A change cannot make slides of a PDF: a new deck on the same subject
@@ -2197,8 +2212,13 @@ def build_dispatcher():
         name='PDF' if kind=='pdf' else 'PowerPoint'
         if job is None:
             rows=[[await button(account,await ai_change_copy('ai_revise'),'ai_revise',{'draft_id':str(draft_id)}),await button(account,'home','home')]]
-            edited=await sync_to_async(ai.sent_edited)(account,draft_id)
-            return await render(message,html.escape(text(account,'ai_edited_not_kept').format(format=name) if edited else text(account,'ai_file_gone')),rows,True)
+            # A file in this chat is named only when one of this document went there as itself (ai.in_chat).
+            if await sync_to_async(ai.sent_edited)(account,draft_id):
+                older=await sync_to_async(ai.in_chat)(account,draft_id,older=True)
+                said=text(account,'ai_edited_not_kept' if older else 'ai_edited_not_kept_unsent').format(format=name)
+            else:
+                said=text(account,'ai_file_gone' if await sync_to_async(ai.in_chat)(account,draft_id,kind) else 'ai_file_gone_unsent')
+            return await render(message,html.escape(said),rows,True)
         await render(message,html.escape(text(account,'ai_same_format').format(format=name)),[],True)
         await deliver(message,account,job,f'same-format:{secrets.token_urlsafe(9)}',file=asset)
 

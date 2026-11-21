@@ -352,7 +352,8 @@ def _extend_draft(job, deadline):
     The files the draft stands on (its sources and logo) go with it unless already expired, as a save or a change
     of it asks for them: a generation's result carries them on as its inputs, and a send has only its pictures.
     A draft a file was made from is kept for good instead (apps/studio/keeping.py): nothing here shortens it, and
-    a send of one holds what it needs as it now stands.
+    a send of one holds what it needs as it now stands, the files it stands on served to the send's end while their
+    own day lasts (keeping.used).
     """
     from apps.studio import keeping
     from apps.studio.branding import generation_inputs
@@ -361,9 +362,12 @@ def _extend_draft(job, deadline):
     draft_id = (job.parameters or {}).get('generation_draft_id')
     draft = GenerationDraft.objects.filter(pk=draft_id,account=job.account).first() if draft_id else None
     if not draft: return
-    if keeping.is_kept(draft.expires_at): return keeping.hold(draft)
-    GenerationDraft.objects.filter(pk=draft.pk,expires_at__lt=deadline).update(expires_at=deadline)
     data = unpack(draft.encrypted_data)
+    if keeping.is_kept(draft.expires_at):
+        keeping.hold(draft,data)
+        # What it stands on is served to the end of the file's day, as below, unless its own day is over.
+        return keeping.used(job.account.pk,generation_inputs(data),deadline)
+    GenerationDraft.objects.filter(pk=draft.pk,expires_at__lt=deadline).update(expires_at=deadline)
     photos = (data.get('_render') or {}).get('photos') or {}
     pinned = [asset_id for photo in photos.values() for asset_id in (photo.get('asset_id'),*(c.get('asset_id') for c in photo.get('candidates') or [])) if asset_id]
     FileAsset.objects.filter(account=job.account,state='ready',metadata__kind='deck_photo',pk__in=pinned,expires_at__lt=deadline).update(expires_at=deadline)
@@ -403,8 +407,12 @@ def settle_job(job_id, status, error_code='', outputs=None, warnings=None, engin
             enqueue(artifact, f'job:{job.id}:{artifact.id}')
     from apps.studio.domain import GENERATION_IDS, RENDER_IDS
     # A send's inputs are its deck's pictures: they go with the deck, and only a file delivered moves it (_extend_draft).
-    # An input a kept draft holds (its source, its logo) is never brought down to the task's day.
-    if job.feature_id not in RENDER_IDS: FileAsset.objects.filter(account=job.account,id__in=job.input_ids,expires_at__lt=deadline).update(expires_at=deadline)
+    # An input a kept draft holds (its source, its logo) is never brought down to the task's day: its own day, which
+    # serves it, is carried to the task's end instead, as long as it is not over (keeping.used).
+    if job.feature_id not in RENDER_IDS:
+        FileAsset.objects.filter(account=job.account,id__in=job.input_ids,expires_at__lt=deadline).update(expires_at=deadline)
+        from apps.studio.keeping import used
+        used(job.account_id,job.input_ids,deadline)
     if status == 'succeeded' and outputs:
         # An outline is a plan, not a file: its draft keeps its own day (allowance.file_made).
         if job.feature_id in GENERATION_IDS and (job.parameters or {}).get('stage') != 'outline': _keep_draft(job)

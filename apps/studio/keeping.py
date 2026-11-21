@@ -14,17 +14,21 @@ CV's portrait (its uploads, which a change's quote asks for again), and a deck's
 pictures, those on its slides and those on offer, and its slides as last drawn
 (its own, named by their `draft_id`). An upload names the kept drafts that hold
 it (`metadata['kept_by']`), as one upload may be the source of several. What a
-kept draft no longer needs goes back on its own clock, 24 hours from when it was
-made: a picture a deck stopped wearing and offering, the files of a draft the
+kept draft no longer needs goes back on its own clock, the day it would have had
+(24 hours from when it was made, or later for an upload, `own_until` below):
+a picture a deck stopped wearing and offering, the files of a draft the
 customer deleted (`delete`). Results themselves, and uploads no kept draft
 needs, still go after 24 hours; a draft never generated expires as before.
 
 KEPT_UNTIL is no date to show anyone: `shown` turns it into None for the API,
 nothing adds time to it, and it is never shortened by a file's own deadline.
 
-A kept upload is held for the changes, not as a download: after its own 24
-hours nothing serves it to the customer or takes it as a file tool's input
-(`held_past_its_day`), as before, and what refuses it says it is kept for the
+A kept upload is held for the changes, not as a download: after its own day
+nothing serves it to the customer or takes it as a file tool's input
+(`held_past_its_day`), as before. Its own day runs as any file's does (`own_until`):
+24 hours from when it was made, or to the end of the latest task it went into
+while that day lasted, the AI document it was first kept for among them
+(`metadata['own_until']`, moved on by `used`). What refuses it says it is kept for the
 document (`held_refusal`), never that it was deleted. Where it is listed as
 something to open (an editor's file, a task's result) it says when its day ends
 and is expired after it (`served_until`). One gone all the same (the customer deleted
@@ -45,6 +49,8 @@ from django.utils import timezone
 KEPT_UNTIL = datetime(2999, 12, 31, tzinfo=dt_timezone.utc)
 # How long a file lasts from when it was made: what a file no kept draft needs any more goes back to.
 OWN_CLOCK = timedelta(hours=24)
+# Where a held upload notes when its own day ends, once a task has moved it past OWN_CLOCK (an ISO moment, in metadata).
+OWN_UNTIL = 'own_until'
 # A deck's own files, named by the draft they belong to.
 PICTURES = ('deck_photo', 'deck_slide')
 # How often the cleanup looks for kept files whose drafts are gone: it reads every kept file's row, this many at a time.
@@ -69,23 +75,49 @@ def shown(moment):
 
 
 def _held(asset):
-    """An upload a kept draft holds: served for its own 24 hours only. Never a deck's own picture or slide."""
+    """An upload a kept draft holds: served for its own day only (own_until). Never a deck's own picture or slide."""
     metadata = asset.metadata or {}
     return is_kept(asset.expires_at) and 'kept_by' in metadata and metadata.get('kind') not in PICTURES
 
 
+def own_until(asset):
+    """When an upload's own day ends, as it would have without a kept draft holding it: OWN_CLOCK from when it was made,
+    or the end of the latest task it went into while that day lasted (OWN_UNTIL), whichever is later."""
+    from django.utils.dateparse import parse_datetime
+    made = asset.created_at + OWN_CLOCK
+    try:
+        noted = parse_datetime(str((asset.metadata or {}).get(OWN_UNTIL) or ''))
+    except ValueError:
+        noted = None
+    return max(made, noted) if noted is not None and noted.tzinfo is not None else made
+
+
 def held_past_its_day(asset, now=None):
-    """An upload a kept draft holds, past the 24 hours it had: kept for a change of the draft, never served or used otherwise.
+    """An upload a kept draft holds, past its own day (own_until): kept for a change of the draft, never served or used otherwise.
 
     Never a deck's own picture or slide, which its deck editor shows and sends however old it is.
     """
-    return _held(asset) and asset.created_at + OWN_CLOCK <= (now or timezone.now())
+    return _held(asset) and own_until(asset) <= (now or timezone.now())
 
 
 def served_until(asset):
     """When a file stops being opened or downloaded, as a customer may see it: a kept draft's upload at the end of its
     own day (held_past_its_day after that), something else kept never (None), anything else at its expiry."""
-    return asset.created_at + OWN_CLOCK if _held(asset) else shown(asset.expires_at)
+    return own_until(asset) if _held(asset) else shown(asset.expires_at)
+
+
+@transaction.atomic
+def used(account_id, ids, until):
+    """These files went into a task whose files last until `until`: a held upload among them is served until then too,
+    as any other input is moved to its task's day (settle_job, a send again). Never shorter than it was, and never one
+    whose own day is over: past it, a change of its draft reads it and no more."""
+    from apps.core.models import FileAsset
+    now = timezone.now()
+    for asset in FileAsset.objects.select_for_update().filter(account_id=account_id, pk__in=[str(value) for value in ids or []],
+                                                              state='ready', expires_at__gte=KEPT_UNTIL, metadata__has_key='kept_by'):
+        if _held(asset) and now < own_until(asset) < until:
+            asset.metadata = {**asset.metadata, OWN_UNTIL: until.isoformat()}
+            asset.save(update_fields=['metadata'])
 
 
 # Why a held upload past its day is refused (`message_params.reason`): it is still stored, only for changing the AI
@@ -157,19 +189,23 @@ def needed(draft, data=None):
 
 
 def _own_clock(asset, now):
-    return max(asset.created_at + OWN_CLOCK, now)
+    return max(own_until(asset), now)
+
+
+def _unheld(metadata):
+    """A file's metadata once no kept draft holds it: its expiry says when its day ends from then on."""
+    return {key: value for key, value in (metadata or {}).items() if key not in ('kept_by', OWN_UNTIL)}
 
 
 def _let_go(asset, holder, now):
     """`holder` no longer holds this upload; with no kept draft left holding it, it goes on its own clock."""
     holders = [value for value in asset.metadata.get('kept_by') or [] if value != holder]
-    metadata = {key: value for key, value in asset.metadata.items() if key != 'kept_by'}
     if holders:
-        asset.metadata = {**metadata, 'kept_by': holders}
+        asset.metadata = {**asset.metadata, 'kept_by': holders}
         asset.save(update_fields=['metadata'])
         return
-    asset.metadata = metadata
     asset.expires_at = _own_clock(asset, now)
+    asset.metadata = _unheld(asset.metadata)
     asset.save(update_fields=['metadata', 'expires_at'])
 
 
@@ -223,7 +259,12 @@ def hold(draft, data=None, before=None):
     for asset in FileAsset.objects.select_for_update().filter(account_id=account, state='ready', pk__in=uploads, expires_at__gt=now):
         holders = list(asset.metadata.get('kept_by') or [])
         if owner not in holders or not is_kept(asset.expires_at):
-            asset.metadata = {**asset.metadata, 'kept_by': [*holders, owner] if owner not in holders else holders}
+            metadata = {**asset.metadata, 'kept_by': [*holders, owner] if owner not in holders else holders}
+            if not is_kept(asset.expires_at):
+                # Its own day as it stood, for what serves it (own_until): settle_job has just carried it to the end
+                # of the document made from it, as it carries every input of a task.
+                metadata[OWN_UNTIL] = max(own_until(asset), asset.expires_at).isoformat()
+            asset.metadata = metadata
             asset.expires_at = KEPT_UNTIL
             asset.save(update_fields=['metadata', 'expires_at'])
     dropped = (_uploads(before) - uploads) if before is not None else set()
@@ -400,9 +441,10 @@ def release_orphans(now=None, force=False):
                 # A holder added since the drafts were looked up (a change kept meanwhile) is asked about now.
                 left = [] if owner else [value for value in asset.metadata.get('kept_by') or []
                                          if str(value) in living or (str(value) not in named and _exists(value))]
-                asset.metadata = {**{key: value for key, value in asset.metadata.items() if key != 'kept_by'}, **({'kept_by': left} if left else {})}
+                asset.metadata = {**asset.metadata, 'kept_by': left}
                 if not left:
                     asset.expires_at = _own_clock(asset, now)
+                    asset.metadata = _unheld(asset.metadata)
                     released += 1
                 asset.save(update_fields=['metadata', 'expires_at'])
     for rows in _in_batches(BotCallback.objects.filter(action='ai_revise', expires_at__gte=KEPT_UNTIL).values_list('token', 'payload'), 'token'):

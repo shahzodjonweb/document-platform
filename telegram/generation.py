@@ -996,6 +996,18 @@ def sent_edited(account, draft_id):
     return _made_from(account, draft_id).values_list('feature_id', flat=True).first() in RENDER_IDS
 
 
+def in_chat(account, draft_id, kind=None, older=False):
+    """Whether a file made from this draft went to the chat as itself (delivery.sent_in_chat), as `kind` when one is
+    named; `older`, one older than its newest file. What the chat says of a copy there is said only then: a document
+    made on the web, or sent as a link, has none."""
+    from .delivery import sent_in_chat
+    jobs = _made_from(account, draft_id)
+    newest = jobs.values_list('pk', flat=True).first() if older else None
+    if newest is not None:
+        jobs = jobs.exclude(pk=newest)
+    return sent_in_chat(jobs, kind)
+
+
 def logo_gone(account, draft):
     """Whether the logo the draft names is no longer stored: a change of a document whose logo was deleted comes without it."""
     from apps.studio.branding import logo_kept

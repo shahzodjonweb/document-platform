@@ -215,6 +215,11 @@ def request(account, draft_id, body):
         asset = FileAsset.objects.filter(account=account, pk=asset_id, state='ready', expires_at__gt=timezone.now()).first() if asset_id else None
         if asset is None:
             raise DomainError('not_found', 404)
+        # An upload a kept draft holds past its own day (its logo, a CV's photo) is kept for that draft's changes only:
+        # a copy on a slide would be kept, and served, with this deck for good (keeping.py).
+        from .keeping import held_past_its_day, held_refusal
+        if held_past_its_day(asset):
+            raise held_refusal()
         if asset.mime_type not in UPLOAD_TYPES or asset.size_bytes > IMAGE_BYTES:
             raise DomainError('invalid_image')
         payload['asset_id'] = str(asset.pk)
@@ -534,9 +539,11 @@ def _next(row, draft, data, payload):
 def _upload(row, draft, data, payload):
     """The customer's own photo, made a plain JPEG with no EXIF (photos.prepare), on the slide."""
     from . import photos as stock
+    from .keeping import held_past_its_day
     account, sid = row.account, payload['section_id']
     asset = _stored(payload['asset_id'])
-    if asset is None or asset.account_id != account.pk:
+    # Asked within its own day, a held upload whose day ended while the task waited is not taken either (request).
+    if asset is None or asset.account_id != account.pk or held_past_its_day(asset):
         raise DomainError('picture_unavailable', 409)
     try:
         prepared = stock.prepare(storage.read_bytes(asset.object_key))
