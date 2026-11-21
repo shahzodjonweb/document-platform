@@ -1379,7 +1379,7 @@ def _law_names(sentence):
                     why = 'word'
                     break
                 index, taken = index + 1, taken + 1
-        if opener and not _name_ends(sentence, tokens, index, why, word):
+        if opener and not _name_ends(sentence, tokens, index, why, word, _ru_verb_before(tokens, at)):
             name = opener + name  # the name goes on past what is read: its opening word is the name's, as c491da9's
         found += [(start, text) for start, text in name if _letters(text) >= 2
                   and not LAW_COUNTRY.fullmatch(normalised(text).casefold())]
@@ -1803,7 +1803,7 @@ LAW_JOINED_DETERMINER = re.compile(LAW_ARTICLE.pattern + r"|its|their|his|her|ou
                                                          r"|this|these|those|both|either|such")
 
 
-def _name_ends(sentence, tokens, index, why, word):
+def _name_ends(sentence, tokens, index, why, word, after_verb=False):
     """Whether the name `_law_names` read after a stem's "о", "об", "of" or "on", up to the token at `index` where the
     reading stopped (`why`), ends there: at the sentence's or its clause's end, a verb ("... учёте регулирует", "...
     Accounting applies"), an adverb before them ("... учёте хорошо."), or past a comma, a semicolon, a conjunction,
@@ -1812,7 +1812,8 @@ def _name_ends(sentence, tokens, index, why, word):
     аудите", "... Accounting as well as auditing" go on). After the law's date or number it ends only where it would
     end right after the name (`_dated_ends`: "... от 13 апреля 2016 года и аудите", "... № 404 в банках" go on). Never
     where the reading reached its end, nor before a preposition ("... учёте в банках", "... in Banks") or a word that
-    may go on the name ("... учёте и аудите", "... Accounting, Auditing and Taxes", "... о защите прав инвесторов")."""
+    may go on the name ("... учёте и аудите", "... Accounting, Auditing and Taxes", "... о защите прав инвесторов").
+    `after_verb`: the sentence has its verb before the law's stem (`_ru_verb_before`, `_joined_ends`)."""
     if why == 'reach':
         return False
     if why == 'goes':
@@ -1821,17 +1822,18 @@ def _name_ends(sentence, tokens, index, why, word):
     rest = sentence[start + len(last):]
     rest = rest[LAW_HEAD_CLOSE.match(rest).end():]
     if re.fullmatch(r"No|Nr", last) and re.match(r"\.[ \u00a0]*\d", rest):
-        return _dated_ends(' ' + rest[1:])  # the law's number read as a name word: "... of 13 April 2016 No. 404"
+        return _dated_ends(' ' + rest[1:], after_verb)  # the number read as a name word: "... of 13 April 2016 No. 404"
     if LAW_HEAD_END.match(rest) or index >= len(tokens):
         return True
     if LAW_HEAD_DATED.match(rest):
-        return _dated_ends(rest)
+        return _dated_ends(rest, after_verb)
     token = tokens[index][1]
     low = normalised(token).casefold()
     if why == 'stop':
         following = [normalised(text).casefold() for _, text in tokens[index + 1:index + 3]]
         if (low == 'as' and following == ['well', 'as']) or (low == 'i' and following[:1] == ['e']):
-            return _joined_ends(tokens, index, low == 'as', sentence)  # "as well as" joins as "and", "i.e." as a comma
+            # "as well as" joins as "and" does, "i.e." as a comma
+            return _joined_ends(tokens, index, low == 'as', sentence, after_verb)
         return LAW_NAME_PREPOSITION.fullmatch(low) is None  # a verb, a pronoun, a conjunction of a clause
     if why == 'word':
         # An adverb after the name ends it where the sentence or its clause ends or a verb follows ("... учёте хорошо.",
@@ -1845,15 +1847,15 @@ def _name_ends(sentence, tokens, index, why, word):
             if at >= len(tokens) or LAW_HEAD_END.match(sentence[start + len(last):]):
                 return True
             if tokens[at][1] in ',;' or LAW_AND.fullmatch(normalised(tokens[at][1]).casefold()):
-                return _joined_ends(tokens, at, tokens[at][1] not in ',;', sentence)
+                return _joined_ends(tokens, at, tokens[at][1] not in ',;', sentence, after_verb)
             low = normalised(tokens[at][1]).casefold()
         return RU_LAW_VERB.fullmatch(low) is not None
     if token not in ',;' and not LAW_AND.fullmatch(low):
         return any(stem.fullmatch(token) for stem in NAMED_STEMS)  # another law, read on its own; a mark goes on
-    return _joined_ends(tokens, index + 1, token not in ',;', sentence)
+    return _joined_ends(tokens, index + 1, token not in ',;', sentence, after_verb)
 
 
-def _dated_ends(rest):
+def _dated_ends(rest, after_verb=False):
     """Whether a law's name ends past its date or number phrase at the start of `rest` (`LAW_DATE_PHRASE`): only at
     the sentence's or its clause's end, a verb, or past a comma, a semicolon or a conjunction where it cannot go on
     (`_joined_ends`: "... учёте от 13 апреля 2016 года и умеет вести книги"). A preposition, a word in the name's case
@@ -1871,7 +1873,7 @@ def _dated_ends(rest):
     text = tokens[0][1]
     low = normalised(text).casefold()
     if text in ',;' or LAW_AND.fullmatch(low):
-        return _joined_ends(tokens, 0, False, rest)
+        return _joined_ends(tokens, 0, False, rest, after_verb)
     if re.search('[а-яё]', low):
         return RU_LAW_VERB.fullmatch(low) is not None or (
             RU_VERB.fullmatch(low) is not None and LAW_OF_CASE.fullmatch(low) is None)
@@ -1916,10 +1918,10 @@ def _ru_adverb(low):
     return low in words or low[:-1] in stems or low[:-1] + 'н' in stems
 
 
-def _joined_ends(tokens, at, conjoined, source=''):
+def _joined_ends(tokens, at, conjoined, source='', after_verb=False):
     """Whether a law's name ends past the comma, the semicolon or the conjunction before the token at `at`
     (`_name_ends`, `_law_head_ends`; `conjoined`: a conjunction, which takes what follows into a list; `source`: what
-    `tokens` were read from).
+    `tokens` were read from; `after_verb`: the sentence has its verb before the law's stem).
 
     Past the conjunctions and their fillers ("а также", "as well as") and the words that open no clause (`_passed`:
     "особенно", "а именно", "то есть", "т. е.", "как и", "лишь", "even", "only", "i.e.", "that is"), with a
@@ -1956,9 +1958,45 @@ def _joined_ends(tokens, at, conjoined, source=''):
             return True
         return not (conjoined or tokens[at][1][0].isupper())
     last = _compound_end(tokens, at, source)
-    if not conjoined and (_clause_follows(tokens, at) or _ru_clause_follows(tokens, last)):
+    if not conjoined and _clause_follows(tokens, at):
+        return True
+    # A Russian clause's subject and its verb (`_ru_clause_follows`): after a comma or a semicolon, or after "и" where
+    # the sentence has its verb before the law, which the verb after cannot be ("Соблюдает Закон о бухгалтерском учёте
+    # и НДС начисляет вовремя"; never "Согласно Закону о телевидении и радио регулируется вещание").
+    if (not conjoined or after_verb) and _ru_clause_follows(tokens, last):
         return True
     return not _may_go_on(tokens[last][1])
+
+
+# The words that open a Russian subordinate clause, whose verb leaves the sentence's to come (`_ru_verb_before`).
+RU_SUBORDINATOR = re.compile(r"котор\w*|чей|чья|чьё|чье|чьи|что|чтобы|если|когда|где|куда|откуда|пока|хотя|поскольку"
+                             r"|ибо|раз|будто|словно|как|кто|ли")
+
+
+def _ru_finite(word):
+    """Whether a Russian word is a finite verb, a sentence's own (`_ru_verb_before`): a present, past or imperative
+    form (`RU_LAW_VERB`, `RU_VERB`: "знает", "соблюдает", "ведётся", "руководствуется"), never a gerund nor an
+    infinitive (`RU_GERUND`: "Изучив", "Знать"), which leave the sentence's verb to come."""
+    low = normalised(word).casefold()
+    return re.search('[а-яё]', low) is not None and RU_GERUND.fullmatch(low) is None \
+        and (RU_LAW_VERB.fullmatch(low) is not None or RU_VERB.fullmatch(low) is not None)
+
+
+def _ru_verb_before(tokens, at):
+    """Whether a Russian finite verb (`_ru_finite`) stands before the law's stem at `at` in its clause, no mark
+    between, and no word opening a subordinate clause before it (`RU_SUBORDINATOR`): "Знает Закон о ...", "Бухгалтер
+    соблюдает Закон о ...", "Работа ведётся согласно Закону о ..."; never "Согласно Закону о ...", "Изучив Закон о
+    ...", "Бухгалтер, знающий Закон о ...", "Бухгалтер, который знает Закон о ...", "Если знает Закон о ...". The
+    sentence has its verb, so a verb after "и" and a noun past the law's name is another clause's (`_joined_ends`)."""
+    verb = False
+    for index in range(at - 1, -1, -1):
+        text = tokens[index][1]
+        if not WORD.fullmatch(text):
+            break
+        if RU_SUBORDINATOR.fullmatch(normalised(text).casefold()):
+            return False
+        verb = verb or _ru_finite(text)
+    return verb
 
 
 def _compound_end(tokens, at, source):
@@ -2166,7 +2204,12 @@ def _law_head_ends(sentence, start, word):
     учёте от 13 апреля 2016 года."), or past "и", a comma or a semicolon and the words that open no clause a word that
     cannot go on it (`_joined_ends`), as `_name_ends` reads the name. Before a preposition, a word in the name's case
     ("... учёте и аудите", "... учёте; аудите", "... учёте и особенно аудите", "... учёте от 13 апреля 2016 года и
-    аудите") or any other word the name may go on past what `_law_names` reads."""
+    аудите") or any other word the name may go on past what `_law_names` reads. Where the sentence has its verb before
+    the law's stem (`_ru_verb_before`: "Бухгалтер знает Закон о ..."), a verb after "и" is another clause's."""
+    before = [(match.start(), match.group(0)) for match in LAW_TOKEN.finditer(sentence[:start])]
+    stem = next((index for index in range(len(before) - 1, -1, -1)
+                 if any(stem.fullmatch(before[index][1]) for stem in NAMED_STEMS)), None)
+    after_verb = stem is not None and _ru_verb_before(before, stem)
     rest = sentence[start + len(word):]
     rest = rest[LAW_HEAD_CLOSE.match(rest).end():]
     if not re.search('[а-яё]', normalised(word).casefold()):
@@ -2181,7 +2224,7 @@ def _law_head_ends(sentence, start, word):
     if LAW_HEAD_END.match(rest):
         return True
     if LAW_HEAD_DATED.match(rest):
-        return _dated_ends(rest)
+        return _dated_ends(rest, after_verb)
     verb = re.match(r"[ \u00a0]+([^\W\d_]+)(?![^\W\d_]|-)", rest)
     if verb is not None and RU_LAW_VERB.fullmatch(normalised(verb.group(1)).casefold()) is not None:
         return True
@@ -2190,7 +2233,7 @@ def _law_head_ends(sentence, start, word):
     # кодекс"); never "... учёте и аудите", "... учёте и особенно аудите", "... учёте, как и об аудите".
     joined = re.match(r"[ \u00a0]*[,;]|[ \u00a0]+(?:и|а|или)(?![^\W\d_])", rest)
     tokens = [(match.start(), match.group(0)) for match in LAW_TOKEN.finditer(rest)]
-    return joined is not None and _joined_ends(tokens, 0, False, rest)
+    return joined is not None and _joined_ends(tokens, 0, False, rest, after_verb)
 
 
 def _legal_known(sentence, concepts, trusted, translated, *, names=True):

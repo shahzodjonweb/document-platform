@@ -4683,23 +4683,20 @@ CASES += [
     gp('laws-an-indeclinable-tail-before-a-verb-after-the-law-on-television-in-a-grounded-part-ru-blank', BLANK,
        JOB_RU_KNOWS_TV, 'ru', 'Согласно Закону о телевидении и радио регулируется вещание.', gone=('радио',)),
 ]
-# What that costs against 28c1b69: such a noun opening a clause after "и" reads the same way, so the customer's law
-# before it blanks.
+# Where the sentence has its verb before the law ("Знает Закон о ...", "Бухгалтер знает Закон о ..."), a verb after "и"
+# and such a noun is another clause's, so 28c1b69's keep stays (an accepted false blank until the verb before was read).
 for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
     CASES += [
-        guard(f'laws-the-customers-law-before-an-indeclinable-opening-a-clause-after-and-{direction}-'
-              f'accepted_false_blank', ACCEPTED, brief, 'ru', 'Знает Закон о бухгалтерском учёте и сальдо переносит '
-              'вовремя.', gone=('сальдо',), translated=direction != 'ru', pair=TV_AND_RADIO_BEFORE_A_VERB),
+        guard(f'laws-the-customers-law-before-an-indeclinable-opening-a-clause-after-and-{direction}-keep', KEEP, brief,
+              'ru', 'Знает Закон о бухгалтерском учёте и сальдо переносит вовремя.', translated=direction != 'ru'),
         gp(f'laws-the-customers-law-before-an-indeclinable-opening-a-clause-after-and-in-a-grounded-part-{direction}-'
-           f'accepted_false_blank', ACCEPTED, brief, 'ru', 'Знает Закон о бухгалтерском учёте и сальдо переносит '
-           'вовремя.', gone=('сальдо',), pair=TV_AND_RADIO_BEFORE_A_VERB),
+           f'keep', KEEP, brief, 'ru', 'Знает Закон о бухгалтерском учёте и сальдо переносит вовремя.'),
     ]
 for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING_UZ_RU),
                          ('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU)):
     CASES.append(guard(f'laws-the-customers-translated-law-before-an-indeclinable-opening-a-clause-after-and-'
-                       f'{direction}-accepted_false_blank', ACCEPTED, brief, 'ru', 'Бухгалтер знает Закон о '
-                       'бухгалтерском учёте и сальдо переносит вовремя.', gone=('сальдо',), translated=True,
-                       pair=TV_AND_RADIO_BEFORE_A_VERB))
+                       f'{direction}-keep', KEEP, brief, 'ru', 'Бухгалтер знает Закон о бухгалтерском учёте и сальдо '
+                       'переносит вовремя.', translated=True))
 
 # ---- An adverb, a participle or a particle in -о after the customer's law (p2): 28c1b69 passed it over as an adverb,
 # round 13 read it as a noun that keeps its -о and blanked the customer's law. A short participle in -ано, -ено, -ято,
@@ -4839,16 +4836,16 @@ for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_U
                                                  'приёма на работу.')):
         CASES.append(guard(f'laws-the-customers-law-before-an-indeclinable-in-u-opening-a-comma-clause-{slug}-'
                            f'{direction}-keep', KEEP, brief, 'ru', sentence, translated=direction != 'ru'))
-# What that costs against 28c1b69: after "и" such a noun before a verb reads as the name's last word ("Согласно Закону о
-# телевидении и шоу регулируется вещание"), so the customer's law before a clause it opens blanks.
+# After "и" such a noun before a verb reads as the name's last word where the sentence has no verb before the law
+# ("Согласно Закону о телевидении и шоу регулируется вещание"); where it has one, the verb after is another clause's,
+# and 28c1b69's keep stays (an accepted false blank until the verb before was read).
 TV_AND_SHOW_BEFORE_A_VERB = 'laws-an-indeclinable-tail-in-u-before-a-verb-after-the-law-on-television-ru-blank'
 CASES.append(guard(TV_AND_SHOW_BEFORE_A_VERB, BLANK, JOB_RU_KNOWS_TV, 'ru',
                    'Согласно Закону о телевидении и шоу регулируется вещание.', gone=('шоу',), translated=False))
 for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
     CASES.append(guard(f'laws-the-customers-law-before-an-indeclinable-in-u-opening-a-clause-after-and-{direction}-'
-                       f'accepted_false_blank', ACCEPTED, brief, 'ru', 'Знает Закон о бухгалтерском учёте и меню '
-                       'согласует с руководством.', gone=('меню',), translated=direction != 'ru',
-                       pair=TV_AND_SHOW_BEFORE_A_VERB))
+                       f'keep', KEEP, brief, 'ru', 'Знает Закон о бухгалтерском учёте и меню согласует с руководством.',
+                       translated=direction != 'ru'))
 
 # ---- A rare loan in -о that `_ru_adverb` read as an adverb by its shape or the lexicon ("фиаско", "фламенко",
 # "сирокко" of -Cко and -Cно; "бунгало", "мерло", "пуэбло", "пикколо" of -ло; "лего" of -его; "плато", "тако" of an
@@ -5036,7 +5033,8 @@ for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING
                        f'keep', KEEP, brief, 'ru', 'Бухгалтер знает Закон о бухгалтерском учёте, НДС рассчитывает '
                        'самостоятельно.', translated=True))
 # What the reading costs against 28c1b69, each where the same words in the same place may name a law: an abbreviation
-# after "и" before a verb ("Согласно Закону о бухгалтерском учёте и НДС регулируется отчётность"), before a comma clause
+# after "и" before a verb where the sentence has no verb before the law ("Согласно Закону о бухгалтерском учёте и НДС
+# регулируется отчётность"; with one, "Соблюдает Закон ... и НДС начисляет вовремя" is kept), before a comma clause
 # ("Знает Закон о бухгалтерском учёте и НДС, бухгалтер ведёт книги"), and two joined by "и" after a comma before a verb
 # ("Согласно Закону о бухгалтерском учёте, НДС и ЕСП регулируется отчётность"): the customer's law before them blanks.
 VAT_BEFORE_A_VERB = 'laws-an-abbreviation-tail-before-a-verb-after-a-named-law-ru-blank'
@@ -5053,8 +5051,6 @@ CASES += [
 ]
 for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
     for slug, sentence, gone, pair in (
-            ('vat-opening-a-clause-after-and', 'Соблюдает Закон о бухгалтерском учёте и НДС начисляет вовремя.',
-             ('НДС',), VAT_BEFORE_A_VERB),
             ('vat-before-a-comma-clause', 'Знает Закон о бухгалтерском учёте и НДС, применяет их на практике.',
              ('НДС',), VAT_BEFORE_A_COMMA_CLAUSE),
             ('two-abbreviations-opening-a-comma-clause', 'Согласно Закону о бухгалтерском учёте, ООО и ИП обязаны '
@@ -5065,6 +5061,50 @@ for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_U
             gp(f'laws-the-customers-law-before-an-abbreviation-{slug}-in-a-grounded-part-{direction}-'
                f'accepted_false_blank', ACCEPTED, brief, 'ru', sentence, gone=gone, pair=pair),
         ]
+
+# ---- A verb before the law (the fixer's own probe, r14 k1, k2): where the sentence has its finite verb before the law's
+# stem ("Соблюдает Закон о ...", "Бухгалтер знает Закон о ...", "Работа ведётся согласно Закону о ..."), a verb after
+# "и" and a noun that keeps its form or an abbreviation is another clause's, never the sentence's after a longer name,
+# so 28c1b69's keep stays. With no finite verb before (a preposition, a gerund, an infinitive, a participle: "Согласно
+# Закону о телевидении и радио регулируется вещание", "Изучив Закон о бухгалтерском учёте и НДС начисляет его вовремя"),
+# or one of a subordinate clause ("Бухгалтер, который знает Закон ... и НДС регулирует учёт"), the noun may be the
+# name's last word and blanks.
+for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
+    for slug, sentence in (
+            ('vat-charged', 'Соблюдает Закон о бухгалтерском учёте и НДС начисляет вовремя.'),
+            ('a-sole-trader-advised', 'Соблюдает Закон о бухгалтерском учёте и ИП консультирует по учёту.'),
+            ('a-balance-of-an-account', 'Знает Закон о бухгалтерском учёте и сальдо счёта переносит вовремя.'),
+            ('as-well-as-a-dated-law', 'Знает Закон о бухгалтерском учёте, а также НДС начисляет вовремя.')):
+        CASES += [
+            guard(f'laws-the-customers-law-after-a-verb-before-a-clause-after-and-{slug}-{direction}-keep', KEEP,
+                  brief, 'ru', sentence, translated=direction != 'ru'),
+            gp(f'laws-the-customers-law-after-a-verb-before-a-clause-after-and-{slug}-in-a-grounded-part-{direction}-'
+               f'keep', KEEP, brief, 'ru', sentence),
+        ]
+    CASES.append(body(f'laws-the-customers-law-after-a-verb-before-a-clause-after-and-vat-charged-in-a-report-'
+                      f'{direction}-keep', KEEP, 'pdf.biz.hisobot', brief, 'ru', 'work_done',
+                      'Соблюдает Закон о бухгалтерском учёте и НДС начисляет вовремя.'))
+    for slug, sentence, gone in (
+            ('having-studied', 'Изучив Закон о бухгалтерском учёте и НДС начисляет его вовремя.', ('НДС',)),
+            ('to-observe', 'Соблюдать Закон о бухгалтерском учёте и НДС начислять вовремя.', ('НДС',)),
+            ('according-to', 'Согласно Закону о бухгалтерском учёте и шоу проводится вовремя.', ('шоу',))):
+        CASES.append(guard(f'laws-an-indeclinable-tail-before-a-verb-with-no-verb-before-the-law-{slug}-{direction}-'
+                           f'blank', BLANK, brief, 'ru', sentence, gone=gone, translated=direction != 'ru'))
+for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING_UZ_RU),
+                         ('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU)):
+    for slug, sentence in (('vat-charged', 'Бухгалтер знает Закон о бухгалтерском учёте и НДС начисляет вовремя.'),
+                           ('work-done-and-vat-charged', 'Работа ведётся согласно Закону о бухгалтерском учёте и НДС '
+                                                         'начисляется вовремя.')):
+        CASES.append(guard(f'laws-the-customers-translated-law-after-a-verb-before-a-clause-after-and-{slug}-'
+                           f'{direction}-keep', KEEP, brief, 'ru', sentence, translated=True))
+    for slug, sentence, gone in (
+            ('a-participle', 'Бухгалтер, знающий Закон о бухгалтерском учёте и НДС, начисляет его вовремя.', ('НДС',)),
+            ('a-relative-clause', 'Бухгалтер, который знает Закон о бухгалтерском учёте и НДС регулирует учёт.',
+             ('НДС',)),
+            ('a-conditional-clause', 'Если знает Закон о бухгалтерском учёте и НДС регулирует учёт.', ('НДС',)),
+            ('according-to', 'Согласно Закону о бухгалтерском учёте и НДС регулируется отчётность.', ('НДС',))):
+        CASES.append(guard(f'laws-a-translated-head-noun-before-an-abbreviation-with-no-verb-before-the-law-{slug}-'
+                           f'{direction}-blank', BLANK, brief, 'ru', sentence, gone=gone, translated=True))
 
 CASE_IDS = [case.id for case in CASES]
 
