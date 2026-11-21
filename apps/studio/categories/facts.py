@@ -1980,6 +1980,10 @@ def _joined_ends(tokens, at, conjoined, source='', after_verb=False):
 # The words that open a Russian subordinate clause, whose verb leaves the sentence's to come (`_ru_verb_before`).
 RU_SUBORDINATOR = re.compile(r"котор\w*|чей|чья|чьё|чье|чьи|что|чтобы|если|когда|где|куда|откуда|пока|хотя|поскольку"
                              r"|ибо|раз|будто|словно|как|кто|ли")
+# The words "как" opens a clause after ("так как", "после того как", "перед тем как", "с тех пор как", "в то время
+# как"); after any other word of its clause "как" names a role ("Бухгалтер как специалист знает ...",
+# `_ru_verb_before`).
+RU_KAK_CONJUNCTION = re.compile(r"так|того|тем|пор|время|то|тогда|потому")
 
 
 # The endings `RU_VERB` reads as a verb's that a noun has too (`_ru_finite`): a present tense's bare -ит or -ят
@@ -2023,19 +2027,23 @@ def _ru_finite(word, opening=False):
 def _ru_verb_before(tokens, at, source):
     """Whether a Russian finite verb (`_ru_finite`) stands before the law's stem at `at` of `source` in its clause, no
     mark or dash between (`RU_DASH`), no "и", "а", "но" or "или" between it and the stem, and no word opening a
-    subordinate clause before it (`RU_SUBORDINATOR`): "Знает Закон о ...", "Бухгалтер соблюдает Закон о ...", "Работа
-    ведётся согласно Закону о ...", "Бухгалтер знает и соблюдает Закон о ..."; never "Согласно Закону о ...", "Изучив
-    Закон о ...", "Бухгалтер, знающий Закон о ...", "Бухгалтер, который знает Закон о ...", "Если знает Закон о ...",
-    "Бухгалтер знает своё дело и Закон о ...", "Бухгалтер ведёт учёт — Закон о ...", "Аудит Закона о ...". The
-    sentence has its verb, so a verb after "и" and a noun past the law's name is another clause's (`_joined_ends`);
-    where the law opens a conjunct or a clause of its own, the verb after the name may be its, and the name's."""
+    subordinate clause before it (`RU_SUBORDINATOR`; "как" after a word of its clause names a role,
+    `RU_KAK_CONJUNCTION`): "Знает Закон о ...", "Бухгалтер соблюдает Закон о ...", "Работа ведётся согласно Закону о
+    ...", "Бухгалтер знает и соблюдает Закон о ...", "Бухгалтер как специалист знает Закон о ..."; never "Согласно
+    Закону о ...", "Изучив Закон о ...", "Бухгалтер, знающий Закон о ...", "Бухгалтер, который знает Закон о ...",
+    "Если знает Закон о ...", "Бухгалтер знает своё дело и Закон о ...", "Бухгалтер ведёт учёт — Закон о ...", "Аудит
+    Закона о ...". The sentence has its verb, so a verb after "и" and a noun past the law's name is another clause's
+    (`_joined_ends`); where the law opens a conjunct or a clause of its own, the verb after the name may be its, and the
+    name's."""
     verb = False
     for index in range(at - 1, -1, -1):
         text = tokens[index][1]
         if not WORD.fullmatch(text) or RU_DASH.search(source[tokens[index][0] + len(text):tokens[index + 1][0]]):
             break
         low = normalised(text).casefold()
-        if RU_SUBORDINATOR.fullmatch(low) or (not verb and LAW_AND.fullmatch(low)):
+        role = low == 'как' and index > 0 and WORD.fullmatch(tokens[index - 1][1]) is not None \
+            and not RU_KAK_CONJUNCTION.fullmatch(normalised(tokens[index - 1][1]).casefold())
+        if (RU_SUBORDINATOR.fullmatch(low) and not role) or (not verb and LAW_AND.fullmatch(low)):
             return False
         verb = verb or _ru_finite(text, _starts(source, tokens[index][0]))
     return verb

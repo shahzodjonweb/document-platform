@@ -5421,6 +5421,23 @@ for direction, brief in RUSSIAN_ACCOUNTING:
                        'ru', 'Знает Закон о бухгалтерском учёте и нетто.', gone=('нетто',),
                        translated=direction != 'ru'))
 
+# ---- "как" after the subject before the law's verb ("Бухгалтер как специалист знает Закон о ...", k2): a role, no
+# subordinate clause, so the verb is the law's sentence's and "и НДС начисляет вовремя" another clause, as 28c1b69
+# keeps it; round 14 read every "как" as opening a clause and blanked. "так как", "после того как" open one still.
+for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING_UZ_RU),
+                         ('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU)):
+    for slug, sentence in (('knows-and-vat-charged', 'Бухгалтер как специалист знает Закон о бухгалтерском учёте и НДС '
+                                                     'начисляет вовремя.'),
+                           ('observes-and-balance-carried', 'Бухгалтер как специалист соблюдает Закон о бухгалтерском '
+                                                            'учёте и сальдо переносит вовремя.')):
+        CASES.append(guard(f'laws-the-customers-translated-law-after-a-role-with-kak-before-a-clause-after-and-{slug}-'
+                           f'{direction}-keep', KEEP, brief, 'ru', sentence, translated=True))
+    for slug, sentence in (('since', 'Так как бухгалтер знает Закон о бухгалтерском учёте и НДС регулирует учёт.'),
+                           ('after', 'После того как бухгалтер изучает Закон о бухгалтерском учёте и НДС регулирует '
+                                     'учёт.')):
+        CASES.append(guard(f'laws-a-translated-head-noun-before-an-abbreviation-in-a-clause-with-kak-{slug}-'
+                           f'{direction}-blank', BLANK, brief, 'ru', sentence, gone=('НДС',), translated=True))
+
 CASE_IDS = [case.id for case in CASES]
 
 
