@@ -46,13 +46,18 @@ def sources(account, file_ids, feature_id=None):
     """
     if feature_id == CV:
         return []
-    assets = {
-        str(asset.id): asset
-        for asset in FileAsset.objects.filter(account=account, id__in=file_ids, state='ready',
-                                              expires_at__gt=timezone.now())
-    }
+    assets = _live(account, file_ids)
     ordered = [assets[key] for key in file_ids if key in assets]
     return [str(asset.id) for asset in ordered if asset.metadata.get('kind') == 'pdf']
+
+
+def _live(account, file_ids):
+    """These files of the account's that a new document may take, by id: still kept, and none held only for changing an
+    AI document past its own day (apps/studio/keeping.py), which is left out as a file that ran out is."""
+    from apps.studio.keeping import held_past_its_day
+    now = timezone.now()
+    return {str(asset.id): asset for asset in FileAsset.objects.filter(account=account, id__in=list(file_ids), state='ready', expires_at__gt=now)
+            if not held_past_its_day(asset, now)}
 
 
 # The kinds of file a category draft reads (apps/studio/categories/sources.py KINDS):
@@ -63,11 +68,7 @@ CATEGORY_KINDS = ('pdf', 'docx', 'doc', 'text')
 
 def category_sources(account, file_ids):
     """The files a category draft is made from, in the order they were sent, once each."""
-    assets = {
-        str(asset.id): asset
-        for asset in FileAsset.objects.filter(account=account, id__in=list(file_ids), state='ready',
-                                              expires_at__gt=timezone.now())
-    }
+    assets = _live(account, file_ids)
     ordered = list(dict.fromkeys(str(key) for key in file_ids))
     return [key for key in ordered if key in assets and assets[key].metadata.get('kind') in CATEGORY_KINDS]
 
@@ -759,8 +760,7 @@ def written_again(account, draft_id):
     data = unpack(draft.encrypted_data)
     way = (data.get('options') or {}).get('cv_source') or TEXT
     ids = [str(identifier) for identifier in data.get('source_ids') or []] if way in (LINKEDIN, FILE) else []
-    kept = {str(key) for key in FileAsset.objects.filter(account=account, id__in=ids, state='ready',
-                                                         expires_at__gt=timezone.now()).values_list('id', flat=True)}
+    kept = set(_live(account, ids))
     notes = (data.get('prompt') or '').strip() if way in (LINKEDIN, FILE) and not data.get('revision') else ''
     return {'cv_source': way, 'source_ids': [identifier for identifier in ids if identifier in kept],
             'notes': [notes] if notes else [], 'portrait_asset_id': usable_portrait(account, portrait_of(draft))}

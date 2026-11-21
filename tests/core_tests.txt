@@ -4530,3 +4530,12 @@ tests/test_kept_drafts.py::test_what_names_no_copy_in_the_chat_is_said_in_every_
 # After the fifth review: the chat says in its own words that a file kept only for an AI document's changes past its
 # day is sent there no more.
 tests/test_kept_drafts.py::test_the_chat_says_in_its_own_words_that_a_held_file_is_sent_there_no_more
+
+# After the fifth review: the PDF editor's draft on a held upload and what a CV's reader took from it go when its day
+# ends; an account that asked to be deleted loses every draft at the next cleanup; a held upload past its day goes into
+# no new document, nor the chat's lists of files, while its own document's changes and saves go on.
+tests/test_kept_drafts.py::test_editor_marks_and_cv_reads_on_a_kept_upload_go_when_its_day_ends
+tests/test_kept_drafts.py::test_an_account_that_asked_to_be_deleted_loses_every_draft_at_the_next_cleanup
+tests/test_kept_drafts.py::test_a_held_upload_past_its_day_goes_into_no_new_document
+tests/test_kept_drafts.py::test_a_held_upload_past_its_day_still_goes_into_its_own_documents_changes
+tests/test_kept_drafts.py::test_the_chat_offers_no_held_upload_past_its_day_for_a_new_document

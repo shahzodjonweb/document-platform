@@ -720,13 +720,13 @@ def test_an_account_that_asked_to_be_deleted_never_has_a_draft_kept(customer, cl
     old, made = document(customer, 'Tides')
     # As the platform left it before: on its result's day, not kept yet.
     GenerationDraft.objects.filter(pk=old.pk).update(expires_at=made.artifacts.get().file.expires_at)
-    settling = create_draft(customer, {'feature_id': DOCUMENT, 'title': 'Waves', 'source_text': 'Wind makes waves.'})
     customer.deletion_requested_at = timezone.now()
     customer.save(update_fields=['deletion_requested_at'])
 
     clock(1)
     assert not GenerationDraft.objects.filter(pk=old.pk).exists(), 'the backfill deletes it, never keeps it'
-    # A job settling after the account asked to be deleted keeps nothing.
+    # A job settling after the account asked to be deleted keeps nothing (the next cleanup deletes its draft).
+    settling = create_draft(customer, {'feature_id': DOCUMENT, 'title': 'Waves', 'source_text': 'Wind makes waves.'})
     keeping.keep(settling)
     assert not keeping.is_kept(GenerationDraft.objects.get(pk=settling.pk).expires_at)
 
@@ -865,7 +865,8 @@ def test_a_file_held_for_a_document_is_said_to_be_kept_never_deleted(customer, c
     assert opened.status_code == 201, opened.content
     document(customer, 'Tides', source_ids=[str(source.id)])
     lost = upload(customer, 'lost.pdf')
-    clock(DAY)
+    # Its day over, before the cleanup has run: once it has, the editor's draft on it is gone, as any file's is.
+    clock(DAY, clean=False)
     client = login_client(customer)
     said = (410, 'file_expired', keeping.KEPT_FOR_DOCUMENT, HELD['en'])
     # The editor, by the file (the bot's ✏️ Edit, /editor, Edit under a result) and by its draft.
@@ -885,12 +886,16 @@ def test_a_file_held_for_a_document_is_said_to_be_kept_never_deleted(customer, c
         assert error_data(held, locale)['message'] == HELD[locale]
         assert bot_error(held, locale) == UX[locale]['result_held'] == CHAT_HELD[locale]
         assert bot_error(DomainError('file_expired', 410), locale) != bot_error(held, locale)
+    cleanup_expired()
+    assert client.get(f'/api/v1/editor/documents/{opened.json()["id"]}').status_code == 404, 'its marks went with its day'
+    assert there(source)
 
 
 @pytest.mark.django_db
 def test_a_held_file_shows_when_it_stops_being_opened_and_is_expired_after(customer, clock):  # noqa: F811
     """Its editor row and its task's result name the end of its own day, as any file's do, and are expired after it: the
-    editor's list lets it go, its draft can still be removed, and the file is still kept for the document's changes."""
+    editor's list lets it go, its draft can still be removed until the cleanup takes it with that day, and the file is
+    still kept for the document's changes."""
     from django.utils.dateparse import parse_datetime
     from apps.core.services import create_quote
     from apps.studio.models import EditorDocument
@@ -914,7 +919,8 @@ def test_a_held_file_shows_when_it_stops_being_opened_and_is_expired_after(custo
     assert job_result(client)['state'] == 'ready' and at(job_result(client)['expires_at'], result_ends)
     assert client.get(f'/api/v1/files/{source.id}').json()['expires_at'] is None, 'as a source it is kept: Review draft reads this'
 
-    clock(DAY)
+    # Its day over, before the cleanup has run (which deletes the editor's draft on it, as on any file past its day).
+    clock(DAY, clean=False)
     client = login_client(customer)
     assert opened['id'] not in [item['id'] for item in client.get('/api/v1/editor/documents').json()['results']]
     assert job_result(client)['state'] == 'expired' and at(job_result(client)['expires_at'], result_ends)
@@ -1178,6 +1184,183 @@ def test_what_names_no_copy_in_the_chat_is_said_in_every_language():
         assert all(said) and not any('chat' in line or 'чат' in line for line in said), said
         assert not re.search('[А-Яа-яЁё]', UX['uz'][key]) and "'" not in UX['uz'][key], UX['uz'][key]
     assert all('{format}' in UX[locale]['ai_edited_not_kept_unsent'] for locale in ('en', 'uz', 'ru'))
+
+
+# ---------------------------------------------------------------- after the fifth review
+
+
+@pytest.mark.django_db
+def test_editor_marks_and_cv_reads_on_a_kept_upload_go_when_its_day_ends(customer, clock):  # noqa: F811
+    """The PDF editor's draft on a file later made into an AI document, and what a CV's reader took from it, go when the
+    file's own day ends, as they go with any file: nothing opens them after it, and a change of the document never reads them."""
+    from apps.studio.models import CvSourceRead, EditorDocument
+    from tests.test_editor_documents import NOTE, save
+    held, plain = upload(customer, 'held.pdf'), upload(customer, 'plain.pdf')
+    client = login_client(customer)
+    opened = {}
+    for asset in (held, plain):
+        answer = client.post('/api/v1/editor/documents', json.dumps({'file_id': str(asset.id)}), content_type='application/json')
+        assert answer.status_code == 201, answer.content
+        opened[asset.name] = answer.json()['id']
+        assert save(client, f'/api/v1/editor/documents/{answer.json()["id"]}', 1, [NOTE]).status_code == 200
+        CvSourceRead.objects.create(account=customer, asset=asset, status='done')
+    draft, _ = document(customer, 'Tides', source_ids=[str(held.id)])
+    clock(20)
+    assert EditorDocument.objects.filter(pk=opened['held.pdf']).exists() and CvSourceRead.objects.filter(asset_id=held.pk).exists(), 'its own day'
+
+    clock(DAY)
+    for asset in (held, plain):
+        assert not EditorDocument.objects.filter(pk=opened[asset.name]).exists(), asset.name
+        assert not CvSourceRead.objects.filter(asset_id=asset.pk).exists(), asset.name
+    assert there(held), 'still kept for the document'
+    client = login_client(customer)
+    assert client.get('/api/v1/editor/documents').json()['results'] == []
+    # Asked after as a CV's file, it is read no more: the page forgets it, as it forgets a file that ran out.
+    asked = client.get(f'/api/v1/studio/cv-reads?ids={held.id}')
+    assert asked.status_code == 404, asked.content
+    assert not CvSourceRead.objects.filter(asset_id=held.pk).exists()
+    clock(LONG_AFTER)
+    paid_by_card(customer, 'premium')
+    assert asked_on_the_web(login_client(customer), draft.id, 'change-without-marks').input_ids == [str(held.id)]
+
+
+@pytest.mark.django_db
+def test_an_account_that_asked_to_be_deleted_loses_every_draft_at_the_next_cleanup(customer, stock_photos, clock):  # noqa: F811
+    """DELETE /me is not one transaction, and the backfill stops once done: cut off after the ask, the account's drafts,
+    kept or not, go with what they hold at the next cleanup however long after, its files with them."""
+    from apps.core.models import Account
+    source = upload(customer, 'harbour-notes.pdf')
+    draft, _ = made_deck(customer, sources=[source])
+    unsent = create_draft(customer, {'feature_id': DOCUMENT, 'title': 'Waves', 'source_text': 'Wind makes waves.'})
+    pictures = deck_files(draft)
+    assert pictures and keeping.is_kept(FileAsset.objects.get(pk=source.pk).expires_at)
+    BotCallback.objects.create(token='leaving-change-button', account=customer, action='ai_revise',
+                               payload={'draft_id': str(draft.pk)}, expires_at=keeping.KEPT_UNTIL)
+    staying = Account.objects.create(display_name='Staying', plan='free')
+    kept, _ = document(staying, 'Tides')
+    keeping._note_backfill({'done': True, 'done_at': timezone.now().isoformat()})
+    # As DELETE /me leaves an account it was cut off on: asked, and nothing else done.
+    customer.deletion_requested_at = timezone.now()
+    customer.save(update_fields=['deletion_requested_at'])
+
+    clock(2)
+    assert not GenerationDraft.objects.filter(account=customer).exists(), 'kept or not'
+    assert not GenerationDraft.objects.filter(pk=unsent.pk).exists()
+    assert not FileAsset.objects.filter(account=customer, expires_at__gte=keeping.KEPT_UNTIL).exists()
+    assert gone(source) and all(gone(asset) for asset in pictures)
+    assert not BotCallback.objects.filter(account=customer, action='ai_revise').exists()
+    assert keeping.is_kept(GenerationDraft.objects.get(pk=kept.pk).expires_at), 'another account keeps its own'
+
+
+@pytest.mark.django_db
+def test_a_held_upload_past_its_day_goes_into_no_new_document(customer, stock_photos, clock):  # noqa: F811
+    """A new document's source or logo, a new CV's photo or file, a draft given it on a save, a kept deck given it as a
+    logo: each is refused as the file is everywhere past its day, kept for its own document."""
+    from operations.integrations import save_config
+    from apps.core.services import upload_file
+    from apps.studio.domain import CV
+    from telegram.generation import usable_portrait
+    from tests.test_bot_cv import image
+    from tests.test_cv_content import BRIEF
+    source, mark = upload(customer, 'tides.pdf'), logo(customer)
+    first, _ = branded(customer, source, mark)
+    save_config('ai', {'mode': 'local_fixture'})
+    photo = upload_file(customer, image())
+    cv = create_draft(customer, {'feature_id': CV, 'prompt': BRIEF, 'options': {'portrait_asset_id': str(photo.id)}})
+    assert execute_job(submit_job(customer, generation_quote(customer, cv.id, cv.version).id, 'cv-with-its-photo')[0].id).status == 'succeeded'
+    deck, _ = made_deck(customer)
+    clock(DAY)
+    unsent = create_draft(customer, {'feature_id': DOCUMENT, 'title': 'Waves', 'source_text': 'Wind makes waves.'})
+    paid_by_card(customer, 'premium')
+    client = login_client(customer)
+    said = (410, 'file_expired', keeping.KEPT_FOR_DOCUMENT, HELD['en'])
+
+    def asked(payload):
+        return client.post('/api/v1/generation/drafts', json.dumps(payload), content_type='application/json')
+
+    def saved(draft, **fields):
+        opened = client.get(f'/api/v1/generation/drafts/{draft.id}').json()
+        return client.patch(f'/api/v1/generation/drafts/{draft.id}', json.dumps({'version': opened['version'], **fields}),
+                            content_type='application/json')
+
+    brand = {'name': 'Harbour', 'accent': '#285cff', 'logo_asset_id': str(mark.id)}
+    assert refused_as(asked({'feature_id': DOCUMENT, 'title': 'Another', 'source_text': 'Other notes.', 'source_ids': [str(source.id)]})) == said
+    assert refused_as(asked({'feature_id': DOCUMENT, 'title': 'Another', 'source_text': 'Other notes.', 'options': {'branding': brand}})) == said
+    assert refused_as(asked({'feature_id': SLIDES, 'title': 'Another', 'source_text': 'Other notes.', 'options': {'branding': brand}})) == said
+    assert refused_as(asked({'feature_id': CV, 'prompt': BRIEF, 'options': {'portrait_asset_id': str(photo.id)}})) == said
+    assert refused_as(asked({'feature_id': CV, 'prompt': '', 'source_ids': [str(source.id)], 'options': {'cv_source': 'file'}})) == said
+    assert usable_portrait(customer, str(photo.id)) == '', 'the chat carries it to no new CV'
+    assert refused_as(saved(unsent, source_ids=[str(source.id)])) == said
+    opened = client.get(f'/api/v1/generation/drafts/{deck.id}').json()
+    options = {key: value for key, value in opened['options'].items() if value != ''}
+    assert refused_as(saved(deck, options={**options, 'branding': brand})) == said
+    assert FileAsset.objects.get(pk=source.pk).metadata['kept_by'] == [str(first.pk)], 'held by its own document alone'
+    assert FileAsset.objects.get(pk=mark.pk).metadata['kept_by'] == [str(first.pk)]
+    from apps.studio.models import CvSourceRead
+    assert not CvSourceRead.objects.filter(asset_id=source.pk).exists(), 'no read queued for it'
+
+
+@pytest.mark.django_db
+def test_a_held_upload_past_its_day_still_goes_into_its_own_documents_changes(customer, clock):  # noqa: F811
+    """What the draft already names, or the document a change changes, is not a new input: a change, a change of that
+    change, its wording saved again, Review draft's save of the document's own files and a CV's change keep working."""
+    from operations.integrations import save_config
+    from apps.core.services import upload_file
+    from apps.studio.domain import CV
+    from tests.test_bot_cv import image
+    from tests.test_cv_content import BRIEF
+    source, mark = upload(customer, 'tides.pdf'), logo(customer)
+    draft, _ = branded(customer, source, mark)
+    save_config('ai', {'mode': 'local_fixture'})
+    photo = upload_file(customer, image())
+    cv = create_draft(customer, {'feature_id': CV, 'prompt': BRIEF, 'options': {'portrait_asset_id': str(photo.id)}})
+    assert execute_job(submit_job(customer, generation_quote(customer, cv.id, cv.version).id, 'cv-kept-photo')[0].id).status == 'succeeded'
+    clock(DAY)
+    paid_by_card(customer, 'premium')
+    client = login_client(customer)
+    assert client.get(f'/api/v1/files/{source.id}/download').status_code == 410, 'past its day'
+
+    change = asked_on_the_web(client, draft.id, 'own-change')
+    assert change.input_ids == [str(source.id), str(mark.id)]
+    again = asked_on_the_web(client, draft_of(change).id, 'own-change-of-change')
+    assert again.input_ids == [str(source.id), str(mark.id)]
+    reworded = client.post('/api/v1/generation/drafts', json.dumps({'prompt': CHANGE, 'options': {'revise_draft_id': str(draft.id)}}),
+                           content_type='application/json')
+    assert reworded.status_code == 201, reworded.content
+    reworded = client.patch(f'/api/v1/generation/drafts/{reworded.json()["id"]}', json.dumps(
+        {'version': reworded.json()['version'], 'prompt': 'Make it shorter.'}), content_type='application/json')
+    assert reworded.status_code == 200, reworded.content
+    opened = client.get(f'/api/v1/generation/drafts/{draft.id}').json()
+    fields = {key: opened[key] for key in ('title', 'prompt', 'source_text', 'source_ids')}
+    fields['options'] = {key: value for key, value in opened['options'].items() if value != ''}
+    review = client.patch(f'/api/v1/generation/drafts/{draft.id}', json.dumps({'version': opened['version'], **fields}),
+                          content_type='application/json')
+    assert review.status_code == 200, review.content
+    assert review.json()['source_ids'] == [str(source.id)] and review.json()['options']['branding']['logo_asset_id'] == str(mark.id)
+    cv_change = client.post('/api/v1/generation/drafts', json.dumps({'prompt': 'Make it more formal.', 'options': {'revise_draft_id': str(cv.id)}}),
+                            content_type='application/json')
+    assert cv_change.status_code == 201, cv_change.content
+    assert cv_change.json()['options'].get('portrait_asset_id') == str(photo.id) and not cv_change.json()['options'].get('cv_warnings')
+
+
+@pytest.mark.django_db
+def test_the_chat_offers_no_held_upload_past_its_day_for_a_new_document(customer, clock):  # noqa: F811
+    """The files staged in the chat, and a CV's files written again, leave a held upload past its day out, as they
+    leave out one that ran out: a new document never asks for it."""
+    from apps.studio.domain import CV
+    from telegram.generation import category_sources, sources, written_again
+    source = upload(customer, 'tides.pdf')
+    document(customer, 'Tides', source_ids=[str(source.id)])
+    old_cv = GenerationDraft.objects.create(account=customer, feature_id=CV, expires_at=keeping.KEPT_UNTIL, encrypted_data=pack(
+        {'prompt': 'Notes.', 'source_ids': [str(source.id)], 'options': {'cv_source': 'file'}}))
+    assert sources(customer, [str(source.id)]) == [str(source.id)], 'its own day'
+    clock(DAY)
+    fresh = upload(customer, 'fresh.pdf')
+    staged = [str(source.id), str(fresh.id)]
+    assert sources(customer, staged) == [str(fresh.id)]
+    assert category_sources(customer, staged) == [str(fresh.id)]
+    assert written_again(customer, old_cv.id)['source_ids'] == []
+    assert there(source)
 
 
 def test_the_chat_says_in_its_own_words_that_a_held_file_is_sent_there_no_more():

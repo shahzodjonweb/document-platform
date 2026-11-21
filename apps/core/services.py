@@ -547,11 +547,12 @@ def cleanup_expired():
     now = timezone.now()
     count = 0
     # First, before anything expires: drafts a file was made from before drafts were kept are kept now, with their
-    # files; and kept files whose drafts went some way other than being deleted get their own clock back. Neither
-    # ever stops the cleanup: one that fails is logged, and files still expire after it.
+    # files; kept files whose drafts went some way other than being deleted get their own clock back; and an account
+    # that asked to be deleted has every draft deleted and every file revoked, should its delete have been cut off.
+    # None ever stops the cleanup: one that fails is logged, and files still expire after it.
     import logging
-    from apps.studio.keeping import backfill, release_orphans
-    for name, step in (('backfill', backfill), ('orphans', lambda: release_orphans(now))):
+    from apps.studio.keeping import backfill, delete_leaving, release_orphans
+    for name, step in (('backfill', backfill), ('orphans', lambda: release_orphans(now)), ('leaving', lambda: delete_leaving(now))):
         try:
             step()
         except Exception:
@@ -612,6 +613,10 @@ def cleanup_expired():
     cleanup_review(now)
     EducationProject.objects.filter(expires_at__lte=now).delete()
     EditorDocument.objects.filter(file__expires_at__lte=now).delete()
+    # A file kept for an AI document's changes never reaches its expiry: its editor draft and what a CV's reader took
+    # from it go when its own day ends instead, as nothing opens them after it (keeping.forget_past_day).
+    from apps.studio.keeping import forget_past_day
+    forget_past_day(now)
     from apps.studio.tasks import prune as prune_editor_tasks
     prune_editor_tasks(now)
     ShareGrant.objects.filter(expires_at__lte=now).delete()

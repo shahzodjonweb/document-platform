@@ -364,6 +364,10 @@ def _prepare_draft(account,data,revision_base=None,details=False):
             ids=[value for value in ids if str(value) not in gone]
     # A change reads the document it changes, never the files sent with it (below): they are not read here either.
     changing=isinstance(asked_options,dict) and bool(asked_options.get('revise_draft_id'))
+    # A file kept for an AI document's changes past its own day goes into no new document (keeping.py): refused before
+    # it is read. One the draft already names is its own. Its logo, a CV's photo and a change's files are asked below.
+    from .keeping import named as files_named,refuse_new_held
+    if not changing and isinstance(ids,list):refuse_new_held(account,ids,files_named(revision_base))
     excerpts=[] if fid==CV or categorised or changing else (deepcopy(revision_base.get('excerpts') or []) if same_sources
                                                             else _with_read_before(source_excerpts(account,ids),read_before,order))
     if len(text)+len(prompt)+sum(len(s['text']) for s in excerpts)>limits(account)['source_chars']:raise DomainError('generation_limit')
@@ -945,6 +949,9 @@ def _prepare_draft(account,data,revision_base=None,details=False):
     # it is made from: they need not still be there (cv/sources.py).
     if payload['source_ids'] and not cv and not (drawn and list(payload['source_ids'])==list(revision_base.get('source_ids') or [])):
         owned_assets(account,payload['source_ids'])
+    # Every file the draft names, its logo and a CV's photo among them: one kept for another document past its own day
+    # is refused, one the draft or the document it changes already names goes on (a change, a save, a revision).
+    refuse_new_held(account,files_named(payload),files_named(revision_base)|files_named(original))
     if cfg['mode']=='openai':
         enforce_budget(cfg,payload,fid,plan_limits(account)['max_ai_input_tokens'])
     return fid,cfg,payload

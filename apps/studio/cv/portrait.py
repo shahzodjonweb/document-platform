@@ -153,6 +153,11 @@ def prepare(account, fid, options, before_options=None, portrait_removed=False, 
             return options
     else:
         asset = _asset(account, identifier)
+        # A photo given anew is never one kept for another CV's changes past its own day (apps/studio/keeping.py):
+        # refused as that file is everywhere, and so left out of the chat's CV written again (usable_portrait).
+        from apps.studio.keeping import held_past_its_day, held_refusal
+        if held_past_its_day(asset):
+            raise held_refusal()
     options.update(portrait_asset_id=str(asset.id), portrait_sha256=asset.sha256)
     return options
 

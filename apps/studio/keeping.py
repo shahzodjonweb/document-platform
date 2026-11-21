@@ -35,9 +35,16 @@ and is expired after it (`served_until`). One gone all the same (the customer de
 it, or it ran out before it was kept) is gone: a change goes on without it
 (`still_there`), from what was read of a source, which the draft holds, and
 without a logo, which its file then says (logo_left_out).
+Past its day it goes into no new document either: a new draft's source or logo,
+a new CV's photo or file, one a save adds, is refused (`refuse_new_held`), and
+the chat's lists of files to take leave it out; what a draft, or the document a
+change of it changes, already names goes on. What lay beside it for its other
+uses, the PDF editor's draft on it and what a CV's reader took from it, goes
+when its day ends, as with any file (`forget_past_day`).
 Should a kept draft go any way but `delete` (a row removed by hand), the
 cleanup's backstop (`release_orphans`) gives its files back their own clock.
-An account that asked to be deleted has nothing kept (`keep`, `backfill`).
+An account that asked to be deleted has nothing kept (`keep`, `backfill`), and
+the cleanup deletes every draft of it, every pass (`delete_leaving`).
 """
 import logging
 from datetime import datetime, timedelta, timezone as dt_timezone
@@ -131,20 +138,56 @@ def held_refusal():
     return DomainError('file_expired', 410, params={'reason': KEPT_FOR_DOCUMENT})
 
 
+def _ids(values):
+    """These values as file ids (strings), those that are no id at all left out."""
+    import uuid
+    valid = []
+    for value in values or []:
+        try:
+            valid.append(str(uuid.UUID(str(value))))
+        except (TypeError, ValueError, AttributeError):
+            continue
+    return valid
+
+
+def held_among(account, ids, now=None):
+    """Which of these files of the account's are uploads held past their day (held_past_its_day): never offered to pick."""
+    from apps.core.models import FileAsset
+    valid = _ids(ids)
+    if not valid:
+        return set()
+    now = now or timezone.now()
+    rows = FileAsset.objects.filter(account_id=getattr(account, 'pk', account), pk__in=valid, state='ready',
+                                    expires_at__gte=KEPT_UNTIL, metadata__has_key='kept_by')
+    return {str(asset.pk) for asset in rows if held_past_its_day(asset, now)}
+
+
+def named(data):
+    """Every file a draft names as its input, as strings: its sources (a CV's too), its logo and a CV's photo."""
+    data = data if isinstance(data, dict) else {}
+    options = data.get('options') if isinstance(data.get('options'), dict) else {}
+    brand = options.get('branding') if isinstance(options.get('branding'), dict) else {}
+    sources = data.get('source_ids') if isinstance(data.get('source_ids'), list) else []
+    return {str(value) for value in (*sources, brand.get('logo_asset_id'), options.get('portrait_asset_id')) if value}
+
+
+def refuse_new_held(account, ids, already=()):
+    """A held upload past its day given as a new input is refused (held_refusal): a new document's source or logo, a
+    new CV's photo or file, one a save adds to a draft. Never one in `already`, what the draft itself names or the
+    document a change of it changes: a change, a save of a draft's own files and a revision go on with it."""
+    known = {str(value) for value in already or []}
+    if held_among(account, [value for value in ids or [] if str(value) not in known]):
+        raise held_refusal()
+
+
 def still_there(account, ids):
     """Those of these files the account still has to read, in their order: what a change of a kept draft goes on with.
 
     A file the customer deleted, or one that ran out before its draft was kept, is left out. One held past its day
     is still there: it is held for exactly this.
     """
-    import uuid
     from apps.core.models import FileAsset
-    valid = []
-    for value in ids or []:
-        try:
-            valid.append(str(uuid.UUID(str(value))))
-        except (TypeError, ValueError, AttributeError):
-            continue
+    valid = _ids(ids)
     found = {str(pk) for pk in FileAsset.objects.filter(account=account, pk__in=valid, state='ready',
                                                          expires_at__gt=timezone.now()).values_list('pk', flat=True)}
     return [value for value in ids or [] if str(value) in found]
@@ -456,3 +499,48 @@ def release_orphans(now=None, force=False):
     if released:
         logger.warning('Kept files whose drafts are gone were let go: %s', released)
     return released
+
+
+def forget_past_day(now=None):
+    """What lay beside a held upload for its other uses, gone once its own day is over, as it goes with any file's: the
+    PDF editor's draft on it (EditorDocument: its marks, typed text and what was read of its fields) and what a CV's
+    reader took from it (CvSourceRead). Nothing opens either after that day, and a change of the document reads
+    neither: the cleanup keys them on the file's expiry, which a held upload's never reaches. Every pass."""
+    from types import SimpleNamespace
+    from .models import CvSourceRead, EditorDocument
+    now = now or timezone.now()
+    forgotten = 0
+    for model, field in ((EditorDocument, 'file'), (CvSourceRead, 'asset')):
+        # The file's dates and metadata only: never the marks or the text read, which can be long.
+        rows = model.objects.filter(**{f'{field}__expires_at__gte': KEPT_UNTIL, f'{field}__metadata__has_key': 'kept_by'}).values_list(
+            'pk', f'{field}__created_at', f'{field}__expires_at', f'{field}__metadata')
+        past = [pk for pk, created_at, expires_at, metadata in rows.iterator()
+                if held_past_its_day(SimpleNamespace(created_at=created_at, expires_at=expires_at, metadata=metadata or {}), now)]
+        if past:
+            forgotten += model.objects.filter(pk__in=past).delete()[0]
+    return forgotten
+
+
+# How many drafts of accounts that asked to be deleted one cleanup pass deletes; the rest wait for the next.
+LEAVING_BATCH = 200
+
+
+def delete_leaving(now=None):
+    """The backstop of an account's delete (DELETE /me), which is not one transaction: every draft of an account that
+    asked to be deleted, kept or not, deleted with what it held (`delete`), LEAVING_BATCH a pass, and every file of the
+    account still live revoked, as the delete revokes them, for the cleanup to remove in the same pass. Every pass,
+    unlike the backfill, which stops once it has done its job: a delete cut off after the ask is finished here."""
+    from apps.core.models import FileAsset
+    from .models import GenerationDraft
+    now = now or timezone.now()
+    deleted = 0
+    for draft in list(GenerationDraft.objects.filter(account__deletion_requested_at__isnull=False).order_by('created_at')[:LEAVING_BATCH]):
+        # One draft that cannot be deleted never holds up the others: it is logged and tried again next pass.
+        try:
+            delete(draft)
+        except Exception:
+            logger.exception('A draft of an account that asked to be deleted could not be deleted: %s', draft.pk)
+            continue
+        deleted += 1
+    FileAsset.objects.filter(account__deletion_requested_at__isnull=False, expires_at__gt=now).update(state='revoked', expires_at=now)
+    return deleted

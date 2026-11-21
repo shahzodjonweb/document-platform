@@ -139,7 +139,12 @@ def cv_reads(request):
         cancelled,_=CvSourceRead.objects.filter(account=request.account,asset_id__in=valid,status='queued').delete()
         return {'cancelled':cancelled}
     account_limit(request.account,'cv_reads',CV_READS_PER_MINUTE)
-    return reads.state(request.account,owned_assets(request.account,ids))
+    assets=owned_assets(request.account,ids)
+    # A file kept for an AI document's changes past its own day is read for no CV again (keeping.py): answered as a
+    # file that ran out is, which the page forgets, and never queued.
+    from .keeping import held_past_its_day
+    if any(held_past_its_day(a) for a in assets):raise DomainError('file_unavailable',404)
+    return reads.state(request.account,assets)
 
 @api(('POST',))
 def outline(request,pk):
