@@ -484,6 +484,32 @@ def test_a_kept_draft_removed_any_other_way_lets_its_files_go(customer, stock_ph
 
 
 @pytest.mark.django_db
+def test_support_deletes_a_customers_ai_documents_with_their_files(customer, stock_photos, clock, settings):  # noqa: F811
+    from operations.models import AuditLog
+    from tests.test_operations_admin import staff_client
+    settings.DEBUG = True
+    mark = logo(customer)
+    draft, _ = made_deck(customer, mark=mark)
+    create_draft(customer, {'feature_id': DOCUMENT, 'title': 'Waves', 'source_text': 'Wind makes waves.'})
+    pictures = deck_files(draft)
+    finance, _ = staff_client('Finance')
+    assert finance.post(f'/ops/users/{customer.id}/documents/delete', {'confirm': 'yes'}).status_code == 403
+    client, user = staff_client('Support')
+    page = client.get(f'/ops/users/{customer.id}').content.decode()
+    assert '2 AI documents, 1 of them kept for changes.' in page and 'delete-documents' in page
+    assert client.post(f'/ops/users/{customer.id}/documents/delete', {}).status_code == 400, 'confirmed or nothing'
+    assert GenerationDraft.objects.filter(account=customer).count() == 2
+
+    answer = client.post(f'/ops/users/{customer.id}/documents/delete', {'confirm': 'yes'})
+    assert answer.status_code == 302
+    assert not GenerationDraft.objects.filter(account=customer).exists()
+    entry = AuditLog.objects.get(action='account.documents_delete')
+    assert entry.actor == user and entry.target == str(customer.id) and entry.before == {'documents': 2, 'kept': 1}
+    clock(DAY)
+    assert gone(mark) and all(gone(asset) for asset in pictures)
+
+
+@pytest.mark.django_db
 def test_another_picture_on_a_kept_deck_long_after_asks_pixabay_again_by_its_id(customer, stock_photos, clock):  # noqa: F811
     """Pixabay's links last about a day: one that ran out is asked for again by the picture's id, and the picture is had."""
     import urllib.error

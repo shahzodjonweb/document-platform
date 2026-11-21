@@ -20,6 +20,31 @@ def cancel(request,pk):
     return redirect(f'/ops/jobs/{pk}?saved=1')
 
 
+@require_staff('Support', 'Operations')
+@require_POST
+@transaction.atomic
+def delete_documents(request, pk):
+    """Delete every AI document of one account, as a customer's own delete would: each draft with the files it kept.
+
+    The privacy policy keeps an AI document's request, text and the files a change of it needs until the account
+    is deleted or the customer asks: this is how support answers that ask (apps/studio/keeping.py delete).
+    """
+    from apps.studio import keeping
+    from apps.studio.models import GenerationDraft
+    if request.POST.get('confirm') != 'yes':
+        return HttpResponseBadRequest('Tick the box to confirm.')
+    account = Account.objects.select_for_update().filter(pk=pk).first()
+    if not account:
+        return HttpResponseBadRequest('Unknown account.')
+    drafts = list(GenerationDraft.objects.filter(account=account))
+    kept = sum(1 for draft in drafts if keeping.is_kept(draft.expires_at))
+    for draft in drafts:
+        keeping.delete(draft)
+    audit(request.ops_user, 'account.documents_delete', pk,
+          before={'documents': len(drafts), 'kept': kept}, after={'documents': 0})
+    return redirect(f'/ops/users/{pk}?saved=1#documents')
+
+
 PLANS = ('free', 'plus', 'premium')
 
 

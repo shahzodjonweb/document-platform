@@ -4470,3 +4470,12 @@ tests/test_bot_manual_payments.py::test_a_storage_alert_links_the_admins_file_st
 
 # What a kept draft keeps with it: its quote's sources and logo and a CV's photo, never a CV's own files.
 tests/test_kept_drafts.py::test_what_a_change_reads_again_is_what_is_kept
+
+# After review: one unreadable draft from before never stops the cleanup; a kept draft removed by hand lets its files
+# go (the backstop); support deletes a customer's AI documents with their files, audited; a kept deck's picture on
+# offer is had long after by asking Pixabay again by its id; a kept source is held for changes, never downloaded after its day.
+tests/test_kept_drafts.py::test_one_unreadable_old_draft_never_stops_the_cleanup
+tests/test_kept_drafts.py::test_a_kept_draft_removed_any_other_way_lets_its_files_go
+tests/test_kept_drafts.py::test_support_deletes_a_customers_ai_documents_with_their_files
+tests/test_kept_drafts.py::test_another_picture_on_a_kept_deck_long_after_asks_pixabay_again_by_its_id
+tests/test_kept_drafts.py::test_a_kept_source_is_held_for_changes_but_never_downloaded_after_its_day
