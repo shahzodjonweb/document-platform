@@ -4701,6 +4701,62 @@ for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING
                        'бухгалтерском учёте и сальдо переносит вовремя.', gone=('сальдо',), translated=True,
                        pair=TV_AND_RADIO_BEFORE_A_VERB))
 
+# ---- An adverb, a participle or a particle in -о after the customer's law (p2): 28c1b69 passed it over as an adverb,
+# round 13 read it as a noun that keeps its -о and blanked the customer's law. A short participle in -ано, -ено, -ято,
+# -ыто, -уто or -ито ("гарантировано", "закрыто"), an adverb of an adjective in -йный, -йкий or -ивый ("постатейно",
+# "стойко", "настойчиво"), and "будто", "надолго".
+ADVERBS_IN_O_RU = (
+    ('guaranteed', 'Согласно Закону о бухгалтерском учёте, гарантировано право на отпуск.'),
+    ('persistently', 'Знает Закон о бухгалтерском учёте и настойчиво требует его соблюдения.'),
+    ('steadfastly', 'Соблюдает Закон о бухгалтерском учёте и стойко отстаивает его нормы.'),
+    ('as-if', 'Знает Закон о бухгалтерском учёте, будто сам его писал.'),
+    ('for-long', 'Запоминает Закон о бухгалтерском учёте надолго.'),
+    ('article-by-article', 'Применяет Закон о бухгалтерском учёте постатейно.'),
+    ('without-accidents', 'Применяет Закон о бухгалтерском учёте безаварийно.'))
+for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
+    for slug, sentence in ADVERBS_IN_O_RU:
+        CASES += [
+            guard(f'laws-the-customers-law-before-an-adverb-or-participle-in-o-{slug}-{direction}-keep', KEEP, brief,
+                  'ru', sentence, translated=direction != 'ru'),
+            gp(f'laws-the-customers-law-before-an-adverb-or-participle-in-o-{slug}-in-a-grounded-part-{direction}-keep',
+               KEEP, brief, 'ru', sentence),
+        ]
+    CASES.append(body(f'laws-the-customers-law-before-an-adverb-or-participle-in-o-guaranteed-in-a-report-{direction}-'
+                      f'keep', KEEP, 'pdf.biz.hisobot', brief, 'ru', 'work_done', ADVERBS_IN_O_RU[0][1]))
+for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING_UZ_RU),
+                         ('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU)):
+    for slug, sentence in (('for-long', 'Бухгалтер запоминает Закон о бухгалтерском учёте надолго.'),
+                           ('article-by-article', 'Бухгалтер применяет Закон о бухгалтерском учёте постатейно.'),
+                           ('steadfastly', 'Бухгалтер соблюдает Закон о бухгалтерском учёте и стойко отстаивает его '
+                                           'нормы.'),
+                           ('persistently', 'Бухгалтер знает Закон о бухгалтерском учёте и настойчиво требует его '
+                                            'соблюдения.')):
+        CASES.append(guard(f'laws-the-customers-translated-law-before-an-adverb-or-participle-in-o-{slug}-{direction}-'
+                           f'keep', KEEP, brief, 'ru', sentence, translated=True))
+# The nouns those shapes would read as adverbs keep their -о in every case: the name goes on with them and blanks.
+SHAPED_INDECLINABLE_TAILS_RU = (
+    ('and-soprano', 'Знает Закон о бухгалтерском учёте и сопрано.', ('сопрано',)),
+    ('piano-and-audit', 'Соблюдает Закон о бухгалтерском учёте, фортепиано и аудите.', ('фортепиано',)),
+    ('as-well-as-a-circus', 'Согласно Закону о бухгалтерском учёте, а также шапито, бухгалтер ведёт книги.',
+     ('шапито',)),
+    ('and-especially-mojito', 'Руководствуется Законом о бухгалтерском учёте и особенно мохито.', ('мохито',)),
+    ('and-americano', 'Знает Закон о бухгалтерском учёте и американо.', ('американо',)),
+    ('guano-as-a-genitive', 'Знает Закон о бухгалтерском учёте гуано.', ('гуано',)),
+    ('and-a-chateau', 'Изучив Закон о бухгалтерском учёте и шато, бухгалтер ведёт книги.', ('шато',)))
+for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
+    for slug, sentence, gone in SHAPED_INDECLINABLE_TAILS_RU:
+        CASES += [
+            guard(f'laws-an-indeclinable-tail-of-an-adverbs-shape-after-a-named-law-{slug}-{direction}-blank', BLANK,
+                  brief, 'ru', sentence, gone=gone, translated=direction != 'ru'),
+            gp(f'laws-an-indeclinable-tail-of-an-adverbs-shape-after-a-named-law-{slug}-in-a-grounded-part-'
+               f'{direction}-blank', BLANK, brief, 'ru', sentence, gone=gone),
+        ]
+for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING_UZ_RU),
+                         ('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU)):
+    CASES.append(guard(f'laws-a-translated-head-noun-before-an-indeclinable-tail-of-an-adverbs-shape-and-soprano-'
+                       f'{direction}-blank', BLANK, brief, 'ru', 'Бухгалтер знает Закон о бухгалтерском учёте и '
+                       'сопрано.', gone=('сопрано',), translated=True))
+
 CASE_IDS = [case.id for case in CASES]
 
 

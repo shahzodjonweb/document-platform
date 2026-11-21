@@ -1765,21 +1765,23 @@ RU_NEUTER = re.compile(r"[а-яё]+ство|правило|право|дело|�
 # о телевидении и радио", "..., бюро и аудите") or as a genitive after it ("... учёте казино"), so it is no adverb
 # passed over (`_ru_adverb`) and may go on the name (`_may_go_on`), as c491da9 holds the name. A vowel before the -о
 # makes one ("радио", "видео", "портфолио", "какао"); the others are the loans words/ru.txt or the adverbs' shapes would
-# read as adverbs, and the usual ones.
+# read as adverbs ("сопрано", "шапито" of a participle's), and the usual ones.
 RU_INDECLINABLE = re.compile(
     r"[а-яё]*[аеёиоуыэюя]о|кино|казино|метро|евро|авто|мото|фото|лото|депо|бюро|сальдо|нетто|брутто|пальто|табло"
     r"|лого|карго|эмбарго|рококо|панно|техно|промо|демо|ретро|диско|барокко|мокко|электро|соло|поло|кило|тремоло"
-    r"|инкассо|авизо")
+    r"|инкассо|авизо|сопрано|фортепиано|гуано|чинзано|американо|орегано|шапито|мохито|буррито|шато")
 # The lower-case Russian adverbs, particles and pronouns in -о passed over as LAW_PASS_RU's are (`_ru_adverb`), named
-# where the lexicon or an adverb's shape may not give them: "то есть", "это", "что", "либо", "ибо", "около", "свято".
+# where the lexicon or an adverb's shape may not give them: "то есть", "это", "что", "либо", "ибо", "около", "свято",
+# "будто", "надолго".
 LAW_PASS_RU_O = re.compile(r"то|это|что|оно|одно|само|либо|зато|ибо|около|вместо|помимо|мимо|много|немного|несколько"
                            r"|сколько|столько|только|сугубо|особо|свято|густо|круто|бодро|щедро|гордо|худо|глухо|криво"
-                           r"|тупо|скупо|слепо|глупо|незримо|туго")
+                           r"|тупо|скупо|слепо|глупо|незримо|туго|будто|надолго|ненадолго|запросто")
 # The shapes of a Russian word in -о that is no noun keeping it in every case (`_ru_adverb`): a genitive in -ого or
 # -его ("всего", "его", "малого"), a past form or a noun in -ло ("было", "стало", "начало"), an adverb made from an
-# adjective in -ный, -льный, -кий or -ливый ("добросовестно", "ежеквартально", "громко", "справедливо") or -овый
-# ("пошагово").
-RU_ADVERB_SHAPE = re.compile(r"[а-яё]+(?:[ое]го|ло|[бвгджзклмнпрстфхцчшщь][нк]о|ливо|ово)")
+# adjective in -ный, -льный, -йный, -кий, -йкий or -ивый ("добросовестно", "ежеквартально", "постатейно", "громко",
+# "стойко", "настойчиво") or -овый ("пошагово"), or a short participle in -ано, -ено, -ято, -ыто, -уто or -ито
+# ("гарантировано", "запрещено", "взято", "закрыто", "развито").
+RU_ADVERB_SHAPE = re.compile(r"[а-яё]+(?:[ое]го|ло|[бвгджзйклмнпрстфхцчшщь][нк]о|иво|ово|[ая]но|[её]но|[яыуи]то)")
 # The endings of a Russian adjective the lexicon holds, whose stem an adverb in -о is made from (`_ru_adverb`).
 RU_ADJECTIVE_ENDINGS = ('ый', 'ий', 'ой', 'ая', 'яя', 'ое', 'ее', 'ые', 'ие', 'ого', 'его', 'ому', 'ему', 'ым', 'им',
                         'ую', 'юю', 'ых', 'их', 'ыми', 'ими')
