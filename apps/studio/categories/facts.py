@@ -1984,38 +1984,84 @@ def _joined_ends(tokens, at, conjoined, source='', after_verb=False):
     and this applies to banks"), and after a comma a capitalised word may ("..., the Auditing of Banks"), never a
     clause's subject ("..., the accountant keeps the books", "..., its rules apply to banks", `_clause_follows`: "...,
     teachers must protect pupils"). A Russian compound with a hyphen is read by its last part (`_compound_end`: "... и
-    интернет-торговле", "... и ток-шоу" go on; "... и интернет-банкинг" does not)."""
-    while at < len(tokens):
-        text = tokens[at][1]
-        low = normalised(text).casefold()
-        following = normalised(tokens[at + 1][1]).casefold() if at + 1 < len(tokens) else ''
-        if low == 'so' and following in ('on', 'forth'):
-            return True  # "... and so on"
-        if low == 'that' and following == 'is':
-            at += 1  # ", that is, auditing", read as "i.e."
-        elif LAW_AND.fullmatch(low) or LAW_NAME_FILLER.fullmatch(low):
-            conjoined = conjoined or LAW_AND.fullmatch(low) is not None
-        elif text not in ',;' and (any(stem.fullmatch(text) for stem in NAMED_STEMS)
-                                   or LAW_NAME_PREPOSITION.fullmatch(low) or not _passed(text)):
-            break
-        at += 1
-    if at >= len(tokens):
-        return True
-    if at + 1 < len(tokens) and LAW_JOINED_DETERMINER.fullmatch(tokens[at][1].casefold()) \
-            and WORD.fullmatch(tokens[at + 1][1]):
-        at += 1
-        if _another_law(tokens, at) or LAW_AUX.fullmatch(normalised(tokens[at][1]).casefold()):
-            return True
-        return not (conjoined or tokens[at][1][0].isupper())
+    интернет-торговле", "... и ток-шоу" go on; "... и интернет-банкинг" does not).
+
+    A Russian clause read after the comma or the conjunction (`_ru_clause_follows`) ends the name only where 28c1b69
+    ended it too (`_ended_28c1b69`): every clause that ended a name 28c1b69 let go on, after a noun that keeps its form
+    and "не", an abbreviation in the name's case or "ПО" ("... и радио не искажает", "..., радио не процитирует", "...
+    и СМИ освещает события", "..., ГНИ проверяет отчётность"), printed an invented name in the next re-check: the verbs
+    a law may take and the words that leave the sentence's verb to come are open classes, so the clause may be the
+    name's last word and its verb. The blank 28c1b69 gave stands there, the owner's tie-break; the clause still keeps
+    what 28c1b69 kept ("... и НДС начисляет вовремя", "..., сальдо переносится на следующий период")."""
+    decided, at, conjoined = _joined_word(tokens, at, conjoined, _passed)
+    if decided is not None:
+        return decided
     last = _compound_end(tokens, at, source)
     if not conjoined and _clause_follows(tokens, at):
         return True
     # A Russian clause's subject and its verb (`_ru_clause_follows`): after a comma or a semicolon, or after "и" where
     # the sentence has its verb before the law, which the verb after cannot be ("Соблюдает Закон о бухгалтерском учёте
-    # и НДС начисляет вовремя"; never "Согласно Закону о телевидении и радио регулируется вещание").
-    if (not conjoined or after_verb) and _ru_clause_follows(tokens, last):
+    # и НДС начисляет вовремя"; never "Согласно Закону о телевидении и радио регулируется вещание"), where 28c1b69's
+    # reading ended the name too.
+    if (not conjoined or after_verb) and _ru_clause_follows(tokens, last) and _ended_28c1b69(tokens, at, conjoined):
         return True
     return not _may_go_on(tokens[last][1])
+
+
+def _joined_word(tokens, at, conjoined, passed):
+    """(the verdict, or None; the index of the word that decides; whether a conjunction joins it) of `_joined_ends`'s
+    first reading past a comma, a semicolon or a conjunction before the token at `at`: past the conjunctions and their
+    fillers, "that is" and the words `passed` passes over, the name ends at the text's end or "and so on" (True), and
+    after an English article or determiner as `_joined_ends` says; otherwise the word that decides (None)."""
+    while at < len(tokens):
+        text = tokens[at][1]
+        low = normalised(text).casefold()
+        following = normalised(tokens[at + 1][1]).casefold() if at + 1 < len(tokens) else ''
+        if low == 'so' and following in ('on', 'forth'):
+            return True, at, conjoined  # "... and so on"
+        if low == 'that' and following == 'is':
+            at += 1  # ", that is, auditing", read as "i.e."
+        elif LAW_AND.fullmatch(low) or LAW_NAME_FILLER.fullmatch(low):
+            conjoined = conjoined or LAW_AND.fullmatch(low) is not None
+        elif text not in ',;' and (any(stem.fullmatch(text) for stem in NAMED_STEMS)
+                                   or LAW_NAME_PREPOSITION.fullmatch(low) or not passed(text)):
+            break
+        at += 1
+    if at >= len(tokens):
+        return True, at, conjoined
+    if at + 1 < len(tokens) and LAW_JOINED_DETERMINER.fullmatch(tokens[at][1].casefold()) \
+            and WORD.fullmatch(tokens[at + 1][1]):
+        at += 1
+        if _another_law(tokens, at) or LAW_AUX.fullmatch(normalised(tokens[at][1]).casefold()):
+            return True, at, conjoined
+        return not (conjoined or tokens[at][1][0].isupper()), at, conjoined
+    return None, at, conjoined
+
+
+# The neuter nouns 28c1b69 read as `RU_NEUTER`'s, no adverb passed over (`_ended_28c1b69`), with the nouns that keep
+# their -о it named so.
+RU_NEUTER_28C1B69 = re.compile(RU_NEUTER.pattern + r"|сальдо|нетто|брутто|бюро")
+
+
+def _ended_28c1b69(tokens, at, conjoined):
+    """Whether 28c1b69 ended a law's name past the comma, the semicolon or the conjunction before the word at `at`
+    (`_joined_ends`, which reached `at` passing over only words 28c1b69 passed too): it passed every lower-case
+    Russian word in -о but a neuter noun over ("радио", "казино", "видео", "строго"; never "законодательство",
+    "бюро", "сальдо"), and the first other word decided by its case alone (`_may_go_on` with no noun that keeps its
+    form): a word in the name's case, "не" among them, a capital of that shape ("СМИ", "ГНИ") or a preposition's ("ПО")
+    went on, an abbreviation of no case ("НДС", "ООО") or a verb ended the name. Never a clause, nor a compound's last
+    part."""
+    def passed(text):
+        low = normalised(text).casefold()
+        if not re.search('[а-яё]', low):
+            return LAW_PASS_EN.fullmatch(low) is not None
+        return LAW_PASS_RU.fullmatch(low) is not None or (
+            text.islower() and low.endswith('о') and RU_NEUTER_28C1B69.fullmatch(low) is None)
+
+    decided, at, conjoined = _joined_word(tokens, at, conjoined, passed)
+    if decided is not None:
+        return decided
+    return (not conjoined and _clause_follows(tokens, at)) or not _may_go_on(tokens[at][1], unchanged=False)
 
 
 # The words that open a Russian subordinate clause, whose verb leaves the sentence's to come (`_ru_verb_before`): the
@@ -2157,7 +2203,7 @@ def _ru_clause_follows(tokens, at):
     is the name's (`LAW_OF_CASE`: "... и АУДИТЕ ведёт книги", "... и кафе ..."), in capitals too, unless it is a short
     abbreviation (`_ru_case_abbreviation`: "..., ГНИ проверяет отчётность"), which takes its verb right after it or
     after "не": a word between may be the clause's own subject, the abbreviation the name's ("... и СМИ редактор
-    освещает ...")."""
+    освещает ..."). The clause ends the name only where 28c1b69 ended it too (`_joined_ends`, `_ended_28c1b69`)."""
     text = tokens[at][1]
     low = normalised(text).casefold()
     in_case = LAW_OF_CASE.fullmatch(low) is not None
@@ -2236,20 +2282,20 @@ def _another_law(tokens, at):
     return False
 
 
-def _may_go_on(text):
+def _may_go_on(text, unchanged=True):
     """Whether a word after a comma or a conjunction may go on a law's name (`_name_ends`): a mark, a preposition, a
-    Russian word in the case the name's words take after "о" (`LAW_OF_CASE`: "аудите", "налогах", "аудиторской") or
-    one that stands unchanged in it (`_ru_indeclinable`: "радио", "казино", "бюро", "шоу", "интервью" keep their form in
-    every case), or an English word of a name, capitalised or in lower case ("Auditing", "auditing"), never
-    a stem of its own ("... и Закон об аудите" is read on its own) nor an English word that goes on the sentence
-    (`LAW_OF_STOP`, "the")."""
+    Russian word in the case the name's words take after "о" (`LAW_OF_CASE`: "аудите", "налогах", "аудиторской") or,
+    with `unchanged`, one that stands unchanged in it (`_ru_indeclinable`: "радио", "казино", "бюро", "шоу", "интервью"
+    keep their form in every case), or an English word of a name, capitalised or in lower case ("Auditing",
+    "auditing"), never a stem of its own ("... и Закон об аудите" is read on its own) nor an English word that goes on
+    the sentence (`LAW_OF_STOP`, "the")."""
     if any(stem.fullmatch(text) for stem in NAMED_STEMS):
         return False
     low = normalised(text).casefold()
     if not WORD.fullmatch(text) or LAW_NAME_PREPOSITION.fullmatch(low):
         return True
     if re.search('[а-яё]', low):
-        return LAW_OF_CASE.fullmatch(low) is not None or _ru_indeclinable(text)
+        return LAW_OF_CASE.fullmatch(low) is not None or (unchanged and _ru_indeclinable(text))
     return text[0].isupper() or not (LAW_OF_STOP.fullmatch(low) or LAW_OF_GRAMMAR.fullmatch(low))
 
 

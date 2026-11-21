@@ -4630,8 +4630,9 @@ CLAUSE_AFTER_A_COMMA_RU = (
     ('a-semicolon-balance', 'Согласно Закону о бухгалтерском учёте; сальдо переносится на следующий период.'),
     ('net-assets', 'Согласно Закону о бухгалтерском учёте, нетто-активы рассчитываются ежегодно.'),
     ('a-photo-of-documents', 'Согласно Закону о бухгалтерском учёте, фото документов хранится в архиве.'),
-    ('euro-recalculated', 'Согласно Закону о бухгалтерском учёте, евро пересчитывается по курсу.'),
-    ('video-is-not', 'Согласно Закону о бухгалтерском учёте, видео не является первичным документом.'))
+    ('euro-recalculated', 'Согласно Закону о бухгалтерском учёте, евро пересчитывается по курсу.'))
+# "..., видео не является первичным документом", this list's keep until round 16, is an accepted false blank since
+# round 17 (the re-checks of round 16, below): 28c1b69 read "не" as a word in the name's case.
 for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
     for slug, sentence in CLAUSE_AFTER_A_COMMA_RU:
         CASES += [
@@ -5792,17 +5793,8 @@ for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING
             gp(f'laws-a-translated-head-noun-before-a-word-in-capitals-in-the-names-case-{slug}-in-a-grounded-part-'
                f'{direction}-blank', BLANK, brief, 'ru', sentence, gone=gone),
         ]
-# The keeps a short abbreviation opening a clause has in a translated paper (eb8b05c keeps them; 28c1b69 read the
-# abbreviation as a word in the name's case): its verb, one that takes no law, right after it or after "не".
-for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING_UZ_RU),
-                         ('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU)):
-    for slug, sentence in (('the-tax-inspectorate-checks', 'Согласно Закону о бухгалтерском учёте, ГНИ проверяет '
-                                                           'отчётность.'),
-                           ('the-media-covers', 'Знает Закон о бухгалтерском учёте и СМИ освещает события.'),
-                           ('the-traffic-police-does-not-fine', 'Знает Закон о бухгалтерском учёте и ГАИ не штрафует '
-                                                                'бухгалтера.')):
-        CASES.append(guard(f'laws-the-customers-law-before-a-short-abbreviation-in-capitals-opening-a-clause-{slug}-'
-                           f'{direction}-keep', KEEP, brief, 'ru', sentence, translated=True))
+# The keeps a short abbreviation opening a clause had in a translated paper (eb8b05c keeps them; 28c1b69 read the
+# abbreviation as a word in the name's case) are accepted false blanks since round 17 (the re-checks of round 16, below).
 
 # ---- A subordinate clause with its comma left out before the law (b1 Q): "как" after a verb ("Бухгалтер знает как
 # Закон о ..."), and "почему", "зачем", "насколько", "каким образом", "сразу как", "чем" open a clause whose subject is
@@ -5883,6 +5875,172 @@ for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_U
             ('as-well-as-a-macchiato', 'Применяет Закон о бухгалтерском учёте, а также маккиато.', ('маккиато',))):
         CASES.append(guard(f'laws-a-noun-of-an-adverbs-shape-in-imo-or-ato-after-a-named-law-{slug}-{direction}-blank',
                            BLANK, brief, 'ru', sentence, gone=gone, translated=direction != 'ru'))
+
+# ---------------------------------------------------------------- the re-checks of round 16 (pr79-r4a, pr79-r4b), both ways
+# Round 16 left a clause read after "и", a comma or a semicolon that ended a law's name 28c1b69 let go on (pr79-r4a f1,
+# f2, f4, f5; pr79-r4b g_pre, g_a, g_a2, g_b): after a noun that keeps its form and "не", or an abbreviation in the
+# name's case or "ПО", with a verb RU_LAW_FAMILY lacks ("искажает", "публикует", "включает", "утрачивает силу"), a
+# prefixed form of one of its own ("проигнорирует", "перечитывает", "процитирует", "истолковывает"), a gerund ("не
+# нарушая работает"), a family infinitive past three words or a parenthetical ("старается всегда очень строго
+# соблюдать"), a masculine form only "Закон" agrees with ("был разработан", "стал основой"), or a verb before the law
+# that is a noun or a subordinate clause's ("Изделия из стали согласно ...", "Бухгалтер утверждает якобы ..."). The
+# verbs a law may take and the words that leave the sentence's verb to come are open classes, so the clause ends the
+# name only where 28c1b69 ended it too; c491da9 and 28c1b69 blank every one.
+CLAUSE_28C1B69_WENT_ON_RU = (
+    ('and-radio-does-not-distort', 'Знает Закон о бухгалтерском учёте и радио не искажает.', ('радио',)),
+    ('and-video-does-not-reread', 'Соблюдает Закон о бухгалтерском учёте и видео не перечитывает.', ('видео',)),
+    ('and-radio-will-not-ignore', 'Знает Закон о бухгалтерском учёте и радио не проигнорирует.', ('радио',)),
+    ('and-a-casino-does-not-publish', 'Знает Закон о бухгалтерском учёте и казино не публикует.', ('казино',)),
+    ('and-radio-does-not-include', 'Знает Закон о бухгалтерском учёте и радио не включает.', ('радио',)),
+    ('and-cinema-does-not-suspend', 'Знает Закон о бухгалтерском учёте и кино не приостанавливает.', ('кино',)),
+    ('and-radio-not-breaking-works-honestly', 'Знает Закон о бухгалтерском учёте и радио не нарушая работает честно.',
+     ('радио',)),
+    ('and-radio-cannot-apply-in-practice', 'Знает Закон о бухгалтерском учёте и радио не умеет на практике грамотно '
+                                           'применять.', ('радио',)),
+    ('a-comma-radio-will-not-quote', 'Согласно Закону о бухгалтерском учёте, радио не процитирует.', ('радио',)),
+    ('a-comma-a-casino-does-not-lose-force', 'Согласно Закону о бухгалтерском учёте, казино не утрачивает силу.',
+     ('казино',)),
+    ('and-the-media-does-not-distort', 'Знает Закон о бухгалтерском учёте и СМИ не искажает.', ('СМИ',)),
+    ('and-the-traffic-police-will-not-ignore', 'Знает Закон о бухгалтерском учёте и ГАИ не проигнорирует.', ('ГАИ',)),
+    ('and-software-will-not-quote', 'Знает Закон о бухгалтерском учёте и ПО не процитирует.', ('ПО',)),
+    ('and-the-media-keeping-works-honestly', 'Знает Закон о бухгалтерском учёте и СМИ соблюдая работает честно.',
+     ('СМИ',)),
+    ('and-the-media-tries-to-keep', 'Знает Закон о бухгалтерском учёте и СМИ старается всегда очень строго '
+                                    'соблюдать.', ('СМИ',)),
+    ('and-software-tries-not-to-break', 'Знает Закон о бухгалтерском учёте и ПО старается, по возможности, не '
+                                        'нарушать.', ('ПО',)),
+    ('and-the-tax-inspectorate-was-drafted', 'Знает Закон о бухгалтерском учёте и ГНИ был разработан Минфином.',
+     ('ГНИ',)),
+    ('and-the-media-became-a-basis', 'Знает Закон о бухгалтерском учёте и СМИ стал основой учёта.', ('СМИ',)),
+    ('a-comma-the-tax-inspectorate-will-ignore', 'Согласно Закону о бухгалтерском учёте, ГНИ проигнорирует.', ('ГНИ',)),
+    ('a-comma-the-tax-inspectorate-does-not-publish', 'Согласно Закону о бухгалтерском учёте, ГНИ не публикует.',
+     ('ГНИ',)))
+CLAUSE_28C1B69_WENT_ON = 'laws-a-clause-after-a-named-law-where-28c1b69-went-on-{}-ru-blank'
+for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
+    for slug, sentence, gone in CLAUSE_28C1B69_WENT_ON_RU:
+        CASES += [
+            guard(f'laws-a-clause-after-a-named-law-where-28c1b69-went-on-{slug}-{direction}-blank', BLANK, brief, 'ru',
+                  sentence, gone=gone, translated=direction != 'ru'),
+            gp(f'laws-a-clause-after-a-named-law-where-28c1b69-went-on-{slug}-in-a-grounded-part-{direction}-blank',
+               BLANK, brief, 'ru', sentence, gone=gone),
+        ]
+    CASES += [
+        body(f'laws-a-clause-after-a-named-law-where-28c1b69-went-on-and-radio-does-not-distort-in-a-qualification-'
+             f'{direction}-blank', BLANK, 'pdf.biz.lavozim_yoriqnomasi', brief, 'ru', 'qualification',
+             CLAUSE_28C1B69_WENT_ON_RU[0][1], gone=('радио',)),
+        fact(f'laws-a-clause-after-a-named-law-where-28c1b69-went-on-and-radio-does-not-distort-in-a-fact-{direction}-'
+             f'blank', BLANK, 'pdf.biz.lavozim_yoriqnomasi', brief, 'ru', 'knowledge', CLAUSE_28C1B69_WENT_ON_RU[0][1],
+             gone=('радио',)),
+    ]
+for direction, brief in (('ru', JOB_RU_KNOWS_ACCOUNTING_DATED), ('en-to-ru', ACCOUNTING_EN_RU_NUMBERED)):
+    CASES.append(guard(f'laws-a-clause-after-a-named-laws-date-where-28c1b69-went-on-and-radio-will-not-quote-'
+                       f'{direction}-blank', BLANK, brief, 'ru', 'Знает Закон о бухгалтерском учёте от 13 апреля 2016 '
+                       'года № 404 и радио не процитирует.', gone=('радио',), translated=direction != 'ru'))
+for slug, sentence in (('does-not-distort', 'Знает Закон о телевидении и радио не искажает.'),
+                       ('will-not-ignore', 'Соблюдает Закон о телевидении и радио не проигнорирует.'),
+                       ('not-breaking-works-honestly', 'Знает Закон о телевидении и радио не нарушая работает честно.')):
+    CASES += [
+        guard(f'laws-a-clause-after-the-law-on-television-where-28c1b69-went-on-and-radio-{slug}-ru-blank', BLANK,
+              JOB_RU_KNOWS_TV, 'ru', sentence, gone=('радио',), translated=False),
+        body(f'laws-a-clause-after-the-law-on-television-where-28c1b69-went-on-and-radio-{slug}-in-a-course-paper-ru-'
+             f'blank', BLANK, 'pdf.kurs_ishi', COURSE_RU_TV, 'ru', 'relevance', sentence, gone=('радио',)),
+    ]
+for direction, brief in REPORTS_ON_ACCOUNTING[1:]:  # in a Russian brief c491da9 prints a law after its subject too
+    CASES.append(body(f'laws-a-clause-after-a-named-law-where-28c1b69-went-on-and-radio-not-breaking-works-honestly-'
+                      f'in-a-report-{direction}-blank', BLANK, 'pdf.biz.hisobot', brief, 'ru', 'work_done',
+                      'Отдел соблюдал Закон о бухгалтерском учёте и радио не нарушая работал честно.', gone=('радио',)))
+for direction, brief in COURSES_ON_ACCOUNTING:
+    CASES.append(body(f'laws-a-clause-after-a-named-law-where-28c1b69-went-on-and-the-media-was-drafted-in-a-course-'
+                      f'paper-{direction}-blank', BLANK, 'pdf.kurs_ishi', brief, 'ru', 'relevance',
+                      'Работа опирается на Закон о бухгалтерском учёте и СМИ был разработан Минфином.', gone=('СМИ',)))
+# The translated head noun (pr79-r4a f1, f2 Q; pr79-r4b g_pre, g_b): the verb before the law a noun ("стали",
+# "вебсайте"), a subordinate clause's ("якобы", "хоть", "подобно тому как", "о чём", "как" after an object), or the
+# clause after a comma.
+for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING_UZ_RU),
+                         ('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU)):
+    for slug, sentence, gone in (
+            ('knows-and-a-casino-will-not-ignore', 'Бухгалтер знает Закон о бухгалтерском учёте и казино не '
+                                                   'проигнорирует.', ('казино',)),
+            ('knows-and-video-does-not-interpret', 'Бухгалтер знает Закон о бухгалтерском учёте и видео не '
+                                                   'истолковывает.', ('видео',)),
+            ('steel-products-and-radio-are-not-marked', 'Изделия из стали согласно Закону о бухгалтерском учёте и радио '
+                                                        'не маркируются.', ('радио',)),
+            ('documents-on-a-website-and-video-are-not-kept', 'Документы на вебсайте согласно Закону о бухгалтерском '
+                                                              'учёте и видео не хранятся.', ('видео',)),
+            ('works-though-and-video-does-not-work', 'Бухгалтер работает хоть Закон о бухгалтерском учёте и видео не '
+                                                     'работает.', ('видео',)),
+            ('works-just-as-and-radio-does-not-work', 'Бухгалтер работает подобно тому как Закон о бухгалтерском учёте '
+                                                      'и радио не работает.', ('радио',)),
+            ('claims-supposedly-and-a-casino-does-not-exist', 'Бухгалтер утверждает якобы Закон о бухгалтерском учёте и '
+                                                              'казино не существует.', ('казино',)),
+            ('claims-supposedly-and-the-media-is-the-main-document', 'Бухгалтер утверждает якобы Закон о '
+                                                                     'бухгалтерском учёте и СМИ является основным '
+                                                                     'документом.', ('СМИ',)),
+            ('explains-to-colleagues-how-and-the-tax-inspectorate-works', 'Бухгалтер объясняет коллегам как Закон о '
+                                                                          'бухгалтерском учёте и ГНИ работает на '
+                                                                          'практике.', ('ГНИ',)),
+            ('knows-what-of-and-software-says', 'Бухгалтер знает о чём Закон о бухгалтерском учёте и ПО говорит.',
+             ('ПО',)),
+            ('works-by-a-comma-and-the-tax-inspectorate-will-not-quote', 'Бухгалтер работает по Закону о бухгалтерском '
+                                                                         'учёте, ГНИ не процитирует.', ('ГНИ',))):
+        CASES += [
+            guard(f'laws-a-translated-head-noun-before-a-clause-where-28c1b69-went-on-{slug}-{direction}-blank', BLANK,
+                  brief, 'ru', sentence, gone=gone, translated=True),
+            gp(f'laws-a-translated-head-noun-before-a-clause-where-28c1b69-went-on-{slug}-in-a-grounded-part-'
+               f'{direction}-blank', BLANK, brief, 'ru', sentence, gone=gone),
+        ]
+    CASES.append(body(f'laws-a-translated-head-noun-before-a-clause-where-28c1b69-went-on-steel-products-and-radio-in-'
+                      f'a-qualification-{direction}-blank', BLANK, 'pdf.biz.lavozim_yoriqnomasi', brief, 'ru',
+                      'qualification', 'Изделия из стали согласно Закону о бухгалтерском учёте и радио не '
+                      'маркируются.', gone=('радио',)))
+
+
+def repointed(keep, gone, pair):
+    """`removed`'s cases for a keep the core list names whose brief is in another language than its sentence: with the
+    sentence added, the customer's words read in the paper's language, so the repointed keep asserts no translation."""
+    kept, blank = removed(keep, gone, pair, listed=True)
+    return [replace(kept, translated=None), blank]
+
+
+# What the clause's gate costs against eb8b05c and the keeps of rounds 13 and 15 (28c1b69 blanks them all, so no false
+# blank against it): a noun that keeps its form and "не" after a comma ("..., видео не является первичным
+# документом"), and a short abbreviation in the name's case opening a clause ("..., ГНИ проверяет отчётность", "... и
+# СМИ освещает события", "... и ГАИ не штрафует бухгалтера"). The same words in the same place open the clauses above,
+# whose verb a law may take, so the customer's law before them blanks. The ids the core list names stay, repointed to
+# the customer's own words.
+for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
+    sentence = 'Согласно Закону о бухгалтерском учёте, видео не является первичным документом.'
+    pair = CLAUSE_28C1B69_WENT_ON.format('a-comma-radio-will-not-quote')
+    CASES += [
+        *repointed(guard(f'laws-the-customers-law-before-an-indeclinable-opening-a-comma-clause-video-is-not-'
+                         f'{direction}-keep', KEEP, brief, 'ru', sentence, translated=direction != 'ru'), ('видео',),
+                   pair),
+        *repointed(gp(f'laws-the-customers-law-before-an-indeclinable-opening-a-comma-clause-video-is-not-in-a-grounded-'
+                      f'part-{direction}-keep', KEEP, brief, 'ru', sentence), ('видео',), pair),
+    ]
+for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING_UZ_RU),
+                         ('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU)):
+    for slug, sentence, gone, pair in (
+            ('the-tax-inspectorate-checks', 'Согласно Закону о бухгалтерском учёте, ГНИ проверяет отчётность.', ('ГНИ',),
+             'a-comma-the-tax-inspectorate-will-ignore'),
+            ('the-media-covers', 'Знает Закон о бухгалтерском учёте и СМИ освещает события.', ('СМИ',),
+             'and-the-media-does-not-distort'),
+            ('the-traffic-police-does-not-fine', 'Знает Закон о бухгалтерском учёте и ГАИ не штрафует бухгалтера.',
+             ('ГАИ',), 'and-the-traffic-police-will-not-ignore')):
+        CASES += repointed(guard(f'laws-the-customers-law-before-a-short-abbreviation-in-capitals-opening-a-clause-'
+                                 f'{slug}-{direction}-keep', KEEP, brief, 'ru', sentence, translated=True), gone,
+                           CLAUSE_28C1B69_WENT_ON.format(pair))
+# 28c1b69's keeps the gate holds: a clause after an abbreviation of no case, a noun 28c1b69 read as neuter ("бюро",
+# "сальдо") or a noun it passed over before a word of no case, whose verb takes no law.
+for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
+    for slug, sentence in (('vat-charged-on-time', 'Знает Закон о бухгалтерском учёте и НДС начисляет вовремя.'),
+                           ('a-bureau-keeps-books', 'Согласно Закону о бухгалтерском учёте, бюро ведёт учёт '
+                                                    'самостоятельно.'),
+                           ('a-balance-not-confused', 'Знает Закон о бухгалтерском учёте и сальдо не путает.'),
+                           ('a-photo-of-documents-kept', 'Знает Закон о бухгалтерском учёте, фото документов хранит в '
+                                                         'архиве.')):
+        CASES.append(guard(f'laws-the-customers-law-before-a-clause-28c1b69-ended-the-name-at-{slug}-{direction}-keep',
+                           KEEP, brief, 'ru', sentence, translated=direction != 'ru'))
 
 CASE_IDS = [case.id for case in CASES]
 
