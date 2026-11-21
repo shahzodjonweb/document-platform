@@ -976,12 +976,15 @@ def delivered(account, draft_id, kind=None):
     A deck sent again is the deck from then on, as PowerPoint when it was sent as
     one. An older file lacks what was edited, so a send without one ends the search.
     """
+    from apps.studio.keeping import held_past_its_day
     now = timezone.now()
     for job in _made_from(account, draft_id):
         made = FORMAT.get(job.feature_id, 'pptx')
         for artifact in job.artifacts.select_related('file'):
             asset = artifact.file
-            if asset.state == 'ready' and asset.expires_at > now and asset.metadata.get('kind') == (kind or made):
+            # A file kept only as another document's source is not sent again after its day (keeping.py).
+            if (asset.state == 'ready' and asset.expires_at > now and asset.metadata.get('kind') == (kind or made)
+                    and not held_past_its_day(asset, now)):
                 return job, asset
         if job.feature_id in RENDER_IDS or made != (kind or made):
             break
@@ -991,6 +994,13 @@ def delivered(account, draft_id, kind=None):
 def sent_edited(account, draft_id):
     """Whether the newest file of this draft is the customer's own edit sent again: a file older than it is not the same."""
     return _made_from(account, draft_id).values_list('feature_id', flat=True).first() in RENDER_IDS
+
+
+def logo_gone(account, draft):
+    """Whether the logo the draft names is no longer stored: a change of a document whose logo was deleted comes without it."""
+    from apps.studio.branding import logo_kept
+    from apps.studio.domain import unpack
+    return not logo_kept(account, unpack(draft.encrypted_data))
 
 
 def format_kept(draft):

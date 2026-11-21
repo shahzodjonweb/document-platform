@@ -303,6 +303,10 @@ def byte_range(header,size):
 
 def download_asset(request,asset,ranges=False):
     if asset.state!='ready' or asset.expires_at<=timezone.now(): raise DomainError('file_expired',410)
+    # A kept draft's source or logo is held for its changes after its day, as before it would have gone: never
+    # served again by any path (a download, a result's, a shared link), so the account is no file host (keeping.py).
+    from apps.studio.keeping import held_past_its_day
+    if held_past_its_day(asset): raise DomainError('file_expired',410)
     from . import storage
     span=None
     # This answer carries no validator, so an If-Range never matches it: that asks for the whole file.
@@ -333,10 +337,6 @@ def download_asset(request,asset,ranges=False):
 def file_download(request,asset_id):
     asset=FileAsset.objects.filter(pk=asset_id,account=request.account).first()
     if not asset: raise DomainError('not_found',404)
-    # A kept draft's source or logo is held for its changes after its day, as before it would have gone: never
-    # a download, so the account is no file host (apps/studio/keeping.py).
-    from apps.studio.keeping import held_past_its_day
-    if held_past_its_day(asset): raise DomainError('file_expired',410)
     return download_asset(request,asset,ranges=True)
 
 @api(('POST',))

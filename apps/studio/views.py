@@ -540,12 +540,15 @@ def editor_row(e):
 def editor_data(e):
     return {**editor_row(e),'commands':stored_commands(e)}
 def _file_to_open(account,fid):
-    """A file that ran out says so, apart from one that was never this account's."""
-    try:return owned_assets(account,[fid])[0]
+    """A file that ran out says so, apart from one that was never this account's. One held past its day for a kept draft's changes ran out, to the editor."""
+    from .keeping import held_past_its_day
+    try:a=owned_assets(account,[fid])[0]
     except DomainError as error:
         gone=FileAsset.objects.filter(account=account,id=fid,expires_at__lte=timezone.now()).first() if error.code=='file_unavailable' else None
         if gone:raise file_gone(gone) from None
         raise
+    if held_past_its_day(a):raise DomainError('file_expired',410)
+    return a
 def _refusal(a):
     """Why the editor cannot open a file, as the refusal says it, or None when it can."""
     if a.metadata.get('encrypted'):return 'password'
@@ -574,7 +577,8 @@ def editor_detail(request,pk):
     with transaction.atomic():
         e=EditorDocument.objects.select_for_update().select_related('file').filter(account=request.account,id=pk).first()
         if not e:raise DomainError('not_found',404)
-        if e.file.state!='ready' or e.file.expires_at<=timezone.now():raise file_gone(e.file)
+        from .keeping import held_past_its_day
+        if e.file.state!='ready' or e.file.expires_at<=timezone.now() or held_past_its_day(e.file):raise file_gone(e.file)
         if request.method=='DELETE':e.delete();return {'deleted':True}
         if request.method=='PATCH':
             data=body(request,limit=131072,too_large='payload_too_large')

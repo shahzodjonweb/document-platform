@@ -4479,3 +4479,17 @@ tests/test_kept_drafts.py::test_a_kept_draft_removed_any_other_way_lets_its_file
 tests/test_kept_drafts.py::test_support_deletes_a_customers_ai_documents_with_their_files
 tests/test_kept_drafts.py::test_another_picture_on_a_kept_deck_long_after_asks_pixabay_again_by_its_id
 tests/test_kept_drafts.py::test_a_kept_source_is_held_for_changes_but_never_downloaded_after_its_day
+
+# After the second review: a kept document whose source or logo the customer deleted still takes a change in the chat
+# and on the web, and its own Review draft save, from what the draft holds (logo_left_out said); a kept upload past its
+# day is no file tool's, editor's, download's, preview's or chat send's, while a change still reads it; an account that
+# asked to be deleted has nothing kept; the backfill stops once done; the backstop reads kept files a batch at a time;
+# a delete rolled back leaves every file in place.
+tests/test_kept_drafts.py::test_a_kept_document_whose_source_or_logo_was_deleted_still_takes_a_change[source]
+tests/test_kept_drafts.py::test_a_kept_document_whose_source_or_logo_was_deleted_still_takes_a_change[logo]
+tests/test_kept_drafts.py::test_a_kept_upload_past_its_day_is_held_for_changes_and_served_by_no_path
+tests/test_kept_drafts.py::test_the_bot_sends_no_kept_upload_past_its_day
+tests/test_kept_drafts.py::test_an_account_that_asked_to_be_deleted_never_has_a_draft_kept
+tests/test_kept_drafts.py::test_the_backfill_costs_nothing_once_it_has_done_its_job
+tests/test_kept_drafts.py::test_the_backstop_reads_kept_files_a_few_at_a_time
+tests/test_kept_drafts.py::test_a_delete_that_rolls_back_leaves_every_file_in_place

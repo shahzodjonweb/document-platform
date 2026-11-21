@@ -220,6 +220,8 @@ def test_in_the_deck_editor_a_deck_with_a_logo_is_opened_changed_and_sent_400_da
     client = login_client(customer)
     opened = client.get(f'/api/v1/generation/drafts/{draft.id}').json()
     assert opened['render'] and opened['expires_at'] is None
+    # Its logo is held for the deck, no download after its day; the deck's own pictures and slides are the editor's.
+    assert client.get(f'/api/v1/files/{mark.id}/download').status_code == 410
     # Saved as the editor saves it, drawn, and a picture taken off and put back.
     content = opened['content']
     content['sections'][1]['heading'] = 'Reworded a year later'
@@ -561,3 +563,222 @@ def test_a_kept_source_is_held_for_changes_but_never_downloaded_after_its_day(cu
     assert refused.status_code == 410 and refused.json()['error']['code'] == 'file_expired'
     assert client.get(f'/api/v1/files/{source.id}/preview').status_code == 410
     assert there(source) and client.get(f'/api/v1/files/{source.id}').json()['expires_at'] is None, 'still kept for a change'
+
+
+# ---------------------------------------------------------------- after the second review
+
+
+def branded(account, source, mark, origin='web'):
+    """A kept AI PDF made from a source, with a logo."""
+    draft = create_draft(account, {'feature_id': DOCUMENT, 'title': 'Tides', 'source_text': 'The moon pulls the sea twice a day.',
+                                   'source_ids': [str(source.id)],
+                                   'options': {'branding': {'name': 'Harbour School', 'accent': '#285cff', 'logo_asset_id': str(mark.id)}}})
+    job, _ = submit_job(account, generation_quote(account, draft.id, draft.version).id, f'branded-{draft.id}', origin=origin)
+    made = execute_job(job.id)
+    assert made.status == 'succeeded', made.error_code
+    draft.refresh_from_db()
+    return draft, made
+
+
+def task_screen(account, job):
+    """The task's screen in the chat, opened from /myfiles as a customer opens it: (the chat, the screen's message)."""
+    listed = dispatch_local(account, text='/myfiles')
+    token = next(button['callback_data'] for message in listed['messages'] for row in message['buttons'] for button in row
+                 if BotCallback.objects.filter(pk=button['callback_data'], action='job', payload__job_id=str(job.id)).exists())
+    chat = dispatch_local(account, callback_data=token)
+    return chat, next(message for message in reversed(chat['messages']) if message['direction'] == 'outbound' and str(job.id)[:8] in message['text'])
+
+
+def asked_on_the_web(client, draft_id, key):
+    """A change asked, quoted and made as JobDetail asks it: the job."""
+    asked = client.post('/api/v1/generation/drafts', json.dumps({'prompt': CHANGE, 'options': {'revise_draft_id': str(draft_id)}}),
+                        content_type='application/json')
+    assert asked.status_code == 201, asked.content
+    priced = client.post(f'/api/v1/generation/drafts/{asked.json()["id"]}/quote', json.dumps({'version': asked.json()['version']}),
+                         content_type='application/json')
+    assert priced.status_code == 201, priced.content
+    sent = client.post('/api/v1/jobs', json.dumps({'quote_id': priced.json()['id']}), content_type='application/json', headers={'Idempotency-Key': key})
+    assert sent.status_code == 201 and sent.json()['status'] == 'succeeded', sent.content
+    return Job.objects.get(pk=sent.json()['id'])
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.usefixtures('bot_verification_disabled')
+@pytest.mark.parametrize('deleted', ['source', 'logo'])
+def test_a_kept_document_whose_source_or_logo_was_deleted_still_takes_a_change(chatting, clock, deleted):  # noqa: F811
+    """The customer deleted the file (DELETE /files/{id}): the change goes on without it, from what the draft holds."""
+    source, mark = upload(chatting, 'tides.pdf'), logo(chatting)
+    draft, made = branded(chatting, source, mark, origin='bot')
+    chat = in_chat(chatting, made)
+    excerpts = unpack(draft.encrypted_data)['excerpts']
+    assert excerpts
+    removed, left = (source, mark) if deleted == 'source' else (mark, source)
+    client = login_client(chatting)
+    assert client.delete(f'/api/v1/files/{removed.id}').status_code == 200
+    clock(DAY)
+
+    # In the chat, from the button under the file.
+    asked = tap(chatting, chat, 'Make changes')
+    assert 'What should change?' in body(asked), body(asked)[-400:]
+    review = dispatch_local(chatting, text=CHANGE)
+    assert CHANGE in body(review), body(review)[-400:]
+    assert ('logo is no longer stored' in body(review)) == (deleted == 'logo'), body(review)[-600:]
+    before = set(Job.objects.filter(account=chatting).values_list('pk', flat=True))
+    tap(chatting, review, 'Generate')
+    job = Job.objects.filter(account=chatting).exclude(pk__in=before).get()
+    assert job.status == 'succeeded', job.error_code
+    assert job.input_ids == [str(left.id)]
+    assert unpack(draft_of(job).encrypted_data)['excerpts'] == excerpts, 'what was read from the source stays'
+    assert ('logo_left_out' in job.warnings) == (deleted == 'logo'), job.warnings
+
+    # On the web, as the task's page asks it.
+    client = login_client(chatting)
+    job = asked_on_the_web(client, draft.id, f'web-change-{deleted}')
+    assert job.input_ids == [str(left.id)]
+    assert ('logo_left_out' in job.warnings) == (deleted == 'logo'), job.warnings
+
+    # Review draft: the kept draft saved as the web saves it, its sources as it lists them, and generated.
+    opened = client.get(f'/api/v1/generation/drafts/{draft.id}').json()
+    fields = {key: opened[key] for key in ('title', 'prompt', 'source_text', 'source_ids')}
+    fields['options'] = {key: value for key, value in opened['options'].items() if value != ''}
+    saved = client.patch(f'/api/v1/generation/drafts/{draft.id}', json.dumps({'version': opened['version'], **fields}),
+                         content_type='application/json')
+    assert saved.status_code == 200, saved.content
+    assert saved.json()['excerpts'] == excerpts
+    priced = client.post(f'/api/v1/generation/drafts/{draft.id}/quote', json.dumps({'version': saved.json()['version']}),
+                         content_type='application/json')
+    assert priced.status_code == 201, priced.content
+    assert priced.json()['input_fingerprints'] == [{'id': str(left.id), 'sha256': FileAsset.objects.get(pk=left.pk).sha256}]
+    again = client.post('/api/v1/jobs', json.dumps({'quote_id': priced.json()['id']}), content_type='application/json',
+                        headers={'Idempotency-Key': f'review-draft-{deleted}'})
+    assert again.status_code == 201 and again.json()['status'] == 'succeeded', again.content
+
+
+@pytest.mark.django_db
+def test_a_kept_upload_past_its_day_is_held_for_changes_and_served_by_no_path(customer, clock):  # noqa: F811
+    """No file tool, editor, download, preview or send has it after its 24 hours; a change of its document still reads it."""
+    from apps.core.errors import DomainError
+    from apps.core.services import create_quote
+    source = upload(customer, 'tides.pdf')
+    rotated = execute_job(submit_job(customer, create_quote(customer, 'pdf.rotate', [str(source.id)], {}).id, 'rotate-first')[0].id)
+    result = rotated.artifacts.get()
+    draft, _ = document(customer, 'Tides', source_ids=[str(source.id), str(result.file_id)])
+    client = login_client(customer)
+    assert client.get(f'/api/v1/artifacts/{result.id}/download').status_code == 200, 'its own day, as any result'
+
+    clock(DAY)
+    client = login_client(customer)
+    # (a) A file tool, quoted in the domain and on the API, and the editor.
+    with pytest.raises(DomainError) as refused:
+        create_quote(customer, 'pdf.rotate', [str(source.id)], {})
+    assert (refused.value.code, refused.value.status) == ('file_expired', 410)
+    asked = client.post('/api/v1/quotes', json.dumps({'feature_id': 'pdf.rotate', 'input_ids': [str(result.file_id)], 'parameters': {}}),
+                        content_type='application/json')
+    assert asked.status_code == 410 and asked.json()['error']['code'] == 'file_expired'
+    opened = client.post('/api/v1/editor/documents', json.dumps({'file_id': str(source.id)}), content_type='application/json')
+    assert opened.status_code == 410, opened.content
+    # (b) A result used as a source: neither its download nor its file's, and no preview offered.
+    assert client.get(f'/api/v1/artifacts/{result.id}/download').status_code == 410
+    assert client.get(f'/api/v1/files/{result.file_id}/download').status_code == 410
+    assert client.get(f'/api/v1/artifacts/{result.id}/preview').status_code == 410
+    assert client.get(f'/api/v1/jobs/{rotated.id}').json()['artifacts'][0]['preview_url'] is None
+    assert client.get(f'/api/v1/files/{source.id}').json()['preview_url'] is None
+    assert there(source) and there(FileAsset.objects.get(pk=result.file_id))
+
+    # (d) A change 400 days later still reads both.
+    clock(LONG_AFTER)
+    paid_by_card(customer, 'premium')
+    change = asked_on_the_web(login_client(customer), draft.id, 'change-much-later')
+    assert change.input_ids == [str(source.id), str(result.file_id)]
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.usefixtures('bot_verification_disabled')
+def test_the_bot_sends_no_kept_upload_past_its_day(chatting, clock):  # noqa: F811
+    """A result kept as a source is not sent to the chat again once its day is over: its task offers no download."""
+    from apps.core.services import create_quote
+    source = upload(chatting, 'tides.pdf')
+    rotated = execute_job(submit_job(chatting, create_quote(chatting, 'pdf.rotate', [str(source.id)], {}).id, 'rotate-in-chat', origin='bot')[0].id)
+    result = rotated.artifacts.get()
+    document(chatting, 'Tides', source_ids=[str(result.file_id)])
+    clock(DAY)
+    delivery = BotDelivery.objects.create(account=chatting, artifact=result, idempotency_key='late-resend')
+    delivered = deliver_local(chatting, delivery)
+    assert (delivered.status, delivered.error_code) == ('failed', 'file_expired')
+    from telegram.ux_copy import UX
+    _, screen = task_screen(chatting, rotated)
+    assert UX['en']['download'] not in [button['label'] for row in screen['buttons'] for button in row]
+    assert UX['en']['result_expired'] in screen['text']
+
+
+@pytest.mark.django_db
+def test_an_account_that_asked_to_be_deleted_never_has_a_draft_kept(customer, clock):  # noqa: F811
+    old, made = document(customer, 'Tides')
+    # As the platform left it before: on its result's day, not kept yet.
+    GenerationDraft.objects.filter(pk=old.pk).update(expires_at=made.artifacts.get().file.expires_at)
+    settling = create_draft(customer, {'feature_id': DOCUMENT, 'title': 'Waves', 'source_text': 'Wind makes waves.'})
+    customer.deletion_requested_at = timezone.now()
+    customer.save(update_fields=['deletion_requested_at'])
+
+    clock(1)
+    assert not GenerationDraft.objects.filter(pk=old.pk).exists(), 'the backfill deletes it, never keeps it'
+    # A job settling after the account asked to be deleted keeps nothing.
+    keeping.keep(settling)
+    assert not keeping.is_kept(GenerationDraft.objects.get(pk=settling.pk).expires_at)
+
+
+@pytest.mark.django_db
+def test_the_backfill_costs_nothing_once_it_has_done_its_job(customer, clock):  # noqa: F811
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+    tables = (Job._meta.db_table, GenerationDraft._meta.db_table)
+    clock(1)
+    # Within a day of its first clean pass a worker from before may still settle a job: it goes on looking.
+    with CaptureQueriesContext(connection) as within:
+        keeping.backfill()
+    assert any(GenerationDraft._meta.db_table in query['sql'] for query in within.captured_queries)
+    clock(1 + DAY)
+    with CaptureQueriesContext(connection) as later:
+        assert keeping.backfill() == 0
+    assert not [query['sql'] for query in later.captured_queries if any(table in query['sql'] for table in tables)]
+    clock(LONG_AFTER)
+    with CaptureQueriesContext(connection) as long_after:
+        keeping.backfill()
+    assert len(long_after.captured_queries) <= 1
+
+
+@pytest.mark.django_db
+def test_the_backstop_reads_kept_files_a_few_at_a_time(customer, stock_photos, clock, orphans_due, monkeypatch):  # noqa: F811
+    monkeypatch.setattr(keeping, 'ORPHANS_BATCH', 2)
+    source = upload(customer, 'harbour-notes.pdf')
+    first, _ = made_deck(customer, sources=[source])
+    second, _ = made_deck(customer, sources=[source])
+    pictures, others = deck_files(first), deck_files(second)
+    assert len(pictures) > 2
+    GenerationDraft.objects.filter(pk=first.pk).delete()
+    clock(DAY)
+    assert all(gone(asset) for asset in pictures)
+    assert all(there(asset) for asset in others) and FileAsset.objects.get(pk=source.pk).metadata['kept_by'] == [str(second.pk)]
+
+
+@pytest.mark.django_db
+def test_a_delete_that_rolls_back_leaves_every_file_in_place(customer, stock_photos, clock, django_capture_on_commit_callbacks):  # noqa: F811
+    from django.db import transaction
+    mark = logo(customer)
+    draft, _ = made_deck(customer, mark=mark)
+    pictures = deck_files(draft)
+    assert pictures
+    with pytest.raises(RuntimeError):
+        with transaction.atomic():
+            keeping.delete(GenerationDraft.objects.get(pk=draft.pk))
+            raise RuntimeError('the request failed after the delete')
+    assert GenerationDraft.objects.filter(pk=draft.pk).exists()
+    assert all(there(asset) for asset in pictures) and there(mark)
+    # Committed, its rows go with it and their bytes right after.
+    with django_capture_on_commit_callbacks(execute=True) as callbacks:
+        keeping.delete(GenerationDraft.objects.get(pk=draft.pk))
+    assert len(callbacks) == 1
+    assert not FileAsset.objects.filter(pk__in=[asset.pk for asset in pictures]).exists()
+    assert not any(storage.exists(asset.object_key) for asset in pictures)
+    clock(DAY)
+    assert gone(mark)

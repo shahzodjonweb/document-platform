@@ -928,6 +928,8 @@ async def review_screen(account,draft,quote):
     if change and not cv and await sync_to_async(ai.format_kept)(draft):
         body+='\n'+html.escape(text(account,'ai_format_kept_deck' if deck else 'ai_format_kept_pdf').format(
             button=text(account,await ai_change_copy('ai_revise')),service=TOOL_NAMES[ai.SLIDES][account.locale]))
+    # A logo deleted since the document was made: the change comes without it, said before it is paid for.
+    if change and await sync_to_async(ai.logo_gone)(account,draft): body+='\n'+html.escape(text(account,'logo_left_out'))
     if review:
         # What the category's files gave, said before anything is spent: a file
         # with no text in it (a scan, an empty file) is left out, and a long one
@@ -2554,7 +2556,10 @@ def build_dispatcher():
             body+='\n\n'+text(account,'queued' if job.status=='queued' else 'processing')
             rows.append([await button(account,'check_status','job',{'job_id':str(job.id)})])
         elif job.status=='succeeded':
-            available=await sync_to_async(lambda:job.artifacts.filter(file__state='ready',file__expires_at__gt=timezone.now()).exists())()
+            from apps.studio.keeping import held_past_its_day
+            # A file kept only as a document's source is not sent again after its day (keeping.py).
+            available=await sync_to_async(lambda:any(not held_past_its_day(artifact.file) for artifact in
+                                                     job.artifacts.filter(file__state='ready',file__expires_at__gt=timezone.now()).select_related('file')))()
             body+='\n\n'+text(account,'result' if available else 'result_expired')
             note=notes(account,job)
             if note: body+='\n\n'+html.escape(note)

@@ -313,11 +313,17 @@ def test_selected_revision_rejects_global_template_or_brand_override(customer,ov
 
 
 def test_inherited_brand_logo_is_revalidated_for_retention(customer):
+    """A logo gone since (run out, or deleted) is never used again; the change keeps the brand's name and colour and goes on without it (keeping.py)."""
+    from apps.studio.branding import logo_kept
+    from apps.studio.domain import generation_quote
     original,asset=styled_deck(customer)
     asset.expires_at=timezone.now()-timedelta(seconds=1)
     asset.save(update_fields=['expires_at'])
-    with pytest.raises(DomainError,match='file_unavailable'):
-        revision(customer,original,['s2'])
+    revised=revision(customer,original,['s2'])
+    data=unpack(revised.encrypted_data)
+    assert data['options']['branding']['name']=='Acme' and not logo_kept(customer,data)
+    quote=generation_quote(customer,revised.id,revised.version)
+    assert str(asset.id) not in quote.input_ids
 
 
 def test_inherited_template_rechecks_current_entitlement(customer,monkeypatch):

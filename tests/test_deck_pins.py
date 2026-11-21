@@ -763,21 +763,23 @@ def test_a_change_made_from_a_file_outlives_its_document_as_well(customer, clock
     assert unpack(saved.encrypted_data)['title'] == 'Saved a day later'
 
 
-def test_a_change_never_generated_goes_with_the_file_it_is_made_from(customer, clock):
-    """It could not be quoted without that file either: only a kept draft holds its files."""
+def test_a_change_never_generated_goes_on_after_its_document_and_its_file_have_gone(customer, clock):
+    """Only a kept draft holds its files, so the change's goes; the change still saves and is quoted without it, from what was read of it (keeping.still_there)."""
     source = upload(customer)
     original = create_draft(customer, {'feature_id': DOCUMENT, 'title': 'From a file', 'source_text': 'Notes about the harbour.', 'source_ids': [str(source.id)]})
     assert run(customer, original).status == 'succeeded'
+    read = unpack(GenerationDraft.objects.get(pk=original.pk).encrypted_data)['excerpts']
     clock(23)
     revised = create_draft(customer, {'prompt': 'Make it shorter.', 'options': {'revise_draft_id': str(original.id)}})
     # The document deleted, its file goes back on its own day, which the change does not hold up.
     keeping.delete(GenerationDraft.objects.get(pk=original.pk))
     clock(30)
     cleanup_expired()
-    with pytest.raises(DomainError, match='file_unavailable'):
-        update_draft(customer, revised.id, {'version': revised.version, 'title': 'Saved a day later'})
-    with pytest.raises(DomainError, match='file_unavailable'):
-        generation_quote(customer, revised.id, revised.version)
+    assert FileAsset.objects.get(pk=source.pk).state != 'ready'
+    saved = update_draft(customer, revised.id, {'version': revised.version, 'title': 'Saved a day later'})
+    data = unpack(saved.encrypted_data)
+    assert data['source_ids'] == [] and data['excerpts'] == read
+    assert generation_quote(customer, saved.id, saved.version).input_ids == []
 
 
 def test_a_change_never_generated_can_be_reworded_and_made_after_its_document_has_gone(customer, stock_photos, clock):

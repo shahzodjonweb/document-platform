@@ -838,12 +838,14 @@ def test_cleanup_drops_a_picture_no_render_uses_with_no_other_render_and_keeps_t
     assert SlideRender.objects.filter(draft=deck).count() == current
 
 
-def test_pictures_go_with_the_draft(deck, converted):
+def test_pictures_go_with_the_draft(deck, converted, django_capture_on_commit_callbacks):
     ask(deck)
     rendered(deck)
     client = api_client(deck.account)
     keys = [render.file.object_key for render in SlideRender.objects.select_related('file')]
-    assert client.delete(f'/api/v1/generation/drafts/{deck.pk}').status_code == 200
+    # Their bytes once the delete is committed (keeping.delete).
+    with django_capture_on_commit_callbacks(execute=True):
+        assert client.delete(f'/api/v1/generation/drafts/{deck.pk}').status_code == 200
     assert not FileAsset.objects.filter(metadata__kind='deck_slide').exists() and not SlideRender.objects.exists()
     assert not any(storage_path(key).exists() for key in keys)
 

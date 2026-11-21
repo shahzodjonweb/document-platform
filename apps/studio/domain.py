@@ -315,6 +315,11 @@ def _category(fid,options,pinned_from):
     if entry.id not in {item.id for item in categories.live(fid)}:raise DomainError('category_unavailable',409)
     return entry,options
 
+def _with_read_before(excerpts,read_before,order):
+    """`excerpts` with what was read before of files gone since, in the order the draft lists its files."""
+    if not read_before:return excerpts
+    return sorted([*excerpts,*read_before],key=lambda x:order.get(str(x.get('asset_id')),len(order)))
+
 def _prepare_draft(account,data,revision_base=None,details=False):
     if set(data)&READONLY_FIELDS:raise DomainError('invalid_parameters')
     fid=data.get('feature_id',DOCUMENT);require(account,fid)
@@ -345,7 +350,22 @@ def _prepare_draft(account,data,revision_base=None,details=False):
     asked_options=data.get('options',data.get('parameters',{}))
     categorised=((revision_base or {}).get('options') or {}).get('category') is not None or (
         isinstance(asked_options,dict) and asked_options.get('category') is not None)
-    excerpts=[] if fid==CV or categorised else (deepcopy(revision_base.get('excerpts') or []) if same_sources else source_excerpts(account,ids))
+    # A saved draft's file gone since it was read (the customer deleted it, or it ran out) is not read again, and
+    # what was read of it stays: the web's Review draft sends a kept draft's files as it lists them, and a kept
+    # draft outlives them (keeping.py). Any other file sent is read, or refused, as ever.
+    read_before,order=[],{}
+    if revision_base is not None and fid!=CV and not same_sources and isinstance(ids,list):
+        from .keeping import still_there
+        stored=[str(value) for value in revision_base.get('source_ids') or []]
+        gone=(set(stored)-set(still_there(account,stored)))&{str(value) for value in ids}
+        if gone:
+            read_before=[dict(x) for x in revision_base.get('excerpts') or [] if str(x.get('asset_id')) in gone]
+            order={str(value):index for index,value in enumerate(ids)}
+            ids=[value for value in ids if str(value) not in gone]
+    # A change reads the document it changes, never the files sent with it (below): they are not read here either.
+    changing=isinstance(asked_options,dict) and bool(asked_options.get('revise_draft_id'))
+    excerpts=[] if fid==CV or categorised or changing else (deepcopy(revision_base.get('excerpts') or []) if same_sources
+                                                            else _with_read_before(source_excerpts(account,ids),read_before,order))
     if len(text)+len(prompt)+sum(len(s['text']) for s in excerpts)>limits(account)['source_chars']:raise DomainError('generation_limit')
     options=data.get('options',data.get('parameters',{}))
     # Title lines are the server's own, bounded where they are read: eight long Cyrillic lines alone pass 4000.
@@ -390,7 +410,14 @@ def _prepare_draft(account,data,revision_base=None,details=False):
         from .revisions import selected_ids
         selection=selected_ids(options,original['content'],source_version)
         if saved.get('selected_section_ids') and selection!=saved['selected_section_ids']:raise DomainError('invalid_parameters')
-        ids=original['source_ids'];excerpts=original['excerpts']
+        # A file it was made from may be gone since (the customer deleted it, or it ran out): the change goes on without
+        # it, from what was read of it, which the document holds (keeping.still_there). A CV's own files are never
+        # read again, nor kept: what they gave is in its excerpts, and they stay named.
+        if fid==CV:ids=original['source_ids']
+        else:
+            from .keeping import still_there
+            ids=still_there(account,original['source_ids'])
+        excerpts=original['excerpts']
         title=original['title'] if revision_base is None else title
         text=original.get('source_text','')
         if not prompt.strip():raise DomainError('prompt_required')
@@ -446,6 +473,7 @@ def _prepare_draft(account,data,revision_base=None,details=False):
         else:
             excerpts,said=category_sources.excerpts(account,ids,entry,stored=revision_base,
                                                     room=limits(account)['source_chars']-len(text)-len(prompt))
+            excerpts=_with_read_before(excerpts,read_before,order)
         if len(text)+len(prompt)+sum(len(s['text']) for s in excerpts)>limits(account)['source_chars']:raise DomainError('generation_limit')
     if details and (entry is None or original is not None or ((revision_base or {}).get('options') or {}).get('details_added')):
         # Only a new category draft's review offers the question, and it is answered once.
@@ -825,11 +853,12 @@ def _prepare_draft(account,data,revision_base=None,details=False):
                **{key:template_style[key] for key in ('accent','accent_fixed') if key in template_style},
                'cv_template':picked_template}
     options['template_style']=style
-    from .branding import prepare_branding
-    stored_brand=(revision_base or {}).get('options',{}).get('branding') if drawn else None
-    if stored_brand and options.get('branding')==stored_brand:
-        # A drawn deck keeps its logo as it was: a logo deleted since only leaves the logo out of the next file (logo_left_out).
-        from .branding import without_logo
+    from .branding import logo_kept,prepare_branding,without_logo
+    stored_brand=((revision_base if revision_base is not None else original) or {}).get('options',{}).get('branding')
+    if stored_brand and options.get('branding')==stored_brand and (drawn or (
+            stored_brand.get('logo_asset_id') and not logo_kept(account,{'options':{'branding':stored_brand}}))):
+        # A drawn deck keeps its logo as it was, and so does a saved draft, or a change of one, whose logo is gone
+        # since (deleted, or run out): it only leaves the logo out of the next file (logo_left_out).
         checked=prepare_branding(account,fid,without_logo({'options':options})['options'])
         options={**checked,'branding':{**checked.get('branding',{}),**{k:stored_brand[k] for k in ('logo_asset_id','logo_sha256') if k in stored_brand}}}
     else:options=prepare_branding(account,fid,options)
@@ -1147,6 +1176,15 @@ def generation_quote(account,draft_id,version):
     snapshot=hashlib.sha256(bytes(d.encrypted_data)).hexdigest()
     from .branding import generation_inputs
     input_ids=generation_inputs(data)
+    from .keeping import is_kept,still_there
+    if input_ids and (data.get('revision') or is_kept(d.expires_at)):
+        # A change, or a kept draft, goes on without a file gone since (the customer deleted it, or it ran out): what
+        # was read of a source is in the draft, and a logo left out only leaves it off the file (execution, logo_left_out).
+        from .branding import logo_kept
+        there=set(map(str,still_there(account,input_ids)))
+        logo=(data['options'].get('branding') or {}).get('logo_asset_id')
+        if logo and not logo_kept(account,data):there.discard(str(logo))
+        input_ids=[value for value in input_ids if str(value) in there]
     # A long document is written in several provider calls and needs longer than
     # the default lease to finish them. Rendering and settlement are on top. A
     # category paper's calls are its spans, sized by their pages (`data`).

@@ -188,6 +188,10 @@ def verify_input_files(job, assets):
 def validate_inputs(account, feature_id, input_ids):
     require_feature(account, feature_id)
     assets = owned_assets(account, input_ids)
+    # A kept draft's upload past its own day is held for a change of that draft, never a file tool's or the editor's
+    # input: its result would serve it again (apps/studio/keeping.py). Said as a download of it says it.
+    from apps.studio.keeping import held_past_its_day
+    if any(held_past_its_day(a) for a in assets): raise DomainError('file_expired', 410)
     limits = plan_limits(account)
     multi = feature_id in ('pdf.merge','pdf.images_to_pdf') or feature_id.startswith('editor.')
     cap = limits['max_merge_input_files'] if multi else 1

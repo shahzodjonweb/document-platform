@@ -370,7 +370,9 @@ async def attempt(delivery_id,bot):
     if delivery.account.is_test and isinstance(getattr(bot,'session',None),AiohttpSession):
         return await sync_to_async(finish)(delivery.id,status='blocked',error='test_account_delivery')
     asset=delivery.artifact.file
-    if asset.state!='ready' or asset.expires_at<=timezone.now():
+    from apps.studio.keeping import held_past_its_day
+    # A result kept only as a document's source is held for its changes, not sent again after its day (keeping.py).
+    if asset.state!='ready' or asset.expires_at<=timezone.now() or held_past_its_day(asset):
         return await sync_to_async(finish)(delivery.id,status='failed',error='file_expired')
     try:
         locale = delivery.account.locale if delivery.account.locale in RESULT_COPY else 'en'
