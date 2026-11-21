@@ -5438,6 +5438,61 @@ for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING
         CASES.append(guard(f'laws-a-translated-head-noun-before-an-abbreviation-in-a-clause-with-kak-{slug}-'
                            f'{direction}-blank', BLANK, brief, 'ru', sentence, gone=('НДС',), translated=True))
 
+# ---- What the reading costs against 28c1b69 (k1, the re-check's own keeps): the customer's law after an opening word
+# or a translated head noun, then an abbreviation or a noun that keeps its form with nothing that ends the name ("...
+# учёте и МСФО", "..., НСБУ и МСФО", "... и сальдо по счетам", "... и евро как валюту учёта", "... и бюро кредитных
+# историй"). The same words in the same place name an invented law ("... учёте и НДС", "... учёте и радио"), so the
+# opening word or the head noun is the name's and blanks, as round 14 has it; 28c1b69 read none of them as able to go on
+# the name and kept them.
+OPENER_COSTS_RU = (
+    ('ifrs-at-the-end', 'Знает Закон о бухгалтерском учёте и МСФО.', ('МСФО',),
+     'laws-an-abbreviation-tail-after-a-named-law-and-vat-ru-blank'),
+    ('the-tax-code-of-uzbekistan', 'Соблюдает Закон о бухгалтерском учёте и НК РУз.', ('НК',),
+     'laws-an-abbreviation-tail-after-a-named-law-and-vat-ru-blank'),
+    ('an-llc', 'Применяет Закон о бухгалтерском учёте и ООО.', ('ООО',),
+     'laws-an-abbreviation-tail-after-a-named-law-and-vat-ru-blank'),
+    ('two-standards-in-a-list', 'Знает Закон о бухгалтерском учёте, НСБУ и МСФО.', ('НСБУ', 'МСФО'),
+     'laws-an-abbreviation-tail-after-a-named-law-vat-and-audit-ru-blank'),
+    ('a-balance-of-accounts', 'Знает Закон о бухгалтерском учёте и сальдо по счетам.', ('сальдо',),
+     'laws-an-indeclinable-tail-after-a-named-law-and-balance-ru-blank'),
+    ('balances-and-turnovers', 'Применяет Закон о бухгалтерском учёте, сальдо и обороты по счетам.', ('сальдо',),
+     'laws-an-indeclinable-tail-after-a-named-law-bureau-and-audit-ru-blank'),
+    ('the-euro-as-a-currency', 'Знает Закон о бухгалтерском учёте и евро как валюту учёта.', ('евро',),
+     'laws-an-indeclinable-tail-after-a-named-law-and-radio-ru-blank'),
+    ('a-credit-bureau', 'Руководствуется Законом о бухгалтерском учёте и бюро кредитных историй.', ('бюро',),
+     'laws-an-indeclinable-tail-in-a-list-before-a-verb-after-a-named-law-of-credit-histories-and-audit-ru-blank'),
+    ('and-video', 'Знает Закон о бухгалтерском учёте и видео.', ('видео',),
+     'laws-an-indeclinable-tail-after-a-named-law-and-radio-ru-blank'),
+    ('ifrs-before-a-comma-clause', 'Согласно Закону о бухгалтерском учёте и МСФО, бухгалтер составляет отчётность.',
+     ('МСФО',), 'laws-an-abbreviation-tail-after-a-named-law-and-vat-before-a-comma-clause-ru-blank'),
+    ('an-adverb-and-vat-before-a-verb', 'Согласно Закону о бухгалтерском учёте хорошо и НДС начисляет верно, бухгалтер '
+                                        'составляет отчётность.', ('НДС',), VAT_BEFORE_A_VERB))
+for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
+    for slug, sentence, gone, pair in OPENER_COSTS_RU:
+        CASES.append(guard(f'laws-the-customers-law-before-an-abbreviation-or-indeclinable-{slug}-{direction}-'
+                           f'accepted_false_blank', ACCEPTED, brief, 'ru', sentence, gone=gone,
+                           translated=direction != 'ru', pair=pair))
+    CASES.append(gp(f'laws-the-customers-law-before-an-abbreviation-or-indeclinable-ifrs-at-the-end-in-a-grounded-part-'
+                    f'{direction}-accepted_false_blank', ACCEPTED, brief, 'ru', OPENER_COSTS_RU[0][1], gone=('МСФО',),
+                    pair=OPENER_COSTS_RU[0][3]))
+for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING_UZ_RU),
+                         ('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU)):
+    for slug, sentence, gone, pair in (
+            ('ifrs', 'Бухгалтер знает Закон о бухгалтерском учёте и МСФО.', ('МСФО',),
+             f'laws-a-translated-head-noun-before-an-abbreviation-tail-and-vat-{direction}-blank'),
+            ('two-standards', 'Бухгалтер руководствуется Законом о бухгалтерском учёте, НСБУ и МСФО.', ('НСБУ',),
+             f'laws-a-translated-head-noun-before-an-abbreviation-tail-software-and-audit-{direction}-blank'),
+            ('a-balance-of-accounts', 'Бухгалтер знает Закон о бухгалтерском учёте и сальдо по счетам.', ('сальдо',),
+             f'laws-a-translated-head-noun-before-an-indeclinable-tail-and-radio-{direction}-blank'),
+            ('reporting-under-the-law-and-ifrs', 'Отчётность составляется согласно Закону о бухгалтерском учёте и '
+                                                 'МСФО.', ('МСФО',),
+             f'laws-a-translated-head-noun-before-an-abbreviation-tail-as-well-as-ifrs-{direction}-blank'),
+            ('a-credit-bureau', 'Бухгалтер знает Закон о бухгалтерском учёте и бюро кредитных историй.', ('бюро',),
+             f'laws-a-translated-head-noun-before-an-indeclinable-tail-bureau-and-audit-{direction}-blank')):
+        CASES.append(guard(f'laws-the-customers-translated-law-before-an-abbreviation-or-indeclinable-{slug}-'
+                           f'{direction}-accepted_false_blank', ACCEPTED, brief, 'ru', sentence, gone=gone,
+                           translated=True, pair=pair))
+
 CASE_IDS = [case.id for case in CASES]
 
 
