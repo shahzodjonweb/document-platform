@@ -11,8 +11,9 @@ must still match the pin.
 A portrait is a nice-to-have, never a reason to lose a CV: a photo that cannot
 be read at render time leaves the CV without one and the job warns
 `cv_photo_unusable`; a change to a CV, or an update of a new one, whose photo
-has expired drops it and records `cv_photo_gone` in `options.cv_warnings` for
-the pipeline to pass on. It is therefore not one of the quote's input files,
+is no longer stored drops it and records `cv_photo_gone` in `options.cv_warnings`
+for the pipeline to pass on. A kept CV keeps its photo (apps/studio/keeping.py),
+so that is one the customer deleted, or a draft's from before drafts were kept. It is therefore not one of the quote's input files,
 whose expiry would fail the quote or the job: the draft pins its fingerprint,
 the quote pins the draft, and `load` checks the bytes against the pin.
 Whatever the source file carried (EXIF, location, comments) does not survive:
@@ -113,7 +114,7 @@ def prepare(account, fid, options, before_options=None, portrait_removed=False, 
     draft or an update of one); `portrait_removed` says the change asked for no
     photo. `current` are the options of the draft being updated, when it is
     one: the photo it already carries is left out with `cv_photo_gone` once it
-    has expired, as a change's is, and only a photo given anew is refused.
+    is no longer stored, as a change's is, and only a photo given anew is refused.
     Only a CV takes a portrait: on any other service the key is refused. The
     fingerprint is always the server's; one a client sends is ignored.
     `options.cv_warnings` is written afresh by every call.

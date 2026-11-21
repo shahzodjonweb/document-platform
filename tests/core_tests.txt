@@ -4509,3 +4509,6 @@ tests/test_kept_drafts.py::test_a_held_file_shows_when_it_stops_being_opened_and
 tests/test_kept_drafts.py::test_a_document_never_sent_to_the_chat_never_says_its_copy_is_there
 tests/test_kept_drafts.py::test_a_document_sent_to_the_chat_as_a_link_never_says_its_copy_is_there
 tests/test_kept_drafts.py::test_a_kept_decks_send_a_day_later_offers_make_changes
+
+# A CV without its photo says the photo is no longer stored, in every language.
+tests/test_kept_drafts.py::test_a_cv_without_its_photo_says_the_photo_is_no_longer_stored_in_every_language

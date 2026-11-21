@@ -964,3 +964,11 @@ def test_a_kept_decks_send_a_day_later_offers_make_changes(chatting, stock_photo
     assert UX['en']['ai_result_kept'] in screen['text'] and UX['en']['result_expired'] not in screen['text'], screen['text']
     asked = tap(chatting, chat, 'Make changes')
     assert 'What should change?' in body(asked), body(asked)[-300:]
+
+
+def test_a_cv_without_its_photo_says_the_photo_is_no_longer_stored_in_every_language():
+    """A kept CV keeps its photo: one found gone was deleted, or is a draft's from before, so no language says it ran out."""
+    from telegram.ux_copy import UX
+    said = {locale: UX[locale]['cv_photo_gone'] for locale in ('en', 'uz', 'ru')}
+    assert 'no longer stored' in said['en'] and 'endi saqlanmagan' in said['uz'] and 'больше не хранится' in said['ru'], said
+    assert not any(word in said[locale] for locale in said for word in ('expired', 'muddat', 'Срок', 'истёк')), said

@@ -267,7 +267,7 @@ MESSAGES = {
     'cv_trimmed': ('ℹ️ The CV was shortened to fit on two pages: a few of the least important lines were left out.', 'ℹ️ CV ikki sahifaga sig‘ishi uchun qisqartirildi: eng kam ahamiyatli bir nechta satr tushirib qoldirildi.', 'ℹ️ Резюме сокращено, чтобы уместиться на двух страницах: несколько наименее важных строк убраны.'),
     'cv_contact_dropped': ('ℹ️ A contact detail that was not in your message was left out.', 'ℹ️ Xabaringizda bo‘lmagan aloqa maʼlumoti CV’ga kiritilmadi.', 'ℹ️ Контакт, которого не было в вашем сообщении, не добавлен в резюме.'),
     'cv_photo_unusable': ('ℹ️ The photo could not be used, so the CV was made without it.', 'ℹ️ Rasmdan foydalanib bo‘lmadi, shuning uchun CV rasmsiz tayyorlandi.', 'ℹ️ Фото использовать не удалось, поэтому резюме сделано без него.'),
-    'cv_photo_gone': ('ℹ️ The photo is no longer stored, so this version of the CV is without it.', 'ℹ️ Rasmning saqlanish muddati tugagani uchun CV’ning bu nusxasi rasmsiz tayyorlandi.', 'ℹ️ Срок хранения фото истёк, поэтому эта версия резюме — без него.'),
+    'cv_photo_gone': ('ℹ️ The photo is no longer stored, so this version of the CV is without it.', 'ℹ️ Rasm endi saqlanmagan, shuning uchun CV’ning bu nusxasi rasmsiz tayyorlandi.', 'ℹ️ Фото больше не хранится, поэтому эта версия резюме — без него.'),
     'cv_photo_no_slot': ('ℹ️ This template has no place for a photo, so the CV was made without it.', 'ℹ️ Bu shablonda rasm uchun joy yo‘q, shuning uchun CV rasmsiz tayyorlandi.', 'ℹ️ В этом шаблоне нет места для фото, поэтому резюме сделано без него.'),
     # The CV service in the chat, its first way: one message about yourself, as for the other two
     # services. The screen says what a CV needs (cv_required) and what only adds to it
