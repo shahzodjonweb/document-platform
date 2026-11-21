@@ -4669,8 +4669,8 @@ for slug, sentence, gone in (
                                           'бухгалтер ведёт книги.', ('бюро',))):
     for direction, brief in RUSSIAN_ACCOUNTING:
         CASES += [
-            guard(f'laws-an-indeclinable-tail-in-a-list-before-a-verb-after-a-named-law-{slug}-{direction}-blank', BLANK,
-                  brief, 'ru', sentence, gone=gone, translated=direction != 'ru'),
+            guard(f'laws-an-indeclinable-tail-in-a-list-before-a-verb-after-a-named-law-{slug}-{direction}-blank',
+                  BLANK, brief, 'ru', sentence, gone=gone, translated=direction != 'ru'),
             gp(f'laws-an-indeclinable-tail-in-a-list-before-a-verb-after-a-named-law-{slug}-in-a-grounded-part-'
                f'{direction}-blank', BLANK, brief, 'ru', sentence, gone=gone),
         ]
@@ -4755,9 +4755,9 @@ for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING
                        'сопрано.', gone=('сопрано',), translated=True))
 
 # ---- A Russian noun in -у, -ю, -а or -э that keeps its form in every case ("шоу", "меню", "интервью", "тату", "гуру",
-# "буржуа", "каратэ", "алоэ", "рандеву") may go on a law's name as "радио" may (p1: L2, L2C): round 13 read only nouns in
-# -о so, and ended the name before these, so an opening word was dropped or a translated head noun "учёте" passed as the
-# customer's, and the invented tail went unread; c491da9 holds the opening word or the head noun and blanks.
+# "буржуа", "каратэ", "алоэ", "рандеву") may go on a law's name as "радио" may (p1: L2, L2C): round 13 read only nouns
+# in -о so, and ended the name before these, so an opening word was dropped or a translated head noun "учёте" passed as
+# the customer's, and the invented tail went unread; c491da9 holds the opening word or the head noun and blanks.
 INDECLINABLE_NON_O_TAILS_RU = (
     ('and-an-interview', 'Знает Закон о бухгалтерском учёте и интервью.', ('интервью',)),
     ('and-a-show', 'Соблюдает Закон о бухгалтерском учёте и шоу.', ('шоу',)),
@@ -4956,8 +4956,8 @@ for slug, sentence in (('an-object', 'Знает Закон о бухгалте�
                            f'keep', KEEP, brief, 'ru', sentence, translated=direction != 'ru'))
 
 # ---- An abbreviation in capitals ("НДС", "ООО", "АО", "ИП", "МСФО", "НКО", "ПО", "УСН") stands unchanged in any case,
-# so a law's name may go on with it (p1 L3, p4): 28c1b69, eb8b05c and round 13 read no word in capitals as able to, so the
-# name ended before it, and "Знает Закон о бухгалтерском учёте и НДС", "Согласно Закону о бухгалтерском учёте и НДС,
+# so a law's name may go on with it (p1 L3, p4): 28c1b69, eb8b05c and round 13 read no word in capitals as able to, so
+# the name ended before it, and "Знает Закон о бухгалтерском учёте и НДС", "Согласно Закону о бухгалтерском учёте и НДС,
 # работа ведётся по плану" printed, or a translated head noun "учёте" passed as the customer's; c491da9 blanks.
 ABBREVIATION_TAILS_RU = (
     ('and-vat', 'Знает Закон о бухгалтерском учёте и НДС.', ('НДС',)),
@@ -5062,13 +5062,13 @@ for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_U
                f'accepted_false_blank', ACCEPTED, brief, 'ru', sentence, gone=gone, pair=pair),
         ]
 
-# ---- A verb before the law (the fixer's own probe, r14 k1, k2): where the sentence has its finite verb before the law's
-# stem ("Соблюдает Закон о ...", "Бухгалтер знает Закон о ...", "Работа ведётся согласно Закону о ..."), a verb after
-# "и" and a noun that keeps its form or an abbreviation is another clause's, never the sentence's after a longer name,
-# so 28c1b69's keep stays. With no finite verb before (a preposition, a gerund, an infinitive, a participle: "Согласно
-# Закону о телевидении и радио регулируется вещание", "Изучив Закон о бухгалтерском учёте и НДС начисляет его вовремя"),
-# or one of a subordinate clause ("Бухгалтер, который знает Закон ... и НДС регулирует учёт"), the noun may be the
-# name's last word and blanks.
+# ---- A verb before the law (the fixer's own probe, r14 k1, k2): where the sentence has its finite verb before the
+# law's stem ("Соблюдает Закон о ...", "Бухгалтер знает Закон о ...", "Работа ведётся согласно Закону о ..."), a verb
+# after "и" and a noun that keeps its form or an abbreviation is another clause's, never the sentence's after a longer
+# name, so 28c1b69's keep stays. With no finite verb before (a preposition, a gerund, an infinitive, a participle:
+# "Согласно Закону о телевидении и радио регулируется вещание", "Изучив Закон о бухгалтерском учёте и НДС начисляет его
+# вовремя"), or one of a subordinate clause ("Бухгалтер, который знает Закон ... и НДС регулирует учёт"), the noun may
+# be the name's last word and blanks.
 for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
     for slug, sentence in (
             ('vat-charged', 'Соблюдает Закон о бухгалтерском учёте и НДС начисляет вовремя.'),

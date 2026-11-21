@@ -1766,10 +1766,10 @@ RU_NEUTER = re.compile(r"[а-яё]+ство|правило|право|дело|�
 # so it is no adverb passed over (`_ru_adverb`) and may go on the name (`_may_go_on`), as c491da9 holds the name. In -о,
 # a vowel before it makes one ("радио", "видео", "портфолио", "какао"); the others are the loans words/ru.txt or the
 # adverbs' shapes would read as adverbs ("сопрано", "шапито" of a participle's, "фиаско", "бунгало", "лего" of an
-# adverb's, "плато", "тако" of an adjective's stem), and the usual ones. In -у, -ю and -а, the usual ones ("шоу", "меню",
-# "интервью", "тату", "буржуа", the last parts of "кунг-фу" and "ноу-хау"), as a case of a noun that changes ends so
-# ("учёту", "работу", "налогообложению"); in -э, any ("каратэ", "алоэ"). One in -е or -и is in the name's case already
-# (`LAW_OF_CASE`: "резюме", "такси").
+# adverb's, "плато", "тако" of an adjective's stem), and the usual ones. In -у, -ю and -а, the usual ones ("шоу",
+# "меню", "интервью", "тату", "буржуа", the last parts of "кунг-фу" and "ноу-хау"), as a case of a noun that changes
+# ends so ("учёту", "работу", "налогообложению"); in -э, any ("каратэ", "алоэ"). One in -е or -и is in the name's case
+# already (`LAW_OF_CASE`: "резюме", "такси").
 RU_INDECLINABLE = re.compile(
     r"[а-яё]*[аеёиоуыэюя]о|кино|казино|метро|евро|авто|мото|фото|лото|депо|бюро|сальдо|нетто|брутто|пальто|табло"
     r"|лого|карго|эмбарго|рококо|панно|техно|промо|демо|ретро|диско|барокко|мокко|электро|соло|поло|кило|тремоло"
@@ -2033,13 +2033,14 @@ def _clause_follows(tokens, at):
 
 
 def _ru_clause_follows(tokens, at):
-    """Whether the Russian word at `at`, after a comma or a semicolon, is a clause's subject: a noun that keeps its form
-    in every case or an abbreviation (`_ru_indeclinable`), which the law's name could go on with, its verb after it
-    (`RU_LAW_VERB`, `RU_VERB`, `RU_CLAUSE_VERB`), "не" or one word between that is no conjunction, preposition or word
-    in the name's case ("..., сальдо переносится на следующий период", "..., сальдо счёта переносится ...", "...; бюро
-    ведёт учёт", "..., видео не является ...", "..., ООО обязано вести учёт"). A list in a law's name joins its last word
-    with "и", never a comma alone, so the name ended at the comma, as 28c1b69 read it; never "..., сальдо и аудите
-    регулируется ..." nor "..., бюро в банках ..."."""
+    """Whether the Russian word at `at` is a clause's subject (`_joined_ends`: after a comma or a semicolon, or after
+    "и" past the sentence's own verb): a noun that keeps its form in every case or an abbreviation
+    (`_ru_indeclinable`), which the law's name could go on with, its verb after it (`RU_LAW_VERB`, `RU_VERB`,
+    `RU_CLAUSE_VERB`), "не" or one word between that is no conjunction, preposition or word in the name's case ("...,
+    сальдо переносится на следующий период", "..., сальдо счёта переносится ...", "...; бюро ведёт учёт", "..., видео
+    не является ...", "..., ООО обязано вести учёт"). A list in a law's name joins its last word with "и", never a
+    comma alone, so the name ended at the comma, as 28c1b69 read it; never "..., сальдо и аудите регулируется ..." nor
+    "..., бюро в банках ..."."""
     text = tokens[at][1]
     low = normalised(text).casefold()
     if not WORD.fullmatch(text) or not re.search('[а-яё]', low) or (LAW_OF_CASE.fullmatch(low) and not text.isupper()) \
@@ -2206,16 +2207,16 @@ def _law_head_ends(sentence, start, word):
     ("... учёте и аудите", "... учёте; аудите", "... учёте и особенно аудите", "... учёте от 13 апреля 2016 года и
     аудите") or any other word the name may go on past what `_law_names` reads. Where the sentence has its verb before
     the law's stem (`_ru_verb_before`: "Бухгалтер знает Закон о ..."), a verb after "и" is another clause's."""
-    before = [(match.start(), match.group(0)) for match in LAW_TOKEN.finditer(sentence[:start])]
-    stem = next((index for index in range(len(before) - 1, -1, -1)
-                 if any(stem.fullmatch(before[index][1]) for stem in NAMED_STEMS)), None)
-    after_verb = stem is not None and _ru_verb_before(before, stem)
     rest = sentence[start + len(word):]
     rest = rest[LAW_HEAD_CLOSE.match(rest).end():]
     if not re.search('[а-яё]', normalised(word).casefold()):
         after = LAW_TOKEN.match(rest, len(rest) - len(rest.lstrip(' \u00a0')))
         low = normalised(after.group(0)).casefold() if after is not None else ''
         return LAW_ABOUT.fullmatch(low) is not None or UZ_LAW_STEM.fullmatch(low) is not None
+    before = [(match.start(), match.group(0)) for match in LAW_TOKEN.finditer(sentence[:start])]
+    at = next((index for index in range(len(before) - 1, -1, -1)
+               if any(stem.fullmatch(before[index][1]) for stem in NAMED_STEMS)), None)
+    after_verb = at is not None and _ru_verb_before(before, at)
     adverb = re.match(r"[ \u00a0]+([^\W\d_]+)(?![^\W\d_])", rest)
     while adverb is not None and _passed(adverb.group(1)) \
             and not LAW_NAME_PREPOSITION.fullmatch(normalised(adverb.group(1)).casefold()):
