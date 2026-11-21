@@ -5659,7 +5659,9 @@ LAW_VERB_TAILS_RU = (
     ('knows-and-video-was-amended', 'Знает Закон о бухгалтерском учёте и видео было изменено.', ('видео',)),
     ('applies-and-radio-requires', 'Применяет Закон о бухгалтерском учёте и радио требует отчётности.', ('радио',)),
     ('according-to-a-semicolon-and-an-llc-sets', 'Согласно Закону о бухгалтерском учёте; ООО устанавливает порядок.',
-     ('ООО',)))
+     ('ООО',)),
+    ('knows-and-radio-lobbies', 'Знает Закон о бухгалтерском учёте и радио не лоббирует.', ('радио',)),
+    ('knows-and-a-casino-initiates', 'Знает Закон о бухгалтерском учёте, казино не инициирует.', ('казино',)))
 LAW_VERB_RADIO = 'laws-a-verb-a-law-may-take-after-an-indeclinable-tail-knows-and-radio-does-not-break-ru-blank'
 LAW_VERB_COMMA = 'laws-a-verb-a-law-may-take-after-an-indeclinable-tail-according-to-and-a-show-does-not-regulate-ru-blank'
 for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
