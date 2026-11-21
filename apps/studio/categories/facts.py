@@ -1996,14 +1996,15 @@ def _clause_follows(tokens, at):
 
 def _ru_clause_follows(tokens, at):
     """Whether the Russian word at `at`, after a comma or a semicolon, is a clause's subject: a noun that keeps its form
-    in every case (`_ru_indeclinable`), which the law's name could go on with, its verb after it (`RU_LAW_VERB`,
-    `RU_VERB`, `RU_CLAUSE_VERB`), "не" or one word between that is no conjunction, preposition or word in the name's
-    case ("..., сальдо переносится на следующий период", "..., сальдо счёта переносится ...", "...; бюро ведёт учёт",
-    "..., видео не является ..."). A list in a law's name joins its last word with "и", never a comma alone, so the name
-    ended at the comma, as 28c1b69 read it; never "..., сальдо и аудите регулируется ..." nor "..., бюро в банках ..."."""
+    in every case or an abbreviation (`_ru_indeclinable`), which the law's name could go on with, its verb after it
+    (`RU_LAW_VERB`, `RU_VERB`, `RU_CLAUSE_VERB`), "не" or one word between that is no conjunction, preposition or word
+    in the name's case ("..., сальдо переносится на следующий период", "..., сальдо счёта переносится ...", "...; бюро
+    ведёт учёт", "..., видео не является ...", "..., ООО обязано вести учёт"). A list in a law's name joins its last word
+    with "и", never a comma alone, so the name ended at the comma, as 28c1b69 read it; never "..., сальдо и аудите
+    регулируется ..." nor "..., бюро в банках ..."."""
     text = tokens[at][1]
     low = normalised(text).casefold()
-    if not WORD.fullmatch(text) or not re.search('[а-яё]', low) or LAW_OF_CASE.fullmatch(low) \
+    if not WORD.fullmatch(text) or not re.search('[а-яё]', low) or (LAW_OF_CASE.fullmatch(low) and not text.isupper()) \
             or not _ru_indeclinable(text):
         return False
     between = False
@@ -2064,10 +2065,11 @@ def _ru_indeclinable(text):
     """Whether a Russian word stands unchanged in the case a law's name takes after "о" or as its genitive, so the name
     may go on with it (`_may_go_on`), in lower case or capitalised: a noun that keeps its form in every case
     (`RU_INDECLINABLE`: "радио", "шоу", "меню", "каратэ") or a word in -о that is no adverb nor a neuter noun of a list
-    (`_ru_adverb`, `RU_NEUTER`: "казино", "бюро"); capitalised, never an adverb mid-sentence ("Осло")."""
+    (`_ru_adverb`, `RU_NEUTER`: "казино", "бюро"); capitalised, never an adverb mid-sentence ("Осло"). An abbreviation
+    in capitals of two letters or more stands unchanged in any case ("НДС", "ООО", "АО", "МСФО")."""
     low = normalised(text).casefold()
     if text.isupper():
-        return False
+        return _letters(text) >= 2
     return RU_INDECLINABLE.fullmatch(low.replace('ё', 'е')) is not None or (
         low.endswith('о') and RU_NEUTER.fullmatch(low) is None and (not text.islower() or not _ru_adverb(low)))
 

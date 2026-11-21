@@ -4958,6 +4958,114 @@ for slug, sentence in (('an-object', 'Знает Закон о бухгалте�
         CASES.append(guard(f'laws-the-customers-law-before-a-hyphenated-word-out-of-the-names-case-{slug}-{direction}-'
                            f'keep', KEEP, brief, 'ru', sentence, translated=direction != 'ru'))
 
+# ---- An abbreviation in capitals ("НДС", "ООО", "АО", "ИП", "МСФО", "НКО", "ПО", "УСН") stands unchanged in any case,
+# so a law's name may go on with it (p1 L3, p4): 28c1b69, eb8b05c and round 13 read no word in capitals as able to, so the
+# name ended before it, and "Знает Закон о бухгалтерском учёте и НДС", "Согласно Закону о бухгалтерском учёте и НДС,
+# работа ведётся по плану" printed, or a translated head noun "учёте" passed as the customer's; c491da9 blanks.
+ABBREVIATION_TAILS_RU = (
+    ('and-vat', 'Знает Закон о бухгалтерском учёте и НДС.', ('НДС',)),
+    ('and-vat-before-a-comma-clause', 'Согласно Закону о бухгалтерском учёте и НДС, работа ведётся по плану.',
+     ('НДС',)),
+    ('vat-and-audit', 'Знает Закон о бухгалтерском учёте, НДС и аудите.', ('НДС',)),
+    ('as-well-as-an-llc', 'Соблюдает Закон о бухгалтерском учёте, а также ООО.', ('ООО',)),
+    ('and-especially-ifrs', 'Руководствуется Законом о бухгалтерском учёте и особенно МСФО.', ('МСФО',)),
+    ('a-semicolon-and-a-sole-trader', 'Знает Закон о бухгалтерском учёте; ИП.', ('ИП',)),
+    ('having-studied-and-a-jsc', 'Изучив Закон о бухгалтерском учёте и АО, бухгалтер ведёт книги.', ('АО',)),
+    ('and-of-course-the-simplified-tax', 'Знает Закон о бухгалтерском учёте и, конечно, УСН.', ('УСН',)),
+    ('vat-as-a-genitive', 'Знает Закон о бухгалтерском учёте НДС.', ('НДС',)))
+for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
+    for slug, sentence, gone in ABBREVIATION_TAILS_RU:
+        CASES += [
+            guard(f'laws-an-abbreviation-tail-after-a-named-law-{slug}-{direction}-blank', BLANK, brief, 'ru',
+                  sentence, gone=gone, translated=direction != 'ru'),
+            gp(f'laws-an-abbreviation-tail-after-a-named-law-{slug}-in-a-grounded-part-{direction}-blank', BLANK,
+               brief, 'ru', sentence, gone=gone),
+        ]
+    CASES.append(body(f'laws-an-abbreviation-tail-after-a-named-law-and-vat-in-a-report-{direction}-blank', BLANK,
+                      'pdf.biz.hisobot', brief, 'ru', 'work_done', ABBREVIATION_TAILS_RU[1][1], gone=('НДС',)))
+    CASES.append(body(f'laws-an-abbreviation-tail-after-a-named-law-and-vat-in-a-qualification-{direction}-blank',
+                      BLANK, 'pdf.biz.lavozim_yoriqnomasi', brief, 'ru', 'qualification', ABBREVIATION_TAILS_RU[0][1],
+                      gone=('НДС',)))
+for direction, brief in (('ru', JOB_RU_KNOWS_ACCOUNTING_DATED), ('en-to-ru', ACCOUNTING_EN_RU_NUMBERED)):
+    for slug, sentence in (('date-and-vat', 'Знает Закон о бухгалтерском учёте от 13 апреля 2016 года и НДС.'),
+                           ('number-and-vat', 'Соблюдает Закон о бухгалтерском учёте № 404 и НДС.')):
+        CASES.append(guard(f'laws-an-abbreviation-tail-after-a-named-laws-{slug}-{direction}-blank', BLANK, brief,
+                           'ru', sentence, gone=('НДС',), translated=direction != 'ru'))
+CASES.append(guard('laws-an-abbreviation-tail-after-the-law-on-television-and-an-ngo-ru-blank', BLANK,
+                   JOB_RU_KNOWS_TV, 'ru', 'Знает Закон о телевидении и НКО.', gone=('НКО',), translated=False))
+for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING_UZ_RU),
+                         ('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU)):
+    for slug, sentence, gone in (
+            ('and-vat', 'Бухгалтер знает Закон о бухгалтерском учёте и НДС.', ('НДС',)),
+            ('as-well-as-ifrs', 'Работа ведётся согласно Закону о бухгалтерском учёте, а также МСФО.', ('МСФО',)),
+            ('software-and-audit', 'Бухгалтер знает Закон о бухгалтерском учёте, ПО и аудите.', ('ПО',)),
+            ('and-especially-the-simplified-tax', 'Бухгалтер знает Закон о бухгалтерском учёте и особенно УСН.',
+             ('УСН',))):
+        CASES += [
+            guard(f'laws-a-translated-head-noun-before-an-abbreviation-tail-{slug}-{direction}-blank', BLANK, brief,
+                  'ru', sentence, gone=gone, translated=True),
+            gp(f'laws-a-translated-head-noun-before-an-abbreviation-tail-{slug}-in-a-grounded-part-{direction}-blank',
+               BLANK, brief, 'ru', sentence, gone=gone),
+        ]
+    CASES.append(body(f'laws-a-translated-head-noun-before-an-abbreviation-tail-and-vat-in-a-qualification-'
+                      f'{direction}-blank', BLANK, 'pdf.biz.lavozim_yoriqnomasi', brief, 'ru', 'qualification',
+                      'Бухгалтер знает Закон о бухгалтерском учёте и НДС.', gone=('НДС',)))
+# 28c1b69 keeps an abbreviation opening a comma or semicolon clause, its verb after it (p3); the clause check keeps it.
+ABBREVIATION_CLAUSES_RU = (
+    ('an-llc-must-keep-books', 'Согласно Закону о бухгалтерском учёте, ООО обязано вести бухгалтерский учёт.'),
+    ('a-sole-trader-may-not', 'Согласно Закону о бухгалтерском учёте, ИП может не вести бухгалтерский учёт.'),
+    ('a-jsc-publishes', 'Согласно Закону о бухгалтерском учёте, АО публикует отчётность.'),
+    ('vat-computed', 'Знает Закон о бухгалтерском учёте, НДС рассчитывает самостоятельно.'),
+    ('vat-not-charged', 'Согласно Закону о бухгалтерском учёте, НДС не начисляется на экспорт.'),
+    ('having-studied-an-llc-keeps', 'Изучив Закон о бухгалтерском учёте, ООО ведёт учёт самостоятельно.'),
+    ('and-keeps-vat-records', 'Знает Закон о бухгалтерском учёте и ведёт учёт НДС.'))
+for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
+    for slug, sentence in ABBREVIATION_CLAUSES_RU:
+        CASES += [
+            guard(f'laws-the-customers-law-before-an-abbreviation-opening-a-clause-{slug}-{direction}-keep', KEEP,
+                  brief, 'ru', sentence, translated=direction != 'ru'),
+            gp(f'laws-the-customers-law-before-an-abbreviation-opening-a-clause-{slug}-in-a-grounded-part-{direction}-'
+               f'keep', KEEP, brief, 'ru', sentence),
+        ]
+    CASES.append(body(f'laws-the-customers-law-before-an-abbreviation-opening-a-clause-an-llc-must-keep-books-in-a-'
+                      f'report-{direction}-keep', KEEP, 'pdf.biz.hisobot', brief, 'ru', 'work_done',
+                      ABBREVIATION_CLAUSES_RU[0][1]))
+for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING_UZ_RU),
+                         ('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU)):
+    CASES.append(guard(f'laws-the-customers-translated-law-before-an-abbreviation-opening-a-comma-clause-{direction}-'
+                       f'keep', KEEP, brief, 'ru', 'Бухгалтер знает Закон о бухгалтерском учёте, НДС рассчитывает '
+                       'самостоятельно.', translated=True))
+# What the reading costs against 28c1b69, each where the same words in the same place may name a law: an abbreviation
+# after "и" before a verb ("Согласно Закону о бухгалтерском учёте и НДС регулируется отчётность"), before a comma clause
+# ("Знает Закон о бухгалтерском учёте и НДС, бухгалтер ведёт книги"), and two joined by "и" after a comma before a verb
+# ("Согласно Закону о бухгалтерском учёте, НДС и ЕСП регулируется отчётность"): the customer's law before them blanks.
+VAT_BEFORE_A_VERB = 'laws-an-abbreviation-tail-before-a-verb-after-a-named-law-ru-blank'
+VAT_BEFORE_A_COMMA_CLAUSE = 'laws-an-abbreviation-tail-before-a-comma-clause-after-a-named-law-ru-blank'
+VAT_AND_USP_BEFORE_A_VERB = 'laws-two-abbreviations-before-a-verb-after-a-named-law-ru-blank'
+CASES += [
+    guard(VAT_BEFORE_A_VERB, BLANK, JOB_RU_KNOWS_ACCOUNTING, 'ru',
+          'Согласно Закону о бухгалтерском учёте и НДС регулируется отчётность.', gone=('НДС',), translated=False),
+    guard(VAT_BEFORE_A_COMMA_CLAUSE, BLANK, JOB_RU_KNOWS_ACCOUNTING, 'ru',
+          'Знает Закон о бухгалтерском учёте и НДС, бухгалтер ведёт книги.', gone=('НДС',), translated=False),
+    guard(VAT_AND_USP_BEFORE_A_VERB, BLANK, JOB_RU_KNOWS_ACCOUNTING, 'ru',
+          'Согласно Закону о бухгалтерском учёте, НДС и ЕСП регулируется отчётность.', gone=('НДС', 'ЕСП'),
+          translated=False),
+]
+for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
+    for slug, sentence, gone, pair in (
+            ('vat-opening-a-clause-after-and', 'Соблюдает Закон о бухгалтерском учёте и НДС начисляет вовремя.',
+             ('НДС',), VAT_BEFORE_A_VERB),
+            ('vat-before-a-comma-clause', 'Знает Закон о бухгалтерском учёте и НДС, применяет их на практике.',
+             ('НДС',), VAT_BEFORE_A_COMMA_CLAUSE),
+            ('two-abbreviations-opening-a-comma-clause', 'Согласно Закону о бухгалтерском учёте, ООО и ИП обязаны '
+                                                         'вести учёт.', ('ООО', 'ИП'), VAT_AND_USP_BEFORE_A_VERB)):
+        CASES += [
+            guard(f'laws-the-customers-law-before-an-abbreviation-{slug}-{direction}-accepted_false_blank', ACCEPTED,
+                  brief, 'ru', sentence, gone=gone, translated=direction != 'ru', pair=pair),
+            gp(f'laws-the-customers-law-before-an-abbreviation-{slug}-in-a-grounded-part-{direction}-'
+               f'accepted_false_blank', ACCEPTED, brief, 'ru', sentence, gone=gone, pair=pair),
+        ]
+
 CASE_IDS = [case.id for case in CASES]
 
 
