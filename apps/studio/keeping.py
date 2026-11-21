@@ -21,7 +21,13 @@ needs, still go after 24 hours; a draft never generated expires as before.
 
 KEPT_UNTIL is no date to show anyone: `shown` turns it into None for the API,
 nothing adds time to it, and it is never shortened by a file's own deadline.
+
+A kept upload is held for the changes, not as a download: after its own 24
+hours it is no longer served to the customer (`held_past_its_day`), as before.
+Should a kept draft go any way but `delete` (a row removed by hand), the
+cleanup's backstop (`release_orphans`) gives its files back their own clock.
 """
+import logging
 from datetime import datetime, timedelta, timezone as dt_timezone
 
 from django.core.exceptions import ValidationError
@@ -33,6 +39,10 @@ KEPT_UNTIL = datetime(2999, 12, 31, tzinfo=dt_timezone.utc)
 OWN_CLOCK = timedelta(hours=24)
 # A deck's own files, named by the draft they belong to.
 PICTURES = ('deck_photo', 'deck_slide')
+# How often the cleanup looks for kept files whose drafts are gone: it reads every kept file's row.
+ORPHANS_EVERY = timedelta(hours=6)
+
+logger = logging.getLogger(__name__)
 
 
 def is_kept(moment):
@@ -42,6 +52,12 @@ def is_kept(moment):
 def shown(moment):
     """An expiry as a customer may see it: none at all for something kept."""
     return None if is_kept(moment) else moment
+
+
+def held_past_its_day(asset, now=None):
+    """An upload a kept draft holds, past the 24 hours it had: kept for a change of the draft, no longer to be downloaded."""
+    return (is_kept(asset.expires_at) and 'kept_by' in (asset.metadata or {})
+            and asset.created_at + OWN_CLOCK <= (now or timezone.now()))
 
 
 def button_until(account, draft_id, default):
@@ -199,6 +215,77 @@ def backfill():
     found = made_from(waiting)
     kept = 0
     for draft in GenerationDraft.objects.filter(pk__in=[value for value in waiting if str(value) in found]):
-        keep(draft)
+        # One draft that cannot be read (a key changed, a malformed row) is left to expire as it would have:
+        # it never holds up the others, nor the cleanup after it. keep() is atomic, so it leaves nothing half done.
+        try:
+            keep(draft)
+        except Exception:
+            logger.exception('A draft a file was made from could not be kept: %s', draft.pk)
+            continue
         kept += 1
     return kept
+
+
+_orphans = {'at': None}
+
+
+def _exists(draft_id):
+    from .models import GenerationDraft
+    try:
+        return GenerationDraft.objects.filter(pk=draft_id).exists()
+    except (ValueError, ValidationError):
+        return False
+
+
+def release_orphans(now=None, force=False):
+    """The backstop: kept files whose drafts are all gone, by any way but `delete`, back on their own clock. Every ORPHANS_EVERY.
+
+    A deck's picture or slide whose draft no longer exists, an upload none of whose holders exist (the gone
+    ones dropped from `kept_by` where others remain), and a ✏️ Make changes button kept for a gone draft.
+    """
+    from apps.core.models import BotCallback, FileAsset
+    from .models import GenerationDraft
+    now = now or timezone.now()
+    last = _orphans['at']
+    if not force and last is not None and last <= now < last + ORPHANS_EVERY:
+        return 0
+    _orphans['at'] = now
+    rows = list(FileAsset.objects.filter(expires_at__gte=KEPT_UNTIL).values_list('pk', 'metadata'))
+    named = {str(value) for _, metadata in rows for value in [(metadata or {}).get('draft_id'), *((metadata or {}).get('kept_by') or [])] if value}
+    named |= {str((payload or {}).get('draft_id')) for payload in BotCallback.objects.filter(action='ai_revise', expires_at__gte=KEPT_UNTIL)
+              .values_list('payload', flat=True) if (payload or {}).get('draft_id')}
+    living = set()
+    names = sorted(named)
+    for start in range(0, len(names), 500):
+        try:
+            living |= {str(pk) for pk in GenerationDraft.objects.filter(pk__in=names[start:start + 500]).values_list('pk', flat=True)}
+        except (ValueError, ValidationError):
+            # A name that is no draft id at all holds nothing: each of the batch is asked alone.
+            living |= {name for name in names[start:start + 500] if _exists(name)}
+    released = 0
+    for pk, metadata in rows:
+        metadata = metadata or {}
+        owner = metadata.get('draft_id') if metadata.get('kind') in PICTURES else None
+        holders = [str(value) for value in metadata.get('kept_by') or []]
+        # A deck's own file goes with its draft; an upload once none of its holders is left (one held by nothing, too).
+        if (str(owner) in living) if owner else (holders and all(value in living for value in holders)):
+            continue
+        with transaction.atomic():
+            asset = FileAsset.objects.select_for_update().filter(pk=pk, expires_at__gte=KEPT_UNTIL).first()
+            if asset is None:
+                continue
+            # A holder added since the drafts were looked up (a change kept meanwhile) is asked about now.
+            left = [] if owner else [value for value in asset.metadata.get('kept_by') or []
+                                     if str(value) in living or (str(value) not in named and _exists(value))]
+            asset.metadata = {**{key: value for key, value in asset.metadata.items() if key != 'kept_by'}, **({'kept_by': left} if left else {})}
+            if not left:
+                asset.expires_at = _own_clock(asset, now)
+                released += 1
+            asset.save(update_fields=['metadata', 'expires_at'])
+    for token, payload in BotCallback.objects.filter(action='ai_revise', expires_at__gte=KEPT_UNTIL).values_list('pk', 'payload'):
+        draft_id = str((payload or {}).get('draft_id'))
+        if draft_id not in living and (draft_id in named or not _exists(draft_id)):
+            BotCallback.objects.filter(pk=token).delete()
+    if released:
+        logger.warning('Kept files whose drafts are gone were let go: %s', released)
+    return released

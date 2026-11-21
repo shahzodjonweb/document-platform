@@ -461,14 +461,27 @@ def _fill(row, draft, data, payload):
             'unmatched': result.unmatched, 'failed': max(0, result.failed - result.unmatched)}
 
 
-def _download(row, url):
+def _download_candidate(row, chosen, key):
+    """A picture on offer, large: from the link it was found with, or, that link run out, a fresh one asked for by its id.
+
+    Pixabay's links last about a day, and a kept deck is opened a month or a year after its pictures were found.
+    """
     from . import photos as stock
     try:
-        prepared = stock.download(url)
+        prepared = stock.download(chosen.get('url'))
     except Exception:
-        _usage(row, 'failed')
-        raise DomainError('picture_unavailable', 409) from None
-    _usage(row, 'succeeded')
+        prepared = None
+    if prepared is None and chosen.get('provider', 'pixabay') == 'pixabay':
+        try:
+            found = stock.by_id(chosen.get('id'), key)
+            prepared = stock.download(found['url']) if found else None
+        except DomainError:
+            raise
+        except Exception:
+            prepared = None
+    _usage(row, 'succeeded' if prepared else 'failed')
+    if prepared is None:
+        raise DomainError('picture_unavailable', 409)
     return prepared
 
 
@@ -507,9 +520,10 @@ def _next(row, draft, data, payload):
             raise DomainError('picture_unavailable', 409)
         asset_id = str(asset.pk)
     else:
-        if not pixabay_config()['ready']:
+        config = pixabay_config()
+        if not config['ready']:
             raise DomainError('photos_unavailable', 409)
-        prepared = _download(row, chosen.get('url'))
+        prepared = _download_candidate(row, chosen, config['api_key'])
         asset_id = _keep(account, draft, sid, {'provider': chosen.get('provider', 'pixabay'), 'id': chosen.get('id'), 'page_url': chosen.get('page_url', '')},
                          prepared['jpeg'], candidate=False, width=prepared['width'], height=prepared['height'])
     written = _write(account, draft.pk, lambda current, _: _wear(current, sid, asset_id, layout, taken=chosen),

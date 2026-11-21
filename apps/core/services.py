@@ -534,9 +534,16 @@ def cleanup_expired():
     from . import storage
     now = timezone.now()
     count = 0
-    # First, before anything expires: drafts a file was made from before drafts were kept are kept now, with their files.
-    from apps.studio.keeping import backfill
-    backfill()
+    # First, before anything expires: drafts a file was made from before drafts were kept are kept now, with their
+    # files; and kept files whose drafts went some way other than being deleted get their own clock back. Neither
+    # ever stops the cleanup: one that fails is logged, and files still expire after it.
+    import logging
+    from apps.studio.keeping import backfill, release_orphans
+    for name, step in (('backfill', backfill), ('orphans', lambda: release_orphans(now))):
+        try:
+            step()
+        except Exception:
+            logging.getLogger(__name__).exception('Keeping drafts: the %s step failed', name)
     time_left = storage.time_limit()
     for asset in FileAsset.objects.filter(expires_at__lte=now).exclude(state='deleted').iterator():
         # What is left waits for the next run: expired, it can no longer be opened.

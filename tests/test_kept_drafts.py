@@ -422,3 +422,116 @@ def test_what_a_change_reads_again_is_what_is_kept():
     assert keeping._uploads(document) == {source_id, logo_id}
     assert keeping._uploads(cv) == {photo_id}
     assert keeping.shown(keeping.KEPT_UNTIL) is None and keeping.shown(timezone.now()) is not None
+
+
+# ---------------------------------------------------------------- after review
+
+
+@pytest.fixture
+def orphans_due(monkeypatch):
+    """The backstop's own schedule, fresh: another test's clock never decides whether it runs in this one."""
+    monkeypatch.setattr(keeping, '_orphans', {'at': None})
+
+
+def document(account, name, **extra):
+    draft = create_draft(account, {'feature_id': DOCUMENT, 'title': name, 'source_text': f'Notes about {name}.', **extra})
+    made = execute_job(submit_job(account, generation_quote(account, draft.id, draft.version).id, f'doc-{draft.id}')[0].id)
+    assert made.status == 'succeeded', made.error_code
+    draft.refresh_from_db()
+    return draft, made
+
+
+@pytest.mark.django_db
+def test_one_unreadable_old_draft_never_stops_the_cleanup(customer, clock, caplog):  # noqa: F811
+    """A draft from before that cannot be read is left to expire; the others are kept and every file still goes on time."""
+    readable, _ = document(customer, 'Tides')
+    unreadable, _ = document(customer, 'Waves')
+    unrelated = upload(customer, 'unrelated.pdf')
+    # As the platform left them before: on their result's day, not kept; one of them a row no key opens any more.
+    deadline = timezone.now() + timedelta(hours=24)
+    GenerationDraft.objects.filter(pk__in=[readable.pk, unreadable.pk]).update(expires_at=deadline)
+    GenerationDraft.objects.filter(pk=unreadable.pk).update(encrypted_data=b'not a token')
+
+    clock(DAY)
+    assert gone(unrelated), 'files still expire after the draft that failed'
+    assert keeping.is_kept(GenerationDraft.objects.get(pk=readable.pk).expires_at), 'the readable one is kept'
+    assert not GenerationDraft.objects.filter(pk=unreadable.pk).exists(), 'the unreadable one expires as it would have'
+    assert 'could not be kept' in caplog.text
+
+
+@pytest.mark.django_db
+def test_a_kept_draft_removed_any_other_way_lets_its_files_go(customer, stock_photos, clock, orphans_due):  # noqa: F811
+    """A row deleted by hand, not through keeping.delete: the backstop gives its files their own clock back."""
+    source = upload(customer, 'harbour-notes.pdf')
+    first, _ = made_deck(customer, sources=[source])
+    second, _ = made_deck(customer, sources=[source])
+    assert set(FileAsset.objects.get(pk=source.pk).metadata['kept_by']) == {str(first.pk), str(second.pk)}
+    pictures = deck_files(first)
+    assert pictures and all(keeping.is_kept(asset.expires_at) for asset in pictures)
+    BotCallback.objects.create(token='orphan-change-button', account=customer, action='ai_revise',
+                               payload={'draft_id': str(first.pk)}, expires_at=keeping.KEPT_UNTIL)
+
+    GenerationDraft.objects.filter(pk=first.pk).delete()
+    clock(DAY)
+    assert all(gone(asset) for asset in pictures), 'its own pictures and slides go with it'
+    assert not BotCallback.objects.filter(pk='orphan-change-button').exists()
+    assert there(source) and FileAsset.objects.get(pk=source.pk).metadata['kept_by'] == [str(second.pk)], 'still held by the other'
+    assert all(there(asset) for asset in deck_files(second))
+
+    GenerationDraft.objects.filter(pk=second.pk).delete()
+    clock(DAY + keeping.ORPHANS_EVERY.total_seconds() / 3600 + 1)
+    assert gone(source), 'held by nothing, it goes'
+
+
+@pytest.mark.django_db
+def test_another_picture_on_a_kept_deck_long_after_asks_pixabay_again_by_its_id(customer, stock_photos, clock):  # noqa: F811
+    """Pixabay's links last about a day: one that ran out is asked for again by the picture's id, and the picture is had."""
+    import urllib.error
+    from operations.integrations import save_config
+    from apps.studio import photos as stock
+    from tests.test_photos import KEY, Response, hit, jpeg
+    draft, _ = made_deck(customer)
+    candidate = next(c for c in pins_of(draft)['photos'][PHOTO]['candidates'] if c.get('asset_id') and not c.get('full'))
+    clock(LONG_AFTER)
+    paid_by_card(customer, 'premium')
+    save_config('pixabay', {'pixabay_key': KEY, 'enabled': 'true'})
+    fresh = f'https://pixabay.com/get/fresh{candidate["id"]}_1280.jpg'
+    calls = []
+
+    def network(request, timeout, handler):
+        calls.append(request.full_url)
+        if request.full_url.startswith(stock.API):
+            return Response(json.dumps({'total': 1, 'totalHits': 1, 'hits': [hit(candidate['id'], url=fresh)]}).encode())
+        if request.full_url == fresh:
+            return Response(jpeg())
+        raise urllib.error.HTTPError(request.full_url, 403, 'Forbidden', {}, None)
+    stock_open = stock._open
+    try:
+        stock._open = network
+        client = login_client(customer)
+        draft.refresh_from_db()
+        asked = client.post(f'/api/v1/generation/drafts/{draft.id}/photos', json.dumps(
+            {'action': 'next', 'version': draft.version, 'section_id': PHOTO, 'asset_id': candidate['asset_id']}), content_type='application/json')
+        assert asked.status_code == 202, asked.content
+        state = client.get(f'/api/v1/generation/drafts/{draft.id}/photos/{asked.json()["task_id"]}').json()
+    finally:
+        stock._open = stock_open
+    assert state['status'] == 'done', state
+    assert calls[0] == candidate['url'], 'the link it was found with first'
+    assert f'id={candidate["id"]}' in calls[1] and calls[2] == fresh
+    worn = FileAsset.objects.get(pk=pins_of(draft)['photos'][PHOTO]['asset_id'])
+    assert worn.metadata['id'] == candidate['id'] and keeping.is_kept(worn.expires_at)
+
+
+@pytest.mark.django_db
+def test_a_kept_source_is_held_for_changes_but_never_downloaded_after_its_day(customer, clock):  # noqa: F811
+    source = upload(customer, 'tides.pdf')
+    draft, _ = document(customer, 'Tides', source_ids=[str(source.id)])
+    client = login_client(customer)
+    assert client.get(f'/api/v1/files/{source.id}/download').status_code == 200, 'its own day, as any upload'
+    clock(DAY)
+    client = login_client(customer)
+    refused = client.get(f'/api/v1/files/{source.id}/download')
+    assert refused.status_code == 410 and refused.json()['error']['code'] == 'file_expired'
+    assert client.get(f'/api/v1/files/{source.id}/preview').status_code == 410
+    assert there(source) and client.get(f'/api/v1/files/{source.id}').json()['expires_at'] is None, 'still kept for a change'

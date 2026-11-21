@@ -23,6 +23,9 @@ def _source(account,asset,page,secret_id):
     """What a page of `asset` is drawn from, or why it may not be: (its path, its password, the preview's deadline)."""
     if not asset: raise DomainError('not_found',404)
     if asset.state!='ready' or asset.expires_at<=timezone.now(): raise DomainError('file_expired',410)
+    # A kept draft's upload is held for its changes, not to be looked at again after its day (keeping.py).
+    from apps.studio.keeping import held_past_its_day
+    if held_past_its_day(asset): raise DomainError('file_expired',410)
     if type(page) is not int or page<1 or page>asset.page_count: raise DomainError('invalid_pages')
     if asset.mime_type!='application/pdf': raise DomainError('preview_unavailable',409)
     path=storage.local(asset.object_key)
