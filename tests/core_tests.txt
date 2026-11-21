@@ -4539,3 +4539,8 @@ tests/test_kept_drafts.py::test_an_account_that_asked_to_be_deleted_loses_every_
 tests/test_kept_drafts.py::test_a_held_upload_past_its_day_goes_into_no_new_document
 tests/test_kept_drafts.py::test_a_held_upload_past_its_day_still_goes_into_its_own_documents_changes
 tests/test_kept_drafts.py::test_the_chat_offers_no_held_upload_past_its_day_for_a_new_document
+
+# After the sixth review: the API says a held file past its day is used there no more and is uploaded again to be used,
+# in words that fit every place that refuses it (Send to Telegram, a new AI document, a download, a file tool), in every
+# language; the web's editor keeps its own.
+tests/test_kept_drafts.py::test_a_held_file_is_told_to_be_uploaded_again_wherever_it_is_refused

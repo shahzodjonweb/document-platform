@@ -831,12 +831,14 @@ def test_an_old_ai_task_offers_make_changes_not_the_original_file(chatting, cloc
 # ---------------------------------------------------------------- after the third review
 
 
+# The API's words for it, for every place that refuses it (the editor, a download, a preview, a file tool, Send to
+# Telegram under a result, a new AI document): no longer used there, and uploaded again to be used.
 HELD = {
-    'en': 'This file is kept only for changing the AI document made from it, so it can no longer be opened here. Send it again to edit it.',
-    'uz': 'Bu fayl faqat undan yaratilgan AI hujjatni o‘zgartirish uchun saqlanadi, shuning uchun uni bu yerda endi ochib bo‘lmaydi. '
-          'Tahrirlash uchun uni qayta yuboring.',
-    'ru': 'Этот файл хранится только для изменения сделанного по нему ИИ-документа, поэтому открыть его здесь больше нельзя. '
-          'Чтобы отредактировать, пришлите его снова.',
+    'en': 'This file is kept only for changing the AI document made from it, so it can no longer be used here. Upload it again to use it.',
+    'uz': 'Bu fayl faqat undan yaratilgan AI hujjatni o‘zgartirish uchun saqlanadi, shuning uchun undan bu yerda endi foydalanib '
+          'bo‘lmaydi. Undan foydalanish uchun uni qayta yuklang.',
+    'ru': 'Этот файл хранится только для изменения сделанного по нему ИИ-документа, поэтому использовать его здесь больше нельзя. '
+          'Чтобы воспользоваться им, загрузите его снова.',
 }
 # The chat's own words for it: the chat sends files and opens none, so it says the file is sent there no more.
 CHAT_HELD = {
@@ -1365,7 +1367,7 @@ def test_the_chat_offers_no_held_upload_past_its_day_for_a_new_document(customer
 
 def test_the_chat_says_in_its_own_words_that_a_held_file_is_sent_there_no_more():
     """A task's screen and a refusal in the chat: the file is sent no more and is sent again to be used, never the
-    editor's "opened here" and "edit it"; the web and the editor keep their own words."""
+    editor's "opened here" and "edit it"; the API and the web's editor keep their own words."""
     import re
     from apps.core.errors import DomainError, error_data
     from telegram.errors import bot_error
@@ -1376,3 +1378,51 @@ def test_the_chat_says_in_its_own_words_that_a_held_file_is_sent_there_no_more()
         assert error_data(held, locale)['message'] == HELD[locale]
     assert 'opened' not in UX['en']['result_held'] and 'edit' not in UX['en']['result_held']
     assert not re.search('[А-Яа-яЁё]', UX['uz']['result_held']) and "'" not in UX['uz']['result_held']
+
+
+# ---------------------------------------------------------------- after the sixth review
+
+
+@pytest.mark.django_db
+def test_a_held_file_is_told_to_be_uploaded_again_wherever_it_is_refused(customer, clock):  # noqa: F811
+    """The API's words for a held file past its day fit every place that refuses it, never the editor's alone: Send to
+    Telegram under a result, a new AI document, a download and a file tool are each told it is used there no more and
+    is uploaded again to be used, never to open or edit it; the web's editor keeps its own words."""
+    import re
+    from apps.core.errors import DomainError, error_data
+    from apps.core.services import create_quote
+    customer.telegram_user_id = 990601
+    customer.save(update_fields=['telegram_user_id'])
+    source = upload(customer, 'tides.pdf')
+    rotated = execute_job(submit_job(customer, create_quote(customer, 'pdf.rotate', [str(source.id)], {}).id, 'rotate-then-made')[0].id)
+    assert rotated.status == 'succeeded', rotated.error_code
+    result = rotated.artifacts.get()
+    document(customer, 'Tides', source_ids=[str(result.file_id)])
+    clock(DAY)
+    client = login_client(customer)
+    said = (410, 'file_expired', keeping.KEPT_FOR_DOCUMENT, HELD['en'])
+    assert client.get(f'/api/v1/jobs/{rotated.id}').json()['artifacts'][0]['state'] == 'expired'
+    # Send to Telegram under the result, which the job's page still shows.
+    sent = client.post(f'/api/v1/artifacts/{result.id}/deliver', '{}', content_type='application/json',
+                       headers={'Idempotency-Key': 'held-send-to-telegram'})
+    assert refused_as(sent) == said
+    assert not BotDelivery.objects.filter(artifact=result).exists()
+    # A new AI document made from it.
+    made = client.post('/api/v1/generation/drafts', json.dumps(
+        {'feature_id': DOCUMENT, 'title': 'Another', 'source_text': 'Other notes.', 'source_ids': [str(result.file_id)]}),
+        content_type='application/json')
+    assert refused_as(made) == said
+    # A download and a file tool.
+    assert refused_as(client.get(f'/api/v1/files/{result.file_id}/download')) == said
+    assert refused_as(client.post('/api/v1/quotes', json.dumps({'feature_id': 'pdf.rotate', 'input_ids': [str(result.file_id)], 'parameters': {}}),
+                                  content_type='application/json')) == said
+    assert there(result.file)
+    held = DomainError('file_expired', 410, {'reason': keeping.KEPT_FOR_DOCUMENT})
+    for locale in ('en', 'uz', 'ru'):
+        assert error_data(held, locale)['message'] == HELD[locale]
+        assert error_data(held, locale)['message'] != error_data(DomainError('file_expired', 410), locale)['message']
+    # Never the editor's "opened here" or "edit it", in any language.
+    assert not re.search(r'open|edit', HELD['en'], re.IGNORECASE)
+    assert 'ochib' not in HELD['uz'] and 'Tahrirlash' not in HELD['uz']
+    assert 'открыть' not in HELD['ru'] and 'отредакт' not in HELD['ru']
+    assert not re.search('[А-Яа-яЁё]', HELD['uz']) and "'" not in HELD['uz'] and 'o‘zgartirish' in HELD['uz']
