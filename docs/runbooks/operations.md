@@ -35,6 +35,8 @@ API metadata logs contain correlation IDs and stable errors. General logs and an
 
 Analyst sees aggregate reports and anonymized feature CSV. Support can inspect customer/task metadata and resolve cases with reasons. Finance sees currently gated financial views. Operations sees task/system diagnostics. Content manager sees plan/localization status. Administrator may use all implemented operations. There is no staff file-content download endpoint or general impersonation action. Privileged account metadata views and exports are audited.
 
+An account deletion that support handles (a customer who asks for it by message rather than deleting the account in the app) must run Admin → Users → the account → AI documents kept for changes → Delete AI documents (Support, Operations or Administrator; audited as `account.documents_delete`). Nothing else removes the drafts kept for ✏️ Make changes and the files they hold, which never expire on their own: only an account deleted in the app (`DELETE /me`, which sets `deletion_requested_at`) has them deleted by the cleanup, on every pass (`apps/studio/keeping.py` `delete_leaving`).
+
 ## Metrics and finance
 
 Acquisition: distinct canonical accounts created in `[date_from,date_to)` after converting selected local midnights to UTC. Channel means first verified channel for acquisition, task origin for job metrics. Production excludes `is_test` accounts. Daily chart, summary and CSV use the same filters. Current plan, payment history and current paid entitlement must never be conflated.
