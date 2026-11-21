@@ -705,10 +705,13 @@ def test_the_bot_sends_no_kept_upload_past_its_day(chatting, clock):  # noqa: F8
     delivery = BotDelivery.objects.create(account=chatting, artifact=result, idempotency_key='late-resend')
     delivered = deliver_local(chatting, delivery)
     assert (delivered.status, delivered.error_code) == ('failed', 'file_expired')
+    from telegram.delivery import editable_pdf
     from telegram.ux_copy import UX
     _, screen = task_screen(chatting, rotated)
     assert UX['en']['download'] not in [button['label'] for row in screen['buttons'] for button in row]
-    assert UX['en']['result_expired'] in screen['text']
+    # Still stored, for the document's changes: never "no longer stored".
+    assert UX['en']['result_held'] in screen['text'] and UX['en']['result_expired'] not in screen['text'], screen['text']
+    assert not editable_pdf(FileAsset.objects.get(pk=result.file_id)), 'no ✏️ Edit, nor /editor, offers it'
 
 
 @pytest.mark.django_db
@@ -822,3 +825,142 @@ def test_an_old_ai_task_offers_make_changes_not_the_original_file(chatting, cloc
     asked = dispatch_local(chatting, callback_data=row.token)
     assert 'What should change?' in body(asked)
     assert all(UX[locale]['ai_result_kept'] for locale in ('en', 'uz', 'ru'))
+
+
+# ---------------------------------------------------------------- after the third review
+
+
+HELD = {
+    'en': 'This file is kept only for changing the AI document made from it, so it can no longer be opened here. Send it again to edit it.',
+    'uz': 'Bu fayl faqat undan yaratilgan AI hujjatni o‘zgartirish uchun saqlanadi, shuning uchun uni bu yerda endi ochib bo‘lmaydi. '
+          'Tahrirlash uchun uni qayta yuboring.',
+    'ru': 'Этот файл хранится только для изменения сделанного по нему ИИ-документа, поэтому открыть его здесь больше нельзя. '
+          'Чтобы отредактировать, пришлите его снова.',
+}
+
+
+def refused_as(answer):
+    error = answer.json()['error']
+    return answer.status_code, error['code'], error['message_params'].get('reason'), error['message']
+
+
+@pytest.mark.django_db
+def test_a_file_held_for_a_document_is_said_to_be_kept_never_deleted(customer, clock):  # noqa: F811
+    """Every refusal of a held upload past its day says it is kept for the document, in each language; one that ran out still says so."""
+    from apps.core.errors import DomainError, error_data
+    from telegram.errors import bot_error
+    from telegram.ux_copy import UX
+    source = upload(customer, 'tides.pdf')
+    client = login_client(customer)
+    opened = client.post('/api/v1/editor/documents', json.dumps({'file_id': str(source.id)}), content_type='application/json')
+    assert opened.status_code == 201, opened.content
+    document(customer, 'Tides', source_ids=[str(source.id)])
+    lost = upload(customer, 'lost.pdf')
+    clock(DAY)
+    client = login_client(customer)
+    said = (410, 'file_expired', keeping.KEPT_FOR_DOCUMENT, HELD['en'])
+    # The editor, by the file (the bot's ✏️ Edit, /editor, Edit under a result) and by its draft.
+    assert refused_as(client.post('/api/v1/editor/documents', json.dumps({'file_id': str(source.id)}), content_type='application/json')) == said
+    assert refused_as(client.get(f'/api/v1/editor/documents/{opened.json()["id"]}')) == said
+    # A download, a preview, a file tool.
+    assert refused_as(client.get(f'/api/v1/files/{source.id}/download')) == said
+    assert refused_as(client.get(f'/api/v1/files/{source.id}/preview')) == said
+    assert refused_as(client.post('/api/v1/quotes', json.dumps({'feature_id': 'pdf.rotate', 'input_ids': [str(source.id)], 'parameters': {}}),
+                                  content_type='application/json')) == said
+    assert there(source)
+    # One no draft kept ran out, and says that.
+    ran_out = client.post('/api/v1/editor/documents', json.dumps({'file_id': str(lost.id)}), content_type='application/json')
+    assert refused_as(ran_out) == (410, 'file_expired', None, error_data(DomainError('file_expired'))['message'])
+    held = DomainError('file_expired', 410, {'reason': keeping.KEPT_FOR_DOCUMENT})
+    for locale in ('en', 'uz', 'ru'):
+        assert error_data(held, locale)['message'] == HELD[locale]
+        assert bot_error(held, locale) == UX[locale]['result_held'] == f'⌛ {HELD[locale]}'
+        assert bot_error(DomainError('file_expired', 410), locale) != bot_error(held, locale)
+
+
+@pytest.mark.django_db
+def test_a_held_file_shows_when_it_stops_being_opened_and_is_expired_after(customer, clock):  # noqa: F811
+    """Its editor row and its task's result name the end of its own day, as any file's do, and are expired after it: the
+    editor's list lets it go, its draft can still be removed, and the file is still kept for the document's changes."""
+    from django.utils.dateparse import parse_datetime
+    from apps.core.services import create_quote
+    from apps.studio.models import EditorDocument
+    source = upload(customer, 'tides.pdf')
+    rotated = execute_job(submit_job(customer, create_quote(customer, 'pdf.rotate', [str(source.id)], {}).id, 'rotate-shown')[0].id)
+    result = rotated.artifacts.get()
+    client = login_client(customer)
+    opened = client.post('/api/v1/editor/documents', json.dumps({'file_id': str(source.id)}), content_type='application/json').json()
+    document(customer, 'Tides', source_ids=[str(source.id), str(result.file_id)])
+    source_ends = FileAsset.objects.get(pk=source.pk).created_at + keeping.OWN_CLOCK
+    result_ends = FileAsset.objects.get(pk=result.file_id).created_at + keeping.OWN_CLOCK
+
+    def at(value, moment):
+        return value is not None and abs(parse_datetime(value) - moment) < timedelta(seconds=1)
+
+    def job_result(client):
+        return client.get(f'/api/v1/jobs/{rotated.id}').json()['artifacts'][0]
+
+    row = next(item for item in client.get('/api/v1/editor/documents').json()['results'] if item['id'] == opened['id'])
+    assert row['file']['state'] == 'ready' and at(row['file']['expires_at'], source_ends), row['file']
+    assert job_result(client)['state'] == 'ready' and at(job_result(client)['expires_at'], result_ends)
+    assert client.get(f'/api/v1/files/{source.id}').json()['expires_at'] is None, 'as a source it is kept: Review draft reads this'
+
+    clock(DAY)
+    client = login_client(customer)
+    assert opened['id'] not in [item['id'] for item in client.get('/api/v1/editor/documents').json()['results']]
+    assert job_result(client)['state'] == 'expired' and at(job_result(client)['expires_at'], result_ends)
+    listed = next(item for item in client.get('/api/v1/jobs').json()['results'] if item['id'] == str(rotated.id))
+    assert [artifact['state'] for artifact in listed['artifacts']] == ['expired']
+    assert client.delete(f'/api/v1/editor/documents/{opened["id"]}').json() == {'deleted': True}
+    assert not EditorDocument.objects.filter(pk=opened['id']).exists()
+    kept = client.get(f'/api/v1/files/{source.id}').json()
+    assert kept['state'] == 'ready' and kept['expires_at'] is None
+    assert there(source) and there(FileAsset.objects.get(pk=result.file_id))
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.usefixtures('bot_verification_disabled')
+def test_a_document_never_sent_to_the_chat_never_says_its_copy_is_there(chatting, clock):  # noqa: F811
+    """Made on the web, nothing of it went to the chat: its task there says the file is gone and the document can be changed."""
+    from telegram.ux_copy import UX
+    _, made = document(chatting, 'Tides')
+    assert made.origin_channel == 'web' and not BotDelivery.objects.filter(artifact__job=made).exists()
+    clock(DAY)
+    chat, screen = task_screen(chatting, made)
+    assert UX['en']['ai_result_kept_unsent'] in screen['text'] and UX['en']['ai_result_kept'] not in screen['text'], screen['text']
+    asked = tap(chatting, chat, 'Make changes')
+    assert 'What should change?' in body(asked), body(asked)[-300:]
+    assert all(UX[locale]['ai_result_kept_unsent'] for locale in ('en', 'uz', 'ru'))
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.usefixtures('bot_verification_disabled')
+def test_a_document_sent_to_the_chat_as_a_link_never_says_its_copy_is_there(chatting, clock):  # noqa: F811
+    """A file over Telegram's 50 MB goes to the chat as a link to the web app: no copy of it is in the chat."""
+    from telegram.ux_copy import UX
+    stage_pdf(chatting)
+    material = ' '.join(['tide'] * 390)
+    tap(chatting, describe(chatting, f'A 1 page guide to tide tables.\n\n{material}'), 'Generate')
+    made = Job.objects.get(account=chatting, feature_id=DOCUMENT)
+    assert BotDelivery.objects.filter(artifact__job=made, status='delivered').exists()
+    FileAsset.objects.filter(pk=made.artifacts.get().file_id).update(size_bytes=60 * 1024 * 1024)
+    clock(DAY)
+    _, screen = task_screen(chatting, made)
+    assert UX['en']['ai_result_kept_unsent'] in screen['text'] and UX['en']['ai_result_kept'] not in screen['text'], screen['text']
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.usefixtures('bot_verification_disabled')
+def test_a_kept_decks_send_a_day_later_offers_make_changes(chatting, stock_photos, clock):  # noqa: F811
+    """A deck sent from its editor: the deck is kept, so its task says it can still be changed, never to send the original file."""
+    from telegram.ux_copy import UX
+    from tests.test_render_export import send
+    draft, _ = made_deck(chatting, origin='bot')
+    sent = send(chatting, draft, origin='bot')
+    assert sent.status == 'succeeded', sent.error_code
+    in_chat(chatting, sent)
+    clock(DAY)
+    chat, screen = task_screen(chatting, sent)
+    assert UX['en']['ai_result_kept'] in screen['text'] and UX['en']['result_expired'] not in screen['text'], screen['text']
+    asked = tap(chatting, chat, 'Make changes')
+    assert 'What should change?' in body(asked), body(asked)[-300:]

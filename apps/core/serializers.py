@@ -16,6 +16,19 @@ def asset_data(a):
     held = held_past_its_day(a)
     return {'id':str(a.id),'name':a.name,'size_bytes':a.size_bytes,'page_count':a.page_count,'mime_type':a.mime_type,'state':state,'expires_at':shown(a.expires_at),'page_sizes':a.metadata.get('page_sizes',[]),'form_fields':a.metadata.get('form_fields',[]),'image_counts':a.metadata.get('image_counts',[]),'encrypted':bool(a.metadata.get('encrypted')),'password_secret_id':a.metadata.get('password_secret_id'),'preview_url':f'/api/v1/files/{a.id}/preview' if a.mime_type=='application/pdf' and not held and (not a.metadata.get('encrypted') or a.metadata.get('password_secret_id')) else None}
 
+def served_data(a):
+    """A file as something to open or download: an editor's file, a task's result.
+
+    One held for a kept draft's changes (its source) is opened and downloaded for its own day only: here it says when
+    that day ends, and is expired after it, though it is still stored for the changes. asset_data says it is kept,
+    as a draft's sources are read (Review draft); this is for nothing else.
+    """
+    from apps.studio.keeping import held_past_its_day, served_until
+    row = asset_data(a)
+    row['expires_at'] = served_until(a)
+    if held_past_its_day(a): row['state'] = 'expired'
+    return row
+
 def usage_summary(usage):
     """This week's allowance, as a quote shows it beside the task."""
     return {key:usage[key] for key in ('ai_documents','file_jobs','edits_per_file','resets_at')}
@@ -59,7 +72,8 @@ def job_data(job):
     files={str(a.pk):asset_data(a) for a in FileAsset.objects.filter(account=job.account,id__in=job.input_ids) if a.metadata.get('kind')!='deck_photo'}
     artifacts=[]
     for artifact in job.artifacts.select_related('file').all():
-        row=asset_data(artifact.file)
+        # As a result is downloaded: one kept as an AI document's source, until its own day ends (served_data).
+        row=served_data(artifact.file)
         # The file's own id as well: the editor opens a new draft on it, and Edit under a result needs it.
         row.update({'id':str(artifact.pk),'file_id':str(artifact.file_id),'role':artifact.role,'download_url':f'/api/v1/artifacts/{artifact.pk}/download','preview_url':f'/api/v1/artifacts/{artifact.pk}/preview' if artifact.file.mime_type=='application/pdf' and not artifact.file.metadata.get('encrypted') and not held_past_its_day(artifact.file) else None})
         artifacts.append(row)

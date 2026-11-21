@@ -2568,13 +2568,17 @@ def build_dispatcher():
             body+='\n\n'+text(account,'queued' if job.status=='queued' else 'processing')
             rows.append([await button(account,'check_status','job',{'job_id':str(job.id)})])
         elif job.status=='succeeded':
-            from apps.studio.keeping import held_past_its_day
-            # A file kept only as a document's source is not sent again after its day (keeping.py).
-            available=await sync_to_async(lambda:any(not held_past_its_day(artifact.file) for artifact in
-                                                     job.artifacts.filter(file__state='ready',file__expires_at__gt=timezone.now()).select_related('file')))()
+            from .delivery import results_left,sent_in_chat
+            # A file kept only as a document's source is not sent again after its day, and is still stored (keeping.py).
+            available,held=await sync_to_async(results_left)(job)
             # An AI document's file gone, its draft kept: sending the original file again is no advice, Make changes is.
             kept='' if available else await sync_to_async(ai.kept_draft)(account,job)
-            body+='\n\n'+text(account,'result' if available else 'ai_result_kept' if kept else 'result_expired')
+            if available: said='result'
+            elif held: said='result_held'
+            # The copy in this chat is named only when the file came here as itself.
+            elif kept: said='ai_result_kept' if await sync_to_async(sent_in_chat)(job) else 'ai_result_kept_unsent'
+            else: said='result_expired'
+            body+='\n\n'+text(account,said)
             note=notes(account,job)
             if note: body+='\n\n'+html.escape(note)
             if available: rows.append([await button(account,'download','download',{'job_id':str(job.id)})])

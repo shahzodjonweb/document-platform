@@ -1004,11 +1004,14 @@ def logo_gone(account, draft):
 
 
 def kept_draft(account, job):
-    """The id of the kept draft an AI document, deck or CV of this task was made from, which ✏️ Make changes still changes; else ''."""
-    from apps.studio.domain import GENERATION_IDS
+    """The id of the kept draft an AI document, deck or CV of this task was made from, which ✏️ Make changes still changes; else ''.
+
+    A deck sent from its editor (RENDER_IDS) names the deck it sent, kept as the deck it was made as is.
+    """
+    from apps.studio.domain import GENERATION_IDS, RENDER_IDS
     from apps.studio.keeping import KEPT_UNTIL
     draft_id = (job.parameters or {}).get('generation_draft_id')
-    if job.feature_id not in GENERATION_IDS or (job.parameters or {}).get('stage') == 'outline' or not draft_id:
+    if job.feature_id not in GENERATION_IDS | RENDER_IDS or (job.parameters or {}).get('stage') == 'outline' or not draft_id:
         return ''
     kept = GenerationDraft.objects.filter(account=account, pk=draft_id, expires_at__gte=KEPT_UNTIL).exists()
     return str(draft_id) if kept else ''

@@ -71,6 +71,9 @@ def deliver_artifact(request,artifact_id):
     key=request.headers.get('Idempotency-Key','')
     if not 8<=len(key)<=128: raise DomainError('idempotency_key_required')
     if artifact.file.state!='ready' or artifact.file.expires_at<=timezone.now(): raise DomainError('file_expired',410)
+    # A result held for a kept draft's changes past its day is sent to the chat no more (telegram/delivery.attempt).
+    from apps.studio.keeping import held_past_its_day,held_refusal
+    if held_past_its_day(artifact.file): raise held_refusal()
     delivery,created=BotDelivery.objects.get_or_create(account=request.account,idempotency_key=key,defaults={'artifact':artifact})
     if delivery.artifact_id!=artifact.id: raise DomainError('idempotency_conflict',409)
     if request.account.is_test:

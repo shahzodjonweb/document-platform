@@ -24,7 +24,10 @@ nothing adds time to it, and it is never shortened by a file's own deadline.
 
 A kept upload is held for the changes, not as a download: after its own 24
 hours nothing serves it to the customer or takes it as a file tool's input
-(`held_past_its_day`), as before. One gone all the same (the customer deleted
+(`held_past_its_day`), as before, and what refuses it says it is kept for the
+document (`held_refusal`), never that it was deleted. Where it is listed as
+something to open (an editor's file, a task's result) it says when its day ends
+and is expired after it (`served_until`). One gone all the same (the customer deleted
 it, or it ran out before it was kept) is gone: a change goes on without it
 (`still_there`), from what was read of a source, which the draft holds, and
 without a logo, which its file then says (logo_left_out).
@@ -65,14 +68,35 @@ def shown(moment):
     return None if is_kept(moment) else moment
 
 
+def _held(asset):
+    """An upload a kept draft holds: served for its own 24 hours only. Never a deck's own picture or slide."""
+    metadata = asset.metadata or {}
+    return is_kept(asset.expires_at) and 'kept_by' in metadata and metadata.get('kind') not in PICTURES
+
+
 def held_past_its_day(asset, now=None):
     """An upload a kept draft holds, past the 24 hours it had: kept for a change of the draft, never served or used otherwise.
 
     Never a deck's own picture or slide, which its deck editor shows and sends however old it is.
     """
-    metadata = asset.metadata or {}
-    return (is_kept(asset.expires_at) and 'kept_by' in metadata and metadata.get('kind') not in PICTURES
-            and asset.created_at + OWN_CLOCK <= (now or timezone.now()))
+    return _held(asset) and asset.created_at + OWN_CLOCK <= (now or timezone.now())
+
+
+def served_until(asset):
+    """When a file stops being opened or downloaded, as a customer may see it: a kept draft's upload at the end of its
+    own day (held_past_its_day after that), something else kept never (None), anything else at its expiry."""
+    return asset.created_at + OWN_CLOCK if _held(asset) else shown(asset.expires_at)
+
+
+# Why a held upload past its day is refused (`message_params.reason`): it is still stored, only for changing the AI
+# document made from it, so the refusal never says it was deleted or ran out.
+KEPT_FOR_DOCUMENT = 'kept_for_document'
+
+
+def held_refusal():
+    """The refusal of a held upload past its day: `file_expired`, as before, saying why (KEPT_FOR_DOCUMENT)."""
+    from apps.core.errors import DomainError
+    return DomainError('file_expired', 410, params={'reason': KEPT_FOR_DOCUMENT})
 
 
 def still_there(account, ids):

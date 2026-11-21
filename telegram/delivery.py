@@ -258,9 +258,33 @@ def app_button(label, url):
 
 
 def editable_pdf(asset):
-    """A file the editor would open now: the same refusals as studio.views.editors."""
+    """A file the editor would open now: the same refusals as studio.views.editors, a file held only for an AI
+    document's changes past its day among them (apps/studio/keeping.py)."""
+    from apps.studio.keeping import held_past_its_day
     return (asset.mime_type == 'application/pdf' and not asset.metadata.get('encrypted')
-            and asset.state == 'ready' and asset.expires_at > timezone.now())
+            and asset.state == 'ready' and asset.expires_at > timezone.now() and not held_past_its_day(asset))
+
+
+# Larger than this, a file goes to the chat as a link to the web app, not as itself (attempt).
+CHAT_FILE_BYTES = 50 * 1024 * 1024
+
+
+def sent_in_chat(job):
+    """Whether a file of this task was sent into the chat as itself, so a copy of it is there however long the server
+    keeps it: a delivery that went out, not as the link a file over CHAT_FILE_BYTES goes as. A task made on the web has
+    none unless the customer sent its file here (Send to Telegram)."""
+    return BotDelivery.objects.filter(account_id=job.account_id, artifact__job=job, status='delivered',
+                                      artifact__file__size_bytes__lte=CHAT_FILE_BYTES).exists()
+
+
+def results_left(job):
+    """(ready, held) for a finished task's files: whether one can still be sent, and whether one is still stored but
+    only for changing an AI document made from it (apps/studio/keeping.py), which is sent no more."""
+    from apps.studio.keeping import held_past_its_day
+    now = timezone.now()
+    files = [artifact.file for artifact in job.artifacts.filter(file__state='ready', file__expires_at__gt=now).select_related('file')]
+    held = [held_past_its_day(asset, now) for asset in files]
+    return (not all(held)) if files else False, any(held)
 
 
 def editable_deck(account, identifier):
@@ -381,7 +405,7 @@ async def attempt(delivery_id,bot):
         # A category's document says under it what to do with it (category_notices); any other file nothing more.
         notices = (await sync_to_async(lambda: category_notices(delivery.artifact.job, locale))()
                    if delivery.artifact.role == 'user_document' else [])
-        if asset.size_bytes>50*1024*1024:
+        if asset.size_bytes>CHAT_FILE_BYTES:
             cfg=await sync_to_async(telegram_config)()
             controls.inline_keyboard.insert(0, [InlineKeyboardButton(text=copy['open'], url=cfg['webapp_url'])])
             large='\n\n'.join([copy['large'],*notices])

@@ -4498,3 +4498,14 @@ tests/test_kept_drafts.py::test_a_delete_that_rolls_back_leaves_every_file_in_pl
 # of "send the original file".
 tests/test_kept_drafts.py::test_make_changes_shown_again_and_again_is_one_button
 tests/test_kept_drafts.py::test_an_old_ai_task_offers_make_changes_not_the_original_file
+
+# After the third review: a file kept for an AI document past its day is refused as kept for it (reason
+# kept_for_document) in the editor, a download, a preview, a file tool and the chat, never as deleted; its editor row and
+# task result say when its own day ends and are expired after it, the editor's list lets it go and its draft can be
+# removed; an old AI task names the chat's copy only when the file was sent there as itself; a kept deck's send offers
+# Make changes.
+tests/test_kept_drafts.py::test_a_file_held_for_a_document_is_said_to_be_kept_never_deleted
+tests/test_kept_drafts.py::test_a_held_file_shows_when_it_stops_being_opened_and_is_expired_after
+tests/test_kept_drafts.py::test_a_document_never_sent_to_the_chat_never_says_its_copy_is_there
+tests/test_kept_drafts.py::test_a_document_sent_to_the_chat_as_a_link_never_says_its_copy_is_there
+tests/test_kept_drafts.py::test_a_kept_decks_send_a_day_later_offers_make_changes

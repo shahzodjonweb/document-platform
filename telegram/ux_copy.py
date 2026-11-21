@@ -90,8 +90,14 @@ MESSAGES = {
     'recent_empty': ('🗂 No tasks yet. Send a file to get started.', '🗂 Hali vazifalar yo‘q. Boshlash uchun fayl yuboring.', '🗂 Задач пока нет. Отправьте файл, чтобы начать.'),
     'download': ('📥 Send result again', '📥 Natijani qayta yuborish', '📥 Прислать результат снова'),
     # The task of an AI document, deck or CV whose file is gone while its draft is kept: under it, ✏️ Make changes.
+    # The copy in this chat is named only when the file was sent here as itself (delivery.sent_in_chat): a task made
+    # on the web, or a file over 50 MB that came as a link, says it without that.
     'ai_result_kept': ('⌛ The file is no longer kept on our server; the copy sent earlier in this chat is the same file. The document can still be changed.', '⌛ Fayl serverda endi saqlanmaydi; chatda avval yuborilgan nusxa aynan shu fayl. Hujjatni hali ham o‘zgartirish mumkin.', '⌛ Файл больше не хранится на сервере; копия, присланная ранее в этом чате, — тот же файл. Документ по-прежнему можно изменить.'),
+    'ai_result_kept_unsent': ('⌛ The file is no longer kept on our server. The document can still be changed.', '⌛ Fayl serverda endi saqlanmaydi. Hujjatni hali ham o‘zgartirish mumkin.', '⌛ Файл больше не хранится на сервере. Документ по-прежнему можно изменить.'),
     'result_expired': ('⌛ This result is no longer stored. Send the original file to try again.', '⌛ Natijaning saqlash muddati tugagan. Asl faylni qayta yuboring.', '⌛ Срок хранения истёк. Отправьте исходный файл ещё раз.'),
+    # A file kept only as an AI document's source, past its own day (apps/studio/keeping.py): still stored, so never
+    # "no longer stored". Its task's screen, and every refusal of it in the chat (errors.bot_error), say this.
+    'result_held': ('⌛ This file is kept only for changing the AI document made from it, so it can no longer be opened here. Send it again to edit it.', '⌛ Bu fayl faqat undan yaratilgan AI hujjatni o‘zgartirish uchun saqlanadi, shuning uchun uni bu yerda endi ochib bo‘lmaydi. Tahrirlash uchun uni qayta yuboring.', '⌛ Этот файл хранится только для изменения сделанного по нему ИИ-документа, поэтому открыть его здесь больше нельзя. Чтобы отредактировать, пришлите его снова.'),
     'retry_task': ('🔄 Review & retry', '🔄 Tekshirib qayta urinish', '🔄 Проверить и повторить'),
     'link_methods': ('🔑 Sign-in methods', '🔑 Kirish usullari', '🔑 Способы входа'),
     'linked_methods': ('Sign in with', 'Kirish usullari', 'Способы входа'),
