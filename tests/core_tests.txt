@@ -4493,3 +4493,8 @@ tests/test_kept_drafts.py::test_an_account_that_asked_to_be_deleted_never_has_a_
 tests/test_kept_drafts.py::test_the_backfill_costs_nothing_once_it_has_done_its_job
 tests/test_kept_drafts.py::test_the_backstop_reads_kept_files_a_few_at_a_time
 tests/test_kept_drafts.py::test_a_delete_that_rolls_back_leaves_every_file_in_place
+
+# A kept draft's ✏️ Make changes is one button however often a screen shows it, and an old AI task offers it in place
+# of "send the original file".
+tests/test_kept_drafts.py::test_make_changes_shown_again_and_again_is_one_button
+tests/test_kept_drafts.py::test_an_old_ai_task_offers_make_changes_not_the_original_file

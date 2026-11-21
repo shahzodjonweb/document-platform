@@ -782,3 +782,43 @@ def test_a_delete_that_rolls_back_leaves_every_file_in_place(customer, stock_pho
     assert not any(storage.exists(asset.object_key) for asset in pictures)
     clock(DAY)
     assert gone(mark)
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.usefixtures('bot_verification_disabled')
+def test_make_changes_shown_again_and_again_is_one_button(chatting, clock):  # noqa: F811
+    stage_pdf(chatting)
+    material = ' '.join(['tide'] * 390)
+    delivered_now = tap(chatting, describe(chatting, f'A 1 page guide to tide tables.\n\n{material}'), 'Generate')
+    draft = draft_of(Job.objects.get(account=chatting, feature_id=DOCUMENT))
+    buttons = BotCallback.objects.filter(account=chatting, action='ai_revise', payload={'draft_id': str(draft.pk)})
+    assert buttons.count() == 1
+    tap(chatting, delivered_now, 'Make changes')
+    first_review = dispatch_local(chatting, text=CHANGE)
+    tap(chatting, first_review, 'Make changes')
+    second_review = dispatch_local(chatting, text='Make it shorter.')
+    assert 'Make it shorter.' in body(second_review)
+    assert buttons.count() == 1, 'the reword button of each review is the one under the file'
+    assert keeping.is_kept(buttons.get().expires_at)
+    # Every one of them still works: the oldest review's too.
+    asked = tap(chatting, first_review, 'Make changes')
+    assert 'What should change?' in body(asked), body(asked)[-300:]
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.usefixtures('bot_verification_disabled')
+def test_an_old_ai_task_offers_make_changes_not_the_original_file(chatting, clock):  # noqa: F811
+    from telegram.ux_copy import UX
+    stage_pdf(chatting)
+    material = ' '.join(['tide'] * 390)
+    tap(chatting, describe(chatting, f'A 1 page guide to tide tables.\n\n{material}'), 'Generate')
+    made = Job.objects.get(account=chatting, feature_id=DOCUMENT)
+    draft = draft_of(made)
+    clock(DAY)
+    chat, screen = task_screen(chatting, made)
+    assert UX['en']['result_expired'] not in screen['text'] and UX['en']['ai_result_kept'] in screen['text'], screen['text']
+    row = BotCallback.objects.get(account=chatting, action='ai_revise', payload={'draft_id': str(draft.pk)})
+    assert row.token in [button['callback_data'] for button in screen['buttons'][0]], 'the button under the file, reused'
+    asked = dispatch_local(chatting, callback_data=row.token)
+    assert 'What should change?' in body(asked)
+    assert all(UX[locale]['ai_result_kept'] for locale in ('en', 'uz', 'ru'))

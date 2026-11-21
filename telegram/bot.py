@@ -79,10 +79,22 @@ async def callback(account,action,payload=None):
     expires=timezone.now()+lifetime
     # ✏️ Make changes lasts as long as its draft: for good, once a file is made from it (apps/studio/keeping.py).
     if action=='ai_revise':
-        from apps.studio.keeping import button_until
+        from apps.studio.keeping import button_until,is_kept
         expires=await sync_to_async(button_until)(account,(payload or {}).get('draft_id'),expires)
+        # Shown on every screen that offers the change, a kept draft's button is one row however often, the one under
+        # its file (delivery.result_controls): kept for good, one more each time would pile up for good.
+        if is_kept(expires):
+            found=await sync_to_async(kept_button)(account,payload or {})
+            if found: return found
     await sync_to_async(BotCallback.objects.create)(token=token,account=account,action=action,payload=payload or {},expires_at=expires)
     return token
+def kept_button(account,payload):
+    """The token of the ✏️ Make changes row a kept draft already has, kept as long as the draft; None when it has none."""
+    from apps.studio.keeping import KEPT_UNTIL
+    row=BotCallback.objects.filter(account=account,action='ai_revise',payload=payload).order_by('token').first()
+    if row is None: return None
+    if row.expires_at<KEPT_UNTIL: BotCallback.objects.filter(pk=row.pk).update(expires_at=KEPT_UNTIL)
+    return row.token
 async def web_url(account,route=''):
     from apps.commerce.providers import telegram_config
     config=await sync_to_async(telegram_config)()
@@ -2560,10 +2572,13 @@ def build_dispatcher():
             # A file kept only as a document's source is not sent again after its day (keeping.py).
             available=await sync_to_async(lambda:any(not held_past_its_day(artifact.file) for artifact in
                                                      job.artifacts.filter(file__state='ready',file__expires_at__gt=timezone.now()).select_related('file')))()
-            body+='\n\n'+text(account,'result' if available else 'result_expired')
+            # An AI document's file gone, its draft kept: sending the original file again is no advice, Make changes is.
+            kept='' if available else await sync_to_async(ai.kept_draft)(account,job)
+            body+='\n\n'+text(account,'result' if available else 'ai_result_kept' if kept else 'result_expired')
             note=notes(account,job)
             if note: body+='\n\n'+html.escape(note)
             if available: rows.append([await button(account,'download','download',{'job_id':str(job.id)})])
+            elif kept: rows.append([await button(account,await ai_change_copy('ai_revise'),'ai_revise',{'draft_id':kept})])
         elif job.status=='no_op': body+='\n\n'+text(account,'no_op')
         elif job.status=='failed':
             from .notifications import failure_line,model_failed
