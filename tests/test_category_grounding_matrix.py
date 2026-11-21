@@ -5639,6 +5639,103 @@ for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_U
                            f'{direction}-accepted_false_blank', ACCEPTED, brief, 'ru', sentence, gone=gone,
                            translated=direction != 'ru', pair=INFINITIVE_RADIO))
 
+# ---- A verb a law itself may take after "и" or a comma and a noun that keeps its form or an abbreviation (pr78-r2 c2
+# O and A13, the owner's decision): "Знает Закон о бухгалтерском учёте и радио не нарушает", "Соблюдает Закон ... и НДС
+# не регулируется иначе", "Согласно Закону ..., казино не регулирует", "Бухгалтер ведёт учёт и руководствуется при
+# этом Законом ... и ПО регулируется работа". The law may be the verb's subject or object, the noun the name's last
+# word; never invent, so the name does not end at the noun and the opening word or the head noun is the name's (28c1b69
+# blanked the lines with "не" or "ПО", reading them as a word in the name's case or "по"; it printed the others).
+LAW_VERB_TAILS_RU = (
+    ('knows-and-radio-does-not-break', 'Знает Закон о бухгалтерском учёте и радио не нарушает.', ('радио',)),
+    ('keeps-and-vat-is-not-regulated-otherwise', 'Соблюдает Закон о бухгалтерском учёте и НДС не регулируется иначе.',
+     ('НДС',)),
+    ('guided-and-a-casino-does-not-break', 'Руководствуется Законом о бухгалтерском учёте и казино не нарушает.',
+     ('казино',)),
+    ('according-to-and-a-show-does-not-regulate', 'Согласно Закону о бухгалтерском учёте, шоу не регулирует.',
+     ('шоу',)),
+    ('knows-and-software-does-not-regulate', 'Знает Закон о бухгалтерском учёте, ПО не регулирует.', ('ПО',)),
+    ('keeps-and-a-bureau-strictly-keeps', 'Соблюдает Закон о бухгалтерском учёте и бюро строго соблюдает.', ('бюро',)),
+    ('knows-and-a-balance-may-break', 'Знает Закон о бухгалтерском учёте и сальдо может нарушать.', ('сальдо',)),
+    ('knows-and-video-was-amended', 'Знает Закон о бухгалтерском учёте и видео было изменено.', ('видео',)),
+    ('applies-and-radio-requires', 'Применяет Закон о бухгалтерском учёте и радио требует отчётности.', ('радио',)),
+    ('according-to-a-semicolon-and-an-llc-sets', 'Согласно Закону о бухгалтерском учёте; ООО устанавливает порядок.',
+     ('ООО',)))
+LAW_VERB_RADIO = 'laws-a-verb-a-law-may-take-after-an-indeclinable-tail-knows-and-radio-does-not-break-ru-blank'
+LAW_VERB_COMMA = 'laws-a-verb-a-law-may-take-after-an-indeclinable-tail-according-to-and-a-show-does-not-regulate-ru-blank'
+for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
+    for slug, sentence, gone in LAW_VERB_TAILS_RU:
+        CASES += [
+            guard(f'laws-a-verb-a-law-may-take-after-an-indeclinable-tail-{slug}-{direction}-blank', BLANK, brief,
+                  'ru', sentence, gone=gone, translated=direction != 'ru'),
+            gp(f'laws-a-verb-a-law-may-take-after-an-indeclinable-tail-{slug}-in-a-grounded-part-{direction}-blank',
+               BLANK, brief, 'ru', sentence, gone=gone),
+        ]
+    CASES += [
+        body(f'laws-a-verb-a-law-may-take-after-an-indeclinable-tail-knows-and-radio-does-not-break-in-a-qualification-'
+             f'{direction}-blank', BLANK, 'pdf.biz.lavozim_yoriqnomasi', brief, 'ru', 'qualification',
+             LAW_VERB_TAILS_RU[0][1], gone=('радио',)),
+        body(f'laws-a-verb-a-law-may-take-after-an-indeclinable-tail-according-to-and-a-show-in-a-report-{direction}-'
+             f'blank', BLANK, 'pdf.biz.hisobot', brief, 'ru', 'work_done', LAW_VERB_TAILS_RU[3][1], gone=('шоу',)),
+    ]
+for direction, brief in (('ru', JOB_RU_KNOWS_ACCOUNTING_DATED), ('en-to-ru', ACCOUNTING_EN_RU_NUMBERED)):
+    CASES.append(guard(f'laws-a-verb-a-law-may-take-after-an-indeclinable-tail-after-a-named-laws-date-and-radio-'
+                       f'{direction}-blank', BLANK, brief, 'ru', 'Знает Закон о бухгалтерском учёте от 13 апреля 2016 '
+                       'года и радио не нарушает.', gone=('радио',), translated=direction != 'ru'))
+CASES += [
+    guard('laws-a-verb-a-law-may-take-after-an-indeclinable-tail-after-the-law-on-television-and-radio-ru-blank', BLANK,
+          JOB_RU_KNOWS_TV, 'ru', 'Соблюдает Закон о телевидении и радио не нарушает.', gone=('радио',),
+          translated=False),
+    gp('laws-a-verb-a-law-may-take-after-an-indeclinable-tail-after-the-law-on-television-a-comma-and-radio-in-a-'
+       'grounded-part-ru-blank', BLANK, JOB_RU_KNOWS_TV, 'ru', 'Знает Закон о телевидении, радио не регулирует.',
+       gone=('радио',)),
+]
+for direction, brief in (('en-to-ru', ACCOUNTING_EN_RU), ('uz-to-ru', ACCOUNTING_UZ_RU),
+                         ('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU)):
+    for slug, sentence, gone in (
+            ('guided-at-that-and-software-regulates-work', 'Бухгалтер ведёт учёт и руководствуется при этом Законом о '
+                                                           'бухгалтерском учёте и ПО регулируется работа.', ('ПО',)),
+            ('knows-and-a-casino-does-not-break', 'Бухгалтер знает Закон о бухгалтерском учёте и казино не нарушает.',
+             ('казино',)),
+            ('keeps-and-vat-does-not-regulate', 'Бухгалтер соблюдает Закон о бухгалтерском учёте, НДС не регулирует.',
+             ('НДС',))):
+        CASES += [
+            guard(f'laws-a-translated-head-noun-before-an-indeclinable-tail-and-a-verb-a-law-may-take-{slug}-'
+                  f'{direction}-blank', BLANK, brief, 'ru', sentence, gone=gone, translated=True),
+            gp(f'laws-a-translated-head-noun-before-an-indeclinable-tail-and-a-verb-a-law-may-take-{slug}-in-a-'
+               f'grounded-part-{direction}-blank', BLANK, brief, 'ru', sentence, gone=gone),
+        ]
+# 28c1b69's keeps the reading holds: a verb that cannot take a law opens the noun's clause, with "не", a modal, a copula
+# and a participle of such a verb too.
+CLAUSE_VERBS_NO_LAW_RU = (
+    ('vat-not-understated', 'Знает Закон о бухгалтерском учёте и НДС не занижает.'),
+    ('a-balance-not-confused', 'Соблюдает Закон о бухгалтерском учёте, сальдо не путает.'),
+    ('a-balance-can-be-computed', 'Знает Закон о бухгалтерском учёте и сальдо может рассчитать.'),
+    ('an-llc-must-keep-books', 'Знает Закон о бухгалтерском учёте и ООО обязано вести учёт.'),
+    ('a-balance-may-be-carried', 'Согласно Закону о бухгалтерском учёте, сальдо может быть перенесено.'),
+    ('a-jsc-publishes', 'Соблюдает Закон о бухгалтерском учёте и АО публикует отчётность.'))
+for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
+    for slug, sentence in CLAUSE_VERBS_NO_LAW_RU:
+        CASES.append(guard(f'laws-the-customers-law-before-a-clause-whose-verb-takes-no-law-{slug}-{direction}-keep',
+                           KEEP, brief, 'ru', sentence, translated=direction != 'ru'))
+# What the owner's decision costs against 28c1b69: the customer's law before an abbreviation or such a noun opening a
+# clause whose verb a law may take ("Соблюдает Закон ... и НДС не нарушает", "Согласно Закону ..., ИП освобождается от
+# учёта", "..., НДС учитывается отдельно", "..., ООО применяет упрощённую систему", "..., НДС следует начислять"):
+# the same words in the same place may name an invented law, so the opening word is the name's and blanks.
+for direction, brief in RUSSIAN_ACCOUNTING + (('uz-cyrillic-to-ru', ACCOUNTING_UZC_RU),):
+    for slug, sentence, gone, pair in (
+            ('vat-does-not-break', 'Соблюдает Закон о бухгалтерском учёте и НДС не нарушает.', ('НДС',), LAW_VERB_RADIO),
+            ('a-sole-trader-is-exempt', 'Согласно Закону о бухгалтерском учёте, ИП освобождается от ведения учёта.',
+             ('ИП',), LAW_VERB_COMMA),
+            ('vat-is-taken-into-account', 'Согласно Закону о бухгалтерском учёте, НДС учитывается отдельно.', ('НДС',),
+             LAW_VERB_COMMA),
+            ('an-llc-applies-a-system', 'Согласно Закону о бухгалтерском учёте, ООО применяет упрощённую систему.',
+             ('ООО',), LAW_VERB_COMMA),
+            ('vat-should-be-charged', 'Согласно Закону о бухгалтерском учёте, НДС следует начислять ежемесячно.',
+             ('НДС',), LAW_VERB_COMMA)):
+        CASES.append(guard(f'laws-the-customers-law-before-a-clause-whose-verb-a-law-may-take-{slug}-{direction}-'
+                           f'accepted_false_blank', ACCEPTED, brief, 'ru', sentence, gone=gone,
+                           translated=direction != 'ru', pair=pair))
+
 CASE_IDS = [case.id for case in CASES]
 
 

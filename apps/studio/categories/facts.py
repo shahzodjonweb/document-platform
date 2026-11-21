@@ -1809,6 +1809,37 @@ RU_ADJECTIVE_ENDINGS = ('ый', 'ий', 'ой', 'ая', 'яя', 'ое', 'ее', 
 # ("ведёт", "несут", "даёт").
 RU_CLAUSE_VERB = re.compile(r"мо(?:жет|гут|г|гл[аои])|долж(?:ен|н[аоы])|обязан[аоы]?|вправе|нужно|надо|можно|нельзя"
                             r"|вед[её]т|ведут|нес[её]т|несут|да[её]т|дают|ид[её]т|идут|бер[её]т|берут")
+# The verbs a law itself may be the subject or the object of, any form (`_ru_law_verb`, the owner's decision on the
+# re-check of round 15): what a law does ("регулирует", "устанавливает", "предусматривает", "определяет", "требует",
+# "запрещает", "разрешает", "гласит", "действует", "распространяется", "вступает", "содержит", "служит", "вводит",
+# "освобождает", "признаёт", "налагает", "описывает", "диктует") and what is done with one ("нарушает", "соблюдает",
+# "применяет", "руководствуется", "пренебрегает", "исполняет", "выполняет", "знает", "изучает", "учитывает", "толкует",
+# "принимает", "утверждает", "отменяет", "изменяет", "обходит", "игнорирует", "следует", "рассматривает"), the lexical
+# verbs of RU_LAW_VERB among them. After a noun that keeps its form such a verb may be the law's, the noun the name's
+# last word ("Знает Закон о ... и радио не нарушает"), so no clause opens there.
+RU_LAW_FAMILY = re.compile(
+    r"(?:регулир|регламентир|устанавлива|установ|предусматрива|предусмотр|определ|требова|требу|потребова|потребу"
+    r"|запрещ|запрет|разреш|дозвол|позвол|допуска|допуст|ограничива|огранич|обязыва|предписыва|предписа|предпиш|глас"
+    r"|закреп|гарантир|обеспеч|предоставл|предостав|возлага|возлож|надел|вменя|вмен|защища|защит|охран|распростран"
+    r"|действ|каса|косн|вступа|вступ|содерж|служ|ввод|введ|отмен|измен|меня|замен|дополн|упраздн|наказыва|противореч"
+    r"|освобожд|призна|налага|налож|лиша|описыва|опис|излага|излож|дикту|диктов|подразумева|предполага|предъявл"
+    r"|преследу|постановл|провозгла|воспрещ|возбраня|уполномоч|упорядочива|нормир|квалифицир|фиксир|охватыва"
+    r"|затрагива|затрон|указыва|упомина|упомян|прописыва|оговарива|оговор|соответству|облада|обнов|облага|облож"
+    r"|ратифицир|денонсир|кодифицир|узакони|легализ|санкционир|конкретизир|детализир"
+    r"|соблюд|соблюст|соблюл|блюд|блюст|наруш|преступа|преступ|попира|попра|исполн|выполн|примен|использ|руководств"
+    r"|пренебр|игнорир|обход|обойд|обойт|обош|учитыва|изуч|понима|поня|толку|толков|трактов|тракту|интерпретир"
+    r"|разъясн|комментир|цитир|анализир|чита|прочита|прочт|уважа|почита|придержива|подчин|повину|повинова|опира"
+    r"|ссыла|сосла|основыва|принима|приня|утвержд|утверд|подписыва|подпис|подпиш|одобр|отклон|оспарива|оспор|обжал"
+    r"|пересматрива|пересмотр|рассматрива|рассмотр|отстаива|отсто|поддерж|критику|критиков|обсужда|обсуд|обсужд"
+    r"|помн|забыва|забы|реализу|реализова|внедр|изда|апеллир|следова|следу)[а-яё]*"
+    r"|зна(?:ет|ют|ть|л|ла|ли|ло|ешь|ем|ете)|чт(?:ит|ут|ил|ила|или|ить|ят)|уч(?:т[её]т|тут|[её]л|ла|ли|есть)"
+    r"|обяза(?:л|ла|ли|ть)|обяж(?:ет|ут)|обязател(?:ен|ьна|ьны)|основан[аоы]?|прим(?:ет|ут)|кара(?:ет|ют|ть|л|ла|ли)"
+    r"|да[её]т|дают|дал[аи]?|дать|вел(?:ит|ят|ел|ела|ели)")
+# The endings of a Russian verb's form a word must have for RU_LAW_FAMILY to read it (`_ru_law_verb`): a finite form,
+# an infinitive, a gerund, a past form or a short participle ("предусмотрено", "введён"), never an adverb in -о
+# ("дополнительно", "действительно", "определённо") nor a noun of the same stem ("требования", "содержание").
+RU_VERB_FORM = re.compile(r"[а-яё]+(?:[её]т|ут|ют|ат|ят|ит|л|ла|ли|ло|лся|лась|лось|лись|н|на|ны|ен|ена|ены|т|та|ты"
+                          r"|ешь|ишь|ем|им|ете|ите|ть|ться|тся|ти|чь|сь|вши)|[а-яё]+[еая]но|[а-яё]+[яыиу]то")
 # The English determiners a joined word may take, read as the article is (`_joined_ends`): "and its auditing rules",
 # "and every auditing standard", never ", its rules apply to banks".
 LAW_JOINED_DETERMINER = re.compile(LAW_ARTICLE.pattern + r"|its|their|his|her|our|your|all|each|every|any|some|no"
@@ -2108,7 +2139,12 @@ def _ru_clause_follows(tokens, at):
     "..., бюро в банках ...". An infinitive or a gerund is no clause's verb (`RU_GERUND`): after a verb that governs it
     the law is its fronted object ("Умеет Закон о телевидении и радио не нарушать", "Старается Законом о ... и радио
     не пренебрегать"), so the name may go on with the noun; a modal after it still is ("..., сальдо переносить
-    нельзя")."""
+    нельзя"). A verb a law itself may take (`_ru_law_verb`: "нарушает", "регулирует", "регулируется", "соблюдать"),
+    there or right after the clause's verb ("..., сальдо может нарушать", "... и видео было изменено"), opens no clause,
+    finite or not, with "не" or without (the owner's decision): the law may be its subject or its object, the noun the
+    name's last word ("Знает Закон о ... и радио не нарушает", "Руководствуется при этом Законом о ... и ПО регулируется
+    работа", "..., радио не регулирует"); one that cannot take a law leaves the clause ("... и НДС начисляет вовремя",
+    "..., сальдо переносится на следующий период", "..., бюро ведёт учёт самостоятельно")."""
     text = tokens[at][1]
     low = normalised(text).casefold()
     if not WORD.fullmatch(text) or not re.search('[а-яё]', low) or (LAW_OF_CASE.fullmatch(low) and not text.isupper()) \
@@ -2118,17 +2154,40 @@ def _ru_clause_follows(tokens, at):
     for index in range(at + 1, min(at + 4, len(tokens))):
         following = tokens[index][1]
         word = normalised(following).casefold()
-        if not WORD.fullmatch(following) or not re.search('[а-яё]', word):
+        if not WORD.fullmatch(following) or not re.search('[а-яё]', word) or _ru_law_verb(word):
             return False
         if RU_CLAUSE_VERB.fullmatch(word) or RU_LAW_VERB.fullmatch(word) \
                 or (RU_VERB.fullmatch(word) and not LAW_OF_CASE.fullmatch(word) and not RU_GERUND.fullmatch(word)):
-            return True
+            return not _ru_law_verb_follows(tokens, index)
         if word == 'не':
             continue
         if between or LAW_AND.fullmatch(word) or LAW_NAME_PREPOSITION.fullmatch(word) or LAW_OF_CASE.fullmatch(word) \
                 or any(stem.fullmatch(following) for stem in NAMED_STEMS):
             return False
         between = True
+    return False
+
+
+def _ru_law_verb(word):
+    """Whether a Russian word (lower case) is a form of a verb a law itself may take (`RU_LAW_FAMILY`, of a verb's form,
+    `RU_VERB_FORM`): "нарушает", "регулируется", "соблюдать", "предусмотрено", "знает"; never "начисляет",
+    "переносится", "ведёт", nor "дополнительно", "требования"."""
+    low = word.replace('ё', 'е')
+    return RU_LAW_FAMILY.fullmatch(low) is not None and RU_VERB_FORM.fullmatch(low) is not None
+
+
+def _ru_law_verb_follows(tokens, at):
+    """Whether a verb a law itself may take (`_ru_law_verb`) is among the three words after the verb at `at`, before a
+    mark or a conjunction: a modal's or a copula's ("... может нарушать", "... может строго соблюдать", "... может
+    быть изменено", "... было изменено", `_ru_clause_follows`); never past them ("... начисляет вовремя и соблюдает
+    ...", "..., сальдо переносится, как предусмотрено ...")."""
+    for index in range(at + 1, min(at + 4, len(tokens))):
+        following = tokens[index][1]
+        word = normalised(following).casefold()
+        if not WORD.fullmatch(following) or LAW_AND.fullmatch(word):
+            return False
+        if _ru_law_verb(word):
+            return True
     return False
 
 
