@@ -4428,3 +4428,18 @@ tests/test_category_grounding_matrix.py::test_an_earlier_versions_placing_ground
 tests/test_category_grounding_matrix.py::test_an_earlier_versions_placing_grounds_no_bare_figure[numbers-an-earlier-versions-fourth-place-in-a-date-fact-grounds-no-years-in-reports-uz-blank]
 tests/test_category_grounding_matrix.py::test_an_earlier_versions_placing_grounds_no_bare_figure[numbers-an-earlier-versions-tenth-place-in-a-date-fact-grounds-no-years-in-reports-uz-blank]
 tests/test_category_numbers_parity.py::test_an_unread_placing_read_since_gives_its_place_key_alone
+# The bot sends finished files on whatever one look meets: a failing notice holds back neither the files nor the
+# notices after it, an unreadable file list or one file failing outside its guard holds back nothing else, a file
+# failing for good is given up, a run of failures logs its traceback once, a connection Postgres dropped is opened
+# again, the loop outlives an error, and System health counts the files the bot has not sent for minutes.
+tests/test_bot_delivery_loop.py::test_a_notice_that_fails_holds_back_neither_the_files_nor_the_notices_after_it[core_botjobnotice]
+tests/test_bot_delivery_loop.py::test_a_notice_that_fails_holds_back_neither_the_files_nor_the_notices_after_it[commerce_paymentnotice]
+tests/test_bot_delivery_loop.py::test_a_notice_that_fails_holds_back_neither_the_files_nor_the_notices_after_it[commerce_referralreward]
+tests/test_bot_delivery_loop.py::test_the_last_notice_failing_holds_back_no_file
+tests/test_bot_delivery_loop.py::test_a_look_whose_files_cannot_be_read_sends_them_on_the_next
+tests/test_bot_delivery_loop.py::test_a_file_whose_send_fails_outside_its_own_guard_holds_back_no_other_file
+tests/test_bot_delivery_loop.py::test_the_loop_outlives_an_error_and_sends_the_next_file
+tests/test_bot_delivery_loop.py::test_the_system_page_counts_the_files_the_bot_has_not_sent_for_minutes
+tests/test_bot_delivery_loop.py::test_a_file_that_keeps_failing_before_its_guard_is_given_up
+tests/test_bot_delivery_loop.py::test_while_steps_keep_failing_the_traceback_is_logged_once
+tests/test_bot_delivery_loop.py::test_a_connection_postgres_dropped_is_opened_again_and_the_file_sent

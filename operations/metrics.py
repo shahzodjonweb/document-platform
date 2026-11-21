@@ -6,6 +6,7 @@ from django.db.models import Count, Min, Q, Sum
 from django.db.models.functions import TruncDate
 from django.utils import timezone
 from apps.core.models import Account, Job, FileAsset, OutboxEvent
+from apps.commerce.models import BotDelivery
 from .middleware import known_zone, viewer_zone
 
 DEFINITIONS_VERSION = '1.0.0'
@@ -231,9 +232,18 @@ def category_report(filters, t, lang='en'):
                       for code in CATEGORY_CODES]}
 
 
+# A result file the bot still has to send (telegram/delivery.py drain).
+DELIVERY_WAITING = ('pending', 'retrying', 'sending')
+
+
 def system_snapshot(filters):
     files = FileAsset.objects.filter(account__in=filters.accounts(False))
     return {'stored_files':files.exclude(state__in=['deleted','revoked']).count(),
             'storage':files.exclude(state__in=['deleted','revoked']).aggregate(total=Sum('size_bytes'))['total'] or 0,
             'expired_pending':files.filter(expires_at__lte=timezone.now()).exclude(state__in=['deleted','revoked']).count(),
-            'outbox_pending':OutboxEvent.objects.filter(delivered_at__isnull=True,job__in=filters.jobs()).count()}
+            'outbox_pending':OutboxEvent.objects.filter(delivered_at__isnull=True,job__in=filters.jobs()).count(),
+            # Files the bot has not sent minutes after they were ready. A few may wait out Telegram's rate limit;
+            # many, staying for long, mean the bot's sender has stopped. (Development: test accounts are never sent.)
+            'deliveries_waiting':BotDelivery.objects.filter(account__is_test=filters.environment == 'development',
+                                                            status__in=DELIVERY_WAITING,
+                                                            created_at__lt=timezone.now()-timedelta(minutes=2)).count()}
