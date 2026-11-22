@@ -76,8 +76,25 @@ async def callback(account,action,payload=None):
     # Cleanup deletes a button once it expires, so one that opens a screen is
     # given long enough to still be there when someone scrolls back to it.
     lifetime=timedelta(days=30) if action in REUSABLE else timedelta(minutes=30)
-    await sync_to_async(BotCallback.objects.create)(token=token,account=account,action=action,payload=payload or {},expires_at=timezone.now()+lifetime)
+    expires=timezone.now()+lifetime
+    # ✏️ Make changes lasts as long as its draft: for good, once a file is made from it (apps/studio/keeping.py).
+    if action=='ai_revise':
+        from apps.studio.keeping import button_until,is_kept
+        expires=await sync_to_async(button_until)(account,(payload or {}).get('draft_id'),expires)
+        # Shown on every screen that offers the change, a kept draft's button is one row however often, the one under
+        # its file (delivery.result_controls): kept for good, one more each time would pile up for good.
+        if is_kept(expires):
+            found=await sync_to_async(kept_button)(account,payload or {})
+            if found: return found
+    await sync_to_async(BotCallback.objects.create)(token=token,account=account,action=action,payload=payload or {},expires_at=expires)
     return token
+def kept_button(account,payload):
+    """The token of the ✏️ Make changes row a kept draft already has, kept as long as the draft; None when it has none."""
+    from apps.studio.keeping import KEPT_UNTIL
+    row=BotCallback.objects.filter(account=account,action='ai_revise',payload=payload).order_by('token').first()
+    if row is None: return None
+    if row.expires_at<KEPT_UNTIL: BotCallback.objects.filter(pk=row.pk).update(expires_at=KEPT_UNTIL)
+    return row.token
 async def web_url(account,route=''):
     from apps.commerce.providers import telegram_config
     config=await sync_to_async(telegram_config)()
@@ -923,6 +940,8 @@ async def review_screen(account,draft,quote):
     if change and not cv and await sync_to_async(ai.format_kept)(draft):
         body+='\n'+html.escape(text(account,'ai_format_kept_deck' if deck else 'ai_format_kept_pdf').format(
             button=text(account,await ai_change_copy('ai_revise')),service=TOOL_NAMES[ai.SLIDES][account.locale]))
+    # A logo deleted since the document was made: the change comes without it, said before it is paid for.
+    if change and await sync_to_async(ai.logo_gone)(account,draft): body+='\n'+html.escape(text(account,'logo_left_out'))
     if review:
         # What the category's files gave, said before anything is spent: a file
         # with no text in it (a scan, an empty file) is left out, and a long one
@@ -2151,7 +2170,9 @@ def build_dispatcher():
     async def deck_as_pdf(message,account,draft_id):
         """The PDF the deck was last sent as; else the delivered deck in PowerPoint
         → PDF, ready to start; or, once the server no longer keeps it, the same
-        tool offered for the copy in the chat, unless that copy lacks an edit."""
+        tool offered for the copy in the chat, unless that copy lacks an edit.
+        With no copy in the chat (a deck made on the web), its editor sends the PDF;
+        where the editor cannot open it, a change makes a new file."""
         job,_=await sync_to_async(ai.delivered)(account,draft_id,'pdf')
         if job is not None: return await send_again(message,account,draft_id,'pdf')
         await sync_to_async(set_prompt)(account)
@@ -2159,9 +2180,22 @@ def build_dispatcher():
         except DomainError as exc: return await safe_error(message,account,exc)
         if draft: return await controls(message,account,draft,True,notice=text(account,'ai_deck_as_pdf'))
         if await sync_to_async(ai.sent_edited)(account,draft_id): return await send_again(message,account,draft_id,'pdf')
+        if not await sync_to_async(ai.in_chat)(account,draft_id,'pptx'):
+            opener=await deck_editor_button(message,account,draft_id)
+            if not opener: return await send_again(message,account,draft_id,'pdf')
+            return await render(message,html.escape(text(account,'ai_deck_gone_unsent')),[[opener],[await button(account,'home','home')]],True)
         waiting=await sync_to_async(draft_for)(account)
         rows=[[await tool_button(account,waiting,ai.CONVERTER)],[await button(account,'home','home')]]
         await render(message,html.escape(text(account,'ai_deck_gone')),rows,True)
+
+    async def deck_editor_button(message,account,draft_id):
+        """✏️ Edit opening this deck in its editor, as under its file; None where the editor cannot open it."""
+        from operations.integrations import editor_flags
+        from .delivery import deck_route,edit_url
+        route=await sync_to_async(deck_route)(account,str(draft_id),await sync_to_async(editor_flags)())
+        url=await sync_to_async(edit_url)(account,route)
+        if not url: return None
+        return app_button(text(account,'edit'),url) if private_chat(message) else InlineKeyboardButton(text=text(account,'edit'),url=url)
 
     async def document_as_slides(message,account,draft_id):
         """A change cannot make slides of a PDF: a new deck on the same subject
@@ -2178,8 +2212,13 @@ def build_dispatcher():
         name='PDF' if kind=='pdf' else 'PowerPoint'
         if job is None:
             rows=[[await button(account,await ai_change_copy('ai_revise'),'ai_revise',{'draft_id':str(draft_id)}),await button(account,'home','home')]]
-            edited=await sync_to_async(ai.sent_edited)(account,draft_id)
-            return await render(message,html.escape(text(account,'ai_edited_not_kept').format(format=name) if edited else text(account,'ai_file_gone')),rows,True)
+            # A file in this chat is named only when one of this document went there as itself (ai.in_chat).
+            if await sync_to_async(ai.sent_edited)(account,draft_id):
+                older=await sync_to_async(ai.in_chat)(account,draft_id,older=True)
+                said=text(account,'ai_edited_not_kept' if older else 'ai_edited_not_kept_unsent').format(format=name)
+            else:
+                said=text(account,'ai_file_gone' if await sync_to_async(ai.in_chat)(account,draft_id,kind) else 'ai_file_gone_unsent')
+            return await render(message,html.escape(said),rows,True)
         await render(message,html.escape(text(account,'ai_same_format').format(format=name)),[],True)
         await deliver(message,account,job,f'same-format:{secrets.token_urlsafe(9)}',file=asset)
 
@@ -2549,11 +2588,21 @@ def build_dispatcher():
             body+='\n\n'+text(account,'queued' if job.status=='queued' else 'processing')
             rows.append([await button(account,'check_status','job',{'job_id':str(job.id)})])
         elif job.status=='succeeded':
-            available=await sync_to_async(lambda:job.artifacts.filter(file__state='ready',file__expires_at__gt=timezone.now()).exists())()
-            body+='\n\n'+text(account,'result' if available else 'result_expired')
+            from .delivery import results_left,sent_in_chat
+            # A file kept only as a document's source is not sent again after its day, and is still stored (keeping.py).
+            available,held=await sync_to_async(results_left)(job)
+            # An AI document's file gone, its draft kept: sending the original file again is no advice, Make changes is.
+            kept='' if available else await sync_to_async(ai.kept_draft)(account,job)
+            if available: said='result'
+            elif held: said='result_held'
+            # The copy in this chat is named only when the file came here as itself.
+            elif kept: said='ai_result_kept' if await sync_to_async(sent_in_chat)(job) else 'ai_result_kept_unsent'
+            else: said='result_expired'
+            body+='\n\n'+text(account,said)
             note=notes(account,job)
             if note: body+='\n\n'+html.escape(note)
             if available: rows.append([await button(account,'download','download',{'job_id':str(job.id)})])
+            elif kept: rows.append([await button(account,await ai_change_copy('ai_revise'),'ai_revise',{'draft_id':kept})])
         elif job.status=='no_op': body+='\n\n'+text(account,'no_op')
         elif job.status=='failed':
             from .notifications import failure_line,model_failed

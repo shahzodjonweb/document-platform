@@ -389,6 +389,12 @@ def user_detail(request, pk):
     # out, because exclude() on a JSON key also drops every file with no such key.
     data['files']=FileAsset.objects.filter(Q(metadata__kind__isnull=True)|~Q(metadata__kind__in=('deck_photo','deck_slide')),account=account).order_by('-created_at')[:50]
     data['can_open_files']=allowed(request.ops_user,['Support','Operations'])
+    # Their AI documents, counted and never shown: kept for changes until deleted, here when the customer asks.
+    from apps.studio.keeping import KEPT_UNTIL
+    from apps.studio.models import GenerationDraft
+    drafts=GenerationDraft.objects.filter(account=account)
+    data['documents']={'all':drafts.count(),'kept':drafts.filter(expires_at__gte=KEPT_UNTIL).count()}
+    data['documents']['text']=data['t']['documents_count'].format(**data['documents'])
     if data['can_open_files']:
         from .generation_views import _rows
         data['generation_rows']=_rows(account.generation_records.select_related('job').order_by('-created_at')[:10],data['t'],data['lang'])

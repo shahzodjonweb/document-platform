@@ -247,8 +247,9 @@ def test_a_drawn_deck_saves_after_its_source_file_is_read_no_more_or_deleted(cus
     data = stored(draft)
     assert data['content']['sections'][1]['heading'] == 'Reworded after the file was deleted' and data['source_ids'] == [str(source.id)]
     assert pins_of(draft) and 'render' in draft_data(GenerationDraft.objects.get(pk=draft.pk))
-    # Files named anew are still looked for.
+    # Files named anew are still looked for: one not there is refused, the deck's own file gone since is not.
     other = upload(customer, name='other.pdf')
+    assert login_client(customer).delete(f'/api/v1/files/{other.id}').status_code == 200
     answer = patch(customer, draft, {'version': GenerationDraft.objects.get(pk=draft.pk).version, 'source_ids': [str(source.id), str(other.id)]})
     assert answer.status_code == 404 and error(answer) == 'file_unavailable'
 

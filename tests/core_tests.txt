@@ -7422,3 +7422,102 @@ tests/test_bot_delivery_loop.py::test_a_connection_postgres_dropped_is_opened_ag
 # never a trusted origin named admin that may be long gone; a storage alert links the admin the same way.
 tests/test_bot_manual_payments.py::test_the_review_link_is_on_the_admins_own_host_never_a_trusted_origin_named_admin
 tests/test_bot_manual_payments.py::test_a_storage_alert_links_the_admins_file_storage_settings
+
+# ✏️ Make changes works for good: a generated document's draft, and every file a change of it needs (sources, logo,
+# pictures, slides), never expire; a change a day or 400 days later is quoted and made in the chat and on the web, and
+# a change of a change too. A draft never made, results and other uploads still go after 24 hours; deleting the
+# document or the account takes the kept draft and its files; drafts from before are kept by the next cleanup.
+tests/test_kept_drafts.py::test_a_document_made_in_the_chat_takes_a_change_a_day_and_400_days_later
+tests/test_kept_drafts.py::test_a_deck_with_pictures_and_a_source_takes_a_change_in_the_chat_400_days_later
+tests/test_kept_drafts.py::test_on_the_web_a_change_is_asked_quoted_and_made_400_days_later
+tests/test_kept_drafts.py::test_in_the_deck_editor_a_deck_with_a_logo_is_opened_changed_and_sent_400_days_later
+tests/test_kept_drafts.py::test_a_draft_never_made_results_and_other_uploads_still_go_after_24_hours
+tests/test_kept_drafts.py::test_an_outline_alone_keeps_nothing
+tests/test_kept_drafts.py::test_a_picture_the_deck_no_longer_wears_or_offers_goes_on_its_own_clock
+tests/test_kept_drafts.py::test_deleting_the_document_takes_its_draft_and_files_but_not_what_another_kept_draft_holds
+tests/test_kept_drafts.py::test_deleting_the_account_takes_every_kept_draft_and_its_files
+tests/test_kept_drafts.py::test_drafts_with_a_file_from_before_are_kept_by_the_next_cleanup_and_unsent_ones_are_not
+tests/test_kept_drafts.py::test_nothing_shortens_what_is_kept
+
+# A kept draft or file has no expiry to show: the API says null, never the far-off moment.
+tests/test_kept_drafts.py::test_the_kept_moment_is_never_shown_as_a_date
+
+# What a kept draft keeps with it: its quote's sources and logo and a CV's photo, never a CV's own files.
+tests/test_kept_drafts.py::test_what_a_change_reads_again_is_what_is_kept
+
+# After review: one unreadable draft from before never stops the cleanup; a kept draft removed by hand lets its files
+# go (the backstop); support deletes a customer's AI documents with their files, audited; a kept deck's picture on
+# offer is had long after by asking Pixabay again by its id; a kept source is held for changes, never downloaded after its day.
+tests/test_kept_drafts.py::test_one_unreadable_old_draft_never_stops_the_cleanup
+tests/test_kept_drafts.py::test_a_kept_draft_removed_any_other_way_lets_its_files_go
+tests/test_kept_drafts.py::test_support_deletes_a_customers_ai_documents_with_their_files
+tests/test_kept_drafts.py::test_another_picture_on_a_kept_deck_long_after_asks_pixabay_again_by_its_id
+tests/test_kept_drafts.py::test_a_kept_source_is_held_for_changes_but_never_downloaded_after_its_day
+
+# After the second review: a kept document whose source or logo the customer deleted still takes a change in the chat
+# and on the web, and its own Review draft save, from what the draft holds (logo_left_out said); a kept upload past its
+# day is no file tool's, editor's, download's, preview's or chat send's, while a change still reads it; an account that
+# asked to be deleted has nothing kept; the backfill stops once done; the backstop reads kept files a batch at a time;
+# a delete rolled back leaves every file in place.
+tests/test_kept_drafts.py::test_a_kept_document_whose_source_or_logo_was_deleted_still_takes_a_change[source]
+tests/test_kept_drafts.py::test_a_kept_document_whose_source_or_logo_was_deleted_still_takes_a_change[logo]
+tests/test_kept_drafts.py::test_a_kept_upload_past_its_day_is_held_for_changes_and_served_by_no_path
+tests/test_kept_drafts.py::test_the_bot_sends_no_kept_upload_past_its_day
+tests/test_kept_drafts.py::test_an_account_that_asked_to_be_deleted_never_has_a_draft_kept
+tests/test_kept_drafts.py::test_the_backfill_costs_nothing_once_it_has_done_its_job
+tests/test_kept_drafts.py::test_the_backstop_reads_kept_files_a_few_at_a_time
+tests/test_kept_drafts.py::test_a_delete_that_rolls_back_leaves_every_file_in_place
+
+# A kept draft's ✏️ Make changes is one button however often a screen shows it, and an old AI task offers it in place
+# of "send the original file".
+tests/test_kept_drafts.py::test_make_changes_shown_again_and_again_is_one_button
+tests/test_kept_drafts.py::test_an_old_ai_task_offers_make_changes_not_the_original_file
+
+# After the third review: a file kept for an AI document past its day is refused as kept for it (reason
+# kept_for_document) in the editor, a download, a preview, a file tool and the chat, never as deleted; its editor row and
+# task result say when its own day ends and are expired after it, the editor's list lets it go and its draft can be
+# removed; an old AI task names the chat's copy only when the file was sent there as itself; a kept deck's send offers
+# Make changes.
+tests/test_kept_drafts.py::test_a_file_held_for_a_document_is_said_to_be_kept_never_deleted
+tests/test_kept_drafts.py::test_a_held_file_shows_when_it_stops_being_opened_and_is_expired_after
+tests/test_kept_drafts.py::test_a_document_never_sent_to_the_chat_never_says_its_copy_is_there
+tests/test_kept_drafts.py::test_a_document_sent_to_the_chat_as_a_link_never_says_its_copy_is_there
+tests/test_kept_drafts.py::test_a_kept_decks_send_a_day_later_offers_make_changes
+
+# A CV without its photo says the photo is no longer stored, in every language.
+tests/test_kept_drafts.py::test_a_cv_without_its_photo_says_the_photo_is_no_longer_stored_in_every_language
+
+# After the fourth review: a held upload past its day is never put on a slide by the deck editor; a held upload's own
+# day runs to the end of the latest task it went into while it lasted (the AI document, a file tool, an editor send and
+# its send again, a kept deck's send), and no further; the chat names a copy of a document in the chat only when one
+# went there as itself, else its editor or a change is offered, in every language.
+tests/test_kept_drafts.py::test_a_held_upload_past_its_day_is_never_put_on_a_slide
+tests/test_kept_drafts.py::test_a_file_made_into_an_ai_document_is_served_as_long_as_any_file_used_then
+tests/test_kept_drafts.py::test_a_held_file_sent_again_from_its_editor_is_served_a_day_from_then
+tests/test_kept_drafts.py::test_a_kept_decks_send_moves_its_sources_day_as_it_moves_any
+tests/test_kept_drafts.py::test_a_document_never_sent_to_the_chat_asked_for_as_a_pdf_names_no_copy_there
+tests/test_kept_drafts.py::test_a_deck_never_sent_to_the_chat_asked_for_as_a_pdf_is_sent_to_its_editor
+tests/test_kept_drafts.py::test_a_deck_never_sent_to_the_chat_without_its_editor_is_offered_a_change
+tests/test_kept_drafts.py::test_an_edited_deck_never_sent_to_the_chat_names_no_older_file_there
+tests/test_kept_drafts.py::test_what_names_no_copy_in_the_chat_is_said_in_every_language
+
+# After the fifth review: the chat says in its own words that a file kept only for an AI document's changes past its
+# day is sent there no more.
+tests/test_kept_drafts.py::test_the_chat_says_in_its_own_words_that_a_held_file_is_sent_there_no_more
+
+# After the fifth review: the PDF editor's draft on a held upload and what a CV's reader took from it go when its day
+# ends; an account that asked to be deleted loses every draft at the next cleanup; a held upload past its day goes into
+# no new document, nor the chat's lists of files, while its own document's changes and saves go on.
+tests/test_kept_drafts.py::test_editor_marks_and_cv_reads_on_a_kept_upload_go_when_its_day_ends
+tests/test_kept_drafts.py::test_an_account_that_asked_to_be_deleted_loses_every_draft_at_the_next_cleanup
+tests/test_kept_drafts.py::test_a_held_upload_past_its_day_goes_into_no_new_document
+tests/test_kept_drafts.py::test_a_held_upload_past_its_day_still_goes_into_its_own_documents_changes
+tests/test_kept_drafts.py::test_the_chat_offers_no_held_upload_past_its_day_for_a_new_document
+
+# After the sixth review: the API says a held file past its day is used there no more and is uploaded again to be used,
+# in words that fit every place that refuses it (Send to Telegram, a new AI document, a download, a file tool), in every
+# language; the web's editor keeps its own.
+tests/test_kept_drafts.py::test_a_held_file_is_told_to_be_uploaded_again_wherever_it_is_refused
+
+# After the sixth review: a page picture of a held source goes when the source's own day ends.
+tests/test_kept_drafts.py::test_a_page_picture_of_a_held_source_lasts_no_longer_than_its_day

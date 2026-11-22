@@ -258,9 +258,41 @@ def app_button(label, url):
 
 
 def editable_pdf(asset):
-    """A file the editor would open now: the same refusals as studio.views.editors."""
+    """A file the editor would open now: the same refusals as studio.views.editors, a file held only for an AI
+    document's changes past its day among them (apps/studio/keeping.py)."""
+    from apps.studio.keeping import held_past_its_day
     return (asset.mime_type == 'application/pdf' and not asset.metadata.get('encrypted')
-            and asset.state == 'ready' and asset.expires_at > timezone.now())
+            and asset.state == 'ready' and asset.expires_at > timezone.now() and not held_past_its_day(asset))
+
+
+# Larger than this, a file goes to the chat as a link to the web app, not as itself (attempt).
+CHAT_FILE_BYTES = 50 * 1024 * 1024
+
+
+def sent_in_chat(job, kind=None):
+    """Whether a file of this task was sent into the chat as itself, so a copy of it is there however long the server
+    keeps it: a delivery that went out, not as the link a file over CHAT_FILE_BYTES goes as. A task made on the web has
+    none unless the customer sent its file here (Send to Telegram).
+
+    `job` may be several tasks (a queryset of the account's: those made from one draft), and `kind` ('pdf', 'pptx')
+    asks for a file of that kind only.
+    """
+    from apps.core.models import Job
+    sent = BotDelivery.objects.filter(status='delivered', artifact__file__size_bytes__lte=CHAT_FILE_BYTES)
+    sent = sent.filter(account_id=job.account_id, artifact__job=job) if isinstance(job, Job) else sent.filter(artifact__job__in=job)
+    if kind:
+        sent = sent.filter(artifact__file__metadata__kind=kind)
+    return sent.exists()
+
+
+def results_left(job):
+    """(ready, held) for a finished task's files: whether one can still be sent, and whether one is still stored but
+    only for changing an AI document made from it (apps/studio/keeping.py), which is sent no more."""
+    from apps.studio.keeping import held_past_its_day
+    now = timezone.now()
+    files = [artifact.file for artifact in job.artifacts.filter(file__state='ready', file__expires_at__gt=now).select_related('file')]
+    held = [held_past_its_day(asset, now) for asset in files]
+    return (not all(held)) if files else False, any(held)
 
 
 def editable_deck(account, identifier):
@@ -336,14 +368,17 @@ def result_controls(delivery):
     # A generated document can be changed by asking; a converted file cannot.
     revise = revisable_draft(delivery)
     if revise:
+        from apps.studio.keeping import button_until
         controls = BotCallback.objects.filter(account=delivery.account, action='ai_revise', payload={'draft_id': revise})
-        # One button for a draft however often it is sent: it lasts as long as the newest file.
-        controls.filter(expires_at__lt=delivery.artifact.file.expires_at).update(expires_at=delivery.artifact.file.expires_at)
+        # One button for a draft however often it is sent: it lasts as long as the draft, kept for good once a file
+        # is made from it (apps/studio/keeping.py), and never less than the newest file.
+        until = button_until(delivery.account, revise, delivery.artifact.file.expires_at)
+        controls.filter(expires_at__lt=until).update(expires_at=until)
         control = controls.first()
         if control is None:
             control = BotCallback.objects.create(
                 token=secrets.token_urlsafe(12), account=delivery.account, action='ai_revise',
-                payload={'draft_id': revise}, expires_at=delivery.artifact.file.expires_at,
+                payload={'draft_id': revise}, expires_at=until,
             )
         label = EDIT_BUTTON_COPY['ai_revise'] if flags['edit_buttons'] else 'ai_revise'
         rows.append([InlineKeyboardButton(text=UX[locale][label], callback_data=control.token)])
@@ -367,7 +402,9 @@ async def attempt(delivery_id,bot):
     if delivery.account.is_test and isinstance(getattr(bot,'session',None),AiohttpSession):
         return await sync_to_async(finish)(delivery.id,status='blocked',error='test_account_delivery')
     asset=delivery.artifact.file
-    if asset.state!='ready' or asset.expires_at<=timezone.now():
+    from apps.studio.keeping import held_past_its_day
+    # A result kept only as a document's source is held for its changes, not sent again after its day (keeping.py).
+    if asset.state!='ready' or asset.expires_at<=timezone.now() or held_past_its_day(asset):
         return await sync_to_async(finish)(delivery.id,status='failed',error='file_expired')
     try:
         locale = delivery.account.locale if delivery.account.locale in RESULT_COPY else 'en'
@@ -376,7 +413,7 @@ async def attempt(delivery_id,bot):
         # A category's document says under it what to do with it (category_notices); any other file nothing more.
         notices = (await sync_to_async(lambda: category_notices(delivery.artifact.job, locale))()
                    if delivery.artifact.role == 'user_document' else [])
-        if asset.size_bytes>50*1024*1024:
+        if asset.size_bytes>CHAT_FILE_BYTES:
             cfg=await sync_to_async(telegram_config)()
             controls.inline_keyboard.insert(0, [InlineKeyboardButton(text=copy['open'], url=cfg['webapp_url'])])
             large='\n\n'.join([copy['large'],*notices])

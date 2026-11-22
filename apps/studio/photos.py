@@ -183,6 +183,40 @@ def search(query, key, per_page=SEARCH_HITS, image_type='photo'):
     return [hit for hit in (_hit(value, image_type) for value in data['hits'][:per_page]) if hit]
 
 
+def by_id(identifier, key):
+    """One image by its Pixabay id, with a fresh link to its large copy; None when Pixabay no longer has it.
+
+    A link a search returned lasts about a day (Pixabay's docs give webformatURL 24 hours; largeImageURL's
+    /get/ links are of the same kind), while a kept deck's pictures on offer are tapped long after: their
+    links are asked for again by id. Its answer is cached for 24 hours, as a search's is.
+    """
+    from django.utils import timezone
+    from .models import PhotoSearch
+    from .provider import _NoRedirect
+    if type(identifier) is not int or identifier <= 0:
+        return None
+    now = timezone.now()
+    cache = _cache_key(f'#id {identifier}', 'any')
+    row = PhotoSearch.objects.filter(key=cache, expires_at__gt=now).first()
+    if row is not None:
+        return (row.hits or [None])[0]
+    take_rate(True)
+    request = urllib.request.Request(API + '?' + urlencode({'key': key, 'id': identifier, 'safesearch': 'true'}),
+                                     headers={'User-Agent': USER_AGENT})
+    with _open(request, SEARCH_TIMEOUT, _NoRedirect()) as response:
+        data = json.loads(_read(response, SEARCH_BYTES))
+    if not isinstance(data, dict) or not isinstance(data.get('hits'), list):
+        raise ValueError('shape')
+    found = None
+    for value in data['hits'][:1]:
+        kind = value.get('type') if isinstance(value, dict) and value.get('type') in KINDS else 'photo'
+        hit = _hit(value, kind)
+        if hit and hit['id'] == identifier:
+            found = hit
+    PhotoSearch.objects.update_or_create(key=cache, defaults={'hits': [found] if found else [], 'expires_at': now + timedelta(hours=CACHE_HOURS)})
+    return found
+
+
 def prepare(raw, long_edge=LONG_EDGE, max_bytes=MAX_JPEG):
     """Untrusted image bytes as a plain JPEG a deck can hold, or ValueError."""
     from PIL import Image, ImageOps

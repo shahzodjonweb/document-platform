@@ -6,6 +6,7 @@
   "page_limit_exceeded": "Bitta vazifa uchun sahifalar juda ko‘p. Bitta faylni olib tashlang yoki kamroq sahifa tanlang.",
   "file_unavailable": "Fayl mavjud emas yoki hisobingizga tegishli emas.",
   "file_expired": "Fayl muddati tugadi. Uni qayta yuklang.",
+  "file_kept_for_document": "Bu fayl faqat undan yaratilgan AI hujjatni o‘zgartirish uchun saqlanadi, shuning uchun undan bu yerda endi foydalanib bo‘lmaydi. Undan foydalanish uchun uni qayta yuklang.",
   "invalid_pages": "Takrorlanmagan, to‘g‘ri sahifa raqamlarini tanlang.",
   "invalid_parameters": "Amal sozlamalarini tekshiring.",
   "processing_failed": "Qayta ishlash bajarilmadi. Bu limitingizga hisoblanmaydi.",

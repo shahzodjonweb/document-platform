@@ -171,6 +171,11 @@ def me(request):
         a.deletion_requested_at=timezone.now()
         a.save(update_fields=['deletion_requested_at'])
         FileAsset.objects.filter(account=a).update(state='revoked',expires_at=timezone.now())
+        # Its drafts too: one a file was made from is kept for good otherwise (apps/studio/keeping.py).
+        from apps.studio.keeping import delete
+        from apps.studio.models import GenerationDraft
+        for draft in GenerationDraft.objects.filter(account=a):
+            delete(draft)
         request.session.pop('customer_account_id',None)
         return {'status':'deletion_requested'}
     if request.method=='PATCH':
@@ -298,6 +303,10 @@ def byte_range(header,size):
 
 def download_asset(request,asset,ranges=False):
     if asset.state!='ready' or asset.expires_at<=timezone.now(): raise DomainError('file_expired',410)
+    # A kept draft's source or logo is held for its changes after its day, as before it would have gone: never
+    # served again by any path (a download, a result's, a shared link), so the account is no file host (keeping.py).
+    from apps.studio.keeping import held_past_its_day,held_refusal
+    if held_past_its_day(asset): raise held_refusal()
     from . import storage
     span=None
     # This answer carries no validator, so an If-Range never matches it: that asks for the whole file.

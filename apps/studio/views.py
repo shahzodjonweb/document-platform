@@ -9,7 +9,7 @@ from django.utils import timezone
 from apps.core.views import account_limit,api,body,count_request,download_asset,throttle
 from apps.core.errors import DomainError
 from apps.core.models import Artifact,FileAsset,Job
-from apps.core.serializers import asset_data,quote_data,job_data
+from apps.core.serializers import quote_data,job_data,served_data
 from apps.core.services import owned_assets,create_quote,submit_job,execute_job,record_event
 from apps.core.policy import EDITOR_LIMITS,FEATURES,payload_bytes,plan_limits,require_feature
 from operations.integrations import ai_config,editor_flags
@@ -88,12 +88,9 @@ def draft_detail(request,pk):
     d=GenerationDraft.objects.filter(account=request.account,id=pk,expires_at__gt=timezone.now()).first()
     if not d:raise DomainError('not_found',404)
     if request.method=='DELETE':
-        from .tasks import drop_renders
-        # Under the draft's lock: a render storing its pictures finishes first and they are seen here, or it finds the draft gone.
-        with transaction.atomic():
-            GenerationDraft.objects.select_for_update().filter(pk=d.pk).first()
-            drop_renders(d)
-            d.delete()
+        # With its slides, its pictures and the uploads only it kept (a draft a file was made from is kept for good).
+        from .keeping import delete
+        delete(d)
         return {'deleted':True}
     if request.method=='PATCH':
         data=body(request,limit=DECK_PATCH_BYTES,too_large='payload_too_large') if d.feature_id==SLIDES else body(request)
@@ -142,7 +139,12 @@ def cv_reads(request):
         cancelled,_=CvSourceRead.objects.filter(account=request.account,asset_id__in=valid,status='queued').delete()
         return {'cancelled':cancelled}
     account_limit(request.account,'cv_reads',CV_READS_PER_MINUTE)
-    return reads.state(request.account,owned_assets(request.account,ids))
+    assets=owned_assets(request.account,ids)
+    # A file kept for an AI document's changes past its own day is read for no CV again (keeping.py): answered as a
+    # file that ran out is, which the page forgets, and never queued.
+    from .keeping import held_past_its_day
+    if any(held_past_its_day(a) for a in assets):raise DomainError('file_unavailable',404)
+    return reads.state(request.account,assets)
 
 @api(('POST',))
 def outline(request,pk):
@@ -515,6 +517,9 @@ def shares(request):
         from .privacy import may_share_artifact
         if not a or not may_share_artifact(a):raise DomainError('share_role_forbidden',403)
         if a.file.state!='ready' or a.file.expires_at<=timezone.now():raise DomainError('file_expired',410)
+        from .keeping import held_past_its_day
+        # A result held for a kept draft's changes past its day is served by no link (download_asset): none is made.
+        if held_past_its_day(a.file):raise file_gone(a.file)
         hours=data.get('expires_hours',24)
         if type(hours)!=int or not 1<=hours<=24:raise DomainError('invalid_parameters')
         token=secrets.token_urlsafe(32)
@@ -538,17 +543,24 @@ def shared(request,token):
     return download_asset(request,s.artifact.file)
 
 def editor_row(e):
-    """A draft in a list. Its marks are the customer's text, decrypted a row at a time, and a list has no use for them."""
-    return {'id':str(e.id),'version':e.version,'file':asset_data(e.file),'pages':e.file.metadata.get('page_sizes',[]),'form_fields':e.file.metadata.get('form_fields',[]),'image_counts':e.file.metadata.get('image_counts',[]),'input_ids':e.input_ids,'limits':EDITOR_LIMITS,'updated_at':e.updated_at,'device':e.device}
+    """A draft in a list. Its marks are the customer's text, decrypted a row at a time, and a list has no use for them.
+
+    Its file as the editor opens it: one held for a kept draft's changes says when its own day ends (served_data).
+    """
+    return {'id':str(e.id),'version':e.version,'file':served_data(e.file),'pages':e.file.metadata.get('page_sizes',[]),'form_fields':e.file.metadata.get('form_fields',[]),'image_counts':e.file.metadata.get('image_counts',[]),'input_ids':e.input_ids,'limits':EDITOR_LIMITS,'updated_at':e.updated_at,'device':e.device}
 def editor_data(e):
     return {**editor_row(e),'commands':stored_commands(e)}
 def _file_to_open(account,fid):
-    """A file that ran out says so, apart from one that was never this account's."""
-    try:return owned_assets(account,[fid])[0]
+    """A file that ran out says so, apart from one that was never this account's. One held past its day for a kept
+    draft's changes is opened no more, and says it is kept for them (file_gone)."""
+    from .keeping import held_past_its_day
+    try:a=owned_assets(account,[fid])[0]
     except DomainError as error:
         gone=FileAsset.objects.filter(account=account,id=fid,expires_at__lte=timezone.now()).first() if error.code=='file_unavailable' else None
         if gone:raise file_gone(gone) from None
         raise
+    if held_past_its_day(a):raise file_gone(a)
+    return a
 def _refusal(a):
     """Why the editor cannot open a file, as the refusal says it, or None when it can."""
     if a.metadata.get('encrypted'):return 'password'
@@ -571,14 +583,19 @@ def editors(request):
             # Two opens at once: the other made it, and both come back to it.
             return JsonResponse(editor_data(EditorDocument.objects.get(account=request.account,file=a)),status=200)
         return JsonResponse(editor_data(e),status=201)
-    return {'results':[editor_row(e) for e in EditorDocument.objects.filter(account=request.account,file__expires_at__gt=timezone.now(),file__state='ready').select_related('file')]}
+    from .keeping import held_past_its_day
+    # A file held for a kept draft's changes past its day is opened no more: it leaves the list as a file that ran out does.
+    return {'results':[editor_row(e) for e in EditorDocument.objects.filter(account=request.account,file__expires_at__gt=timezone.now(),file__state='ready').select_related('file') if not held_past_its_day(e.file)]}
 @api(('GET','PATCH','DELETE'))
 def editor_detail(request,pk):
     with transaction.atomic():
         e=EditorDocument.objects.select_for_update().select_related('file').filter(account=request.account,id=pk).first()
         if not e:raise DomainError('not_found',404)
+        from .keeping import held_past_its_day
         if e.file.state!='ready' or e.file.expires_at<=timezone.now():raise file_gone(e.file)
         if request.method=='DELETE':e.delete();return {'deleted':True}
+        # One held for a kept draft's changes past its day is opened no more; its draft could still be removed above.
+        if held_past_its_day(e.file):raise file_gone(e.file)
         if request.method=='PATCH':
             data=body(request,limit=131072,too_large='payload_too_large')
             commands=data.get('commands',[])

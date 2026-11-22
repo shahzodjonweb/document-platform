@@ -90,7 +90,9 @@ def keep_picture(account,draft_id,section_id,source,jpeg,expires_at=None,**facts
     """One picture of a deck as a file of the account's, so a later redraw needs no network.
 
     It expires by its own clock (cleanup_expired), 24 hours unless `expires_at`
-    says longer; settle_job moves that with the deck while the pins name it.
+    says longer. Once a file is made from the deck its draft is kept for good
+    (settle_job, keeping.keep), and so is each picture its pins name, on a slide
+    or on offer; one they stop naming goes back on its own clock (keeping.hold).
     `later`: a job with sixty of these never waits on the bucket.
     """
     name=uuid.uuid4().hex
@@ -355,8 +357,14 @@ def execute_generation(job,output_dir):
     quoted_sections=len(data['content']['sections'])
     if cfg['mode']=='openai' and len(content['sections'])>quoted_sections:
         content['sections']=content['sections'][:quoted_sections];warnings.append('sections_trimmed')
-    from .branding import render_style
-    style=render_style(job.account,data,feature_id=job.feature_id)
+    from .branding import render_style,without_logo
+    logo=((data.get('options') or {}).get('branding') or {}).get('logo_asset_id')
+    if logo and str(logo) not in map(str,job.quote.input_ids or []):
+        # A logo the quote left out, gone since the draft was made (domain.generation_quote): the file comes without
+        # it, with its brand name and colour, and says so.
+        warnings.append('logo_left_out')
+        style=render_style(job.account,without_logo(data),feature_id=job.feature_id)
+    else:style=render_style(job.account,data,feature_id=job.feature_id)
     ext=data['output_format']
     photo_style=(data.get('options') or {}).get('photo_style') or 'photo'
     if cv:

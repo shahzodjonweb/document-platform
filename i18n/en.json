@@ -6,6 +6,7 @@
   "page_limit_exceeded": "Too many pages for one task. Remove a file or choose fewer pages.",
   "file_unavailable": "This file is unavailable or does not belong to your account.",
   "file_expired": "This file has expired. Upload it again.",
+  "file_kept_for_document": "This file is kept only for changing the AI document made from it, so it can no longer be used here. Upload it again to use it.",
   "invalid_pages": "Choose valid page numbers without duplicates.",
   "invalid_parameters": "Check the operation settings.",
   "processing_failed": "Processing failed. It doesn't count towards your limits.",

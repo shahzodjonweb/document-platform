@@ -215,6 +215,11 @@ def request(account, draft_id, body):
         asset = FileAsset.objects.filter(account=account, pk=asset_id, state='ready', expires_at__gt=timezone.now()).first() if asset_id else None
         if asset is None:
             raise DomainError('not_found', 404)
+        # An upload a kept draft holds past its own day (its logo, a CV's photo) is kept for that draft's changes only:
+        # a copy on a slide would be kept, and served, with this deck for good (keeping.py).
+        from .keeping import held_past_its_day, held_refusal
+        if held_past_its_day(asset):
+            raise held_refusal()
         if asset.mime_type not in UPLOAD_TYPES or asset.size_bytes > IMAGE_BYTES:
             raise DomainError('invalid_image')
         payload['asset_id'] = str(asset.pk)
@@ -273,6 +278,9 @@ def _write(account, draft_id, change, *, row=None, version=None, cap=None):
         draft.encrypted_data = pack(data)
         draft.version += 1
         draft.save(update_fields=['encrypted_data', 'version'])
+        # A kept deck keeps the pictures it now wears and offers; one it let go of goes on its own clock.
+        from .keeping import hold
+        hold(draft, data)
     return draft
 
 
@@ -396,8 +404,10 @@ def _usage(row, outcome):
 
 
 def _keep(account, draft, sid, source, jpeg, **facts):
+    """A picture for the deck, on the deck's clock; a kept deck's is kept once the deck wears or offers it (keeping.hold), not before."""
     from .execution import keep_picture
-    return keep_picture(account, draft.pk, sid, source, jpeg, expires_at=draft.expires_at, **facts)
+    from .keeping import is_kept
+    return keep_picture(account, draft.pk, sid, source, jpeg, expires_at=None if is_kept(draft.expires_at) else draft.expires_at, **facts)
 
 
 def _slide_text(section):
@@ -456,14 +466,27 @@ def _fill(row, draft, data, payload):
             'unmatched': result.unmatched, 'failed': max(0, result.failed - result.unmatched)}
 
 
-def _download(row, url):
+def _download_candidate(row, chosen, key):
+    """A picture on offer, large: from the link it was found with, or, that link run out, a fresh one asked for by its id.
+
+    Pixabay's links last about a day, and a kept deck is opened a month or a year after its pictures were found.
+    """
     from . import photos as stock
     try:
-        prepared = stock.download(url)
+        prepared = stock.download(chosen.get('url'))
     except Exception:
-        _usage(row, 'failed')
-        raise DomainError('picture_unavailable', 409) from None
-    _usage(row, 'succeeded')
+        prepared = None
+    if prepared is None and chosen.get('provider', 'pixabay') == 'pixabay':
+        try:
+            found = stock.by_id(chosen.get('id'), key)
+            prepared = stock.download(found['url']) if found else None
+        except DomainError:
+            raise
+        except Exception:
+            prepared = None
+    _usage(row, 'succeeded' if prepared else 'failed')
+    if prepared is None:
+        raise DomainError('picture_unavailable', 409)
     return prepared
 
 
@@ -502,9 +525,10 @@ def _next(row, draft, data, payload):
             raise DomainError('picture_unavailable', 409)
         asset_id = str(asset.pk)
     else:
-        if not pixabay_config()['ready']:
+        config = pixabay_config()
+        if not config['ready']:
             raise DomainError('photos_unavailable', 409)
-        prepared = _download(row, chosen.get('url'))
+        prepared = _download_candidate(row, chosen, config['api_key'])
         asset_id = _keep(account, draft, sid, {'provider': chosen.get('provider', 'pixabay'), 'id': chosen.get('id'), 'page_url': chosen.get('page_url', '')},
                          prepared['jpeg'], candidate=False, width=prepared['width'], height=prepared['height'])
     written = _write(account, draft.pk, lambda current, _: _wear(current, sid, asset_id, layout, taken=chosen),
@@ -515,9 +539,11 @@ def _next(row, draft, data, payload):
 def _upload(row, draft, data, payload):
     """The customer's own photo, made a plain JPEG with no EXIF (photos.prepare), on the slide."""
     from . import photos as stock
+    from .keeping import held_past_its_day
     account, sid = row.account, payload['section_id']
     asset = _stored(payload['asset_id'])
-    if asset is None or asset.account_id != account.pk:
+    # Asked within its own day, a held upload whose day ended while the task waited is not taken either (request).
+    if asset is None or asset.account_id != account.pk or held_past_its_day(asset):
         raise DomainError('picture_unavailable', 409)
     try:
         prepared = stock.prepare(storage.read_bytes(asset.object_key))

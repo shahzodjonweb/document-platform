@@ -35,8 +35,13 @@ def version_conflict(e,**mine):
     return DomainError('version_conflict',409,{'updated_at':e.updated_at,'device':e.device,'theirs':len(stored_commands(e)),**mine})
 
 def file_gone(a):
-    """A file the customer deleted did not run out: telling them it did, and to send it again, would be false."""
-    return DomainError('file_unavailable',404) if a.metadata.get('deleted_by_customer') else DomainError('file_expired',410)
+    """A file the customer deleted did not run out: telling them it did, and to send it again, would be false.
+
+    Nor did one held for an AI document's changes past its day: it is still stored, and its refusal says why (keeping.py).
+    """
+    if a.metadata.get('deleted_by_customer'):return DomainError('file_unavailable',404)
+    from .keeping import held_past_its_day,held_refusal
+    return held_refusal() if held_past_its_day(a) else DomainError('file_expired',410)
 
 def normalized_commands(commands,assets):
     """A draft's marks as they are stored, or the refusal naming the one at fault."""
@@ -153,7 +158,12 @@ def _send_when_made(job):
 def _keep(job):
     """A file sent again lasts as long as one just made, and so do the files it came from, as settle_job has it."""
     deadline=timezone.now()+timedelta(hours=24)
-    FileAsset.objects.filter(account=job.account,state='ready',id__in=[*job.input_ids,*job.artifacts.values_list('file_id',flat=True)]).update(expires_at=deadline)
+    # Never shorter than it already was: a file a kept draft holds stays kept, and is served to the new day's end
+    # unless its own day is over (apps/studio/keeping.py).
+    files=[*job.input_ids,*job.artifacts.values_list('file_id',flat=True)]
+    FileAsset.objects.filter(account=job.account,state='ready',id__in=files,expires_at__lt=deadline).update(expires_at=deadline)
+    from .keeping import used
+    used(job.account_id,files,deadline)
     # A deck's draft and all it draws go with its file, or the file would outlive what changes it.
     if job.feature_id in RENDER_IDS:
         from apps.core.services import _extend_draft

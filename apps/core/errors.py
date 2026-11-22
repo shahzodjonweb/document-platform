@@ -38,4 +38,9 @@ def error_data(error, locale='en', request_id=''):
         message = message.replace('{limit}', page_limit_count(error))
     if error.code == 'cv_reading':
         message = cv_reading_message(error, messages, message)
+    # A file held for an AI document's changes (apps/studio/keeping.held_refusal) is still stored: it never ran out.
+    # Every place that refuses it says this (the editor, a download, a preview, a file tool, Send to Telegram, a new
+    # AI document), so its words fit them all; the web's editor has its own.
+    if error.code == 'file_expired' and (error.params or {}).get('reason') == 'kept_for_document':
+        message = messages.get('file_kept_for_document', message)
     return {'code': error.code, 'message_key': f'errors.{error.code}', 'message': message, 'message_params': error.params, 'request_id': request_id, 'field_errors': {}, 'retryable': error.retryable}

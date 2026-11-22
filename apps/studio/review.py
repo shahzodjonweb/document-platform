@@ -1,7 +1,9 @@
 """AI requests and the documents they produced, kept for staff review.
 
-Customers' files expire after 24 hours, and so do their drafts. The team needs
-longer to see what people ask the AI for and whether what it made was any
+Customers' files expire after 24 hours. A document's draft is kept in their
+account for its changes until they delete it (keeping.py), and not for the
+team: what is kept here is the team's own copy. The team needs longer than a
+day to see what people ask the AI for and whether what it made was any
 good, so each generation that becomes a task leaves a record: the request as it
 was submitted (encrypted, like the draft) and, once the task succeeds, a copy of
 the document. Both are deleted after REVIEW_DAYS.

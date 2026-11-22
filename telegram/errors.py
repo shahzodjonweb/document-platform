@@ -476,6 +476,10 @@ def bot_error(error, locale='en', account=None):
     if error.code == 'bot_wrong_file':
         from .ux_copy import UX
         return UX[locale]['wrong_file']
+    # A file held for an AI document's changes (apps/studio/keeping.held_refusal) is still stored: it never ran out.
+    if error.code == 'file_expired' and (error.params or {}).get('reason') == 'kept_for_document':
+        from .ux_copy import UX
+        return UX[locale]['result_held']
     if error.code in LIMITS:
         value = _limit_text(error, locale, account)
         if value:

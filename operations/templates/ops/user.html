@@ -100,6 +100,14 @@
   </div>
 </section>
 
+<section class="panel" id="documents">
+  <div class="panel-heading">
+    <div><h2>{{ t.documents_title }}</h2><p>{{ t.documents_desc }}</p></div>
+    {% if can_open_files and documents.all %}<button type="button" class="button secondary" data-dialog-open="delete-documents" data-testid="delete-documents">{% icon 'close' 17 %}{{ t.documents_delete }}</button>{% endif %}
+  </div>
+  <p class="field-hint">{{ documents.text }}</p>
+</section>
+
 {% if generation_rows %}
 <section class="panel" id="ai">
   <div class="panel-heading">
@@ -178,6 +186,25 @@
   </div>
   <p class="field-hint">{{ t.invites_note }}</p>
 </section>
+
+{% if can_open_files and documents.all %}
+<dialog class="dialog" id="delete-documents" aria-labelledby="delete-documents-title">
+  <form method="post" action="/ops/users/{{ account.id }}/documents/delete">
+    {% csrf_token %}
+    <div class="dialog-head">
+      <div><h2 id="delete-documents-title">{{ t.documents_delete }}</h2><p>{{ t.documents_delete_desc }}</p></div>
+      <button type="button" class="icon-button" data-dialog-close aria-label="{{ t.close }}">{% icon 'close' %}</button>
+    </div>
+    <div class="dialog-body integration-form">
+      <label><input type="checkbox" name="confirm" value="yes" required> {{ t.documents_delete_confirm }}</label>
+    </div>
+    <div class="dialog-foot">
+      <button type="button" class="button secondary" data-dialog-close>{{ t.cancel }}</button>
+      <button class="button danger-outline">{% icon 'close' 17 %}{{ t.documents_delete }}</button>
+    </div>
+  </form>
+</dialog>
+{% endif %}
 
 {% if can_assign_plan %}
 <dialog class="dialog" id="assign-plan" aria-labelledby="assign-plan-title">

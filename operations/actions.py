@@ -20,6 +20,40 @@ def cancel(request,pk):
     return redirect(f'/ops/jobs/{pk}?saved=1')
 
 
+@require_staff('Support', 'Operations')
+@require_POST
+def delete_documents(request, pk):
+    """Delete every AI document of one account, as a customer's own delete would: each draft with the files it kept.
+
+    The privacy policy keeps an AI document's request, text and the files a change of it needs until the account
+    is deleted or the customer asks: this is how support answers that ask (apps/studio/keeping.py delete).
+    One draft per transaction, its files' bytes removed as each commits: hundreds of kept decks never sit in one
+    transaction, and what is deleted before a failure is audited all the same.
+    """
+    from apps.studio import keeping
+    from apps.studio.models import GenerationDraft
+    if request.POST.get('confirm') != 'yes':
+        return HttpResponseBadRequest('Tick the box to confirm.')
+    account = Account.objects.filter(pk=pk).first()
+    if not account:
+        return HttpResponseBadRequest('Unknown account.')
+    done = {'documents': 0, 'kept': 0}
+    try:
+        for draft_id in list(GenerationDraft.objects.filter(account=account).values_list('pk', flat=True)):
+            with transaction.atomic():
+                draft = GenerationDraft.objects.select_for_update().filter(pk=draft_id).first()
+                if draft is None:
+                    continue
+                kept = keeping.is_kept(draft.expires_at)
+                keeping.delete(draft)
+            done['documents'] += 1
+            done['kept'] += int(kept)
+    finally:
+        audit(request.ops_user, 'account.documents_delete', pk,
+              before=done, after={'documents': GenerationDraft.objects.filter(account=account).count()})
+    return redirect(f'/ops/users/{pk}?saved=1#documents')
+
+
 PLANS = ('free', 'plus', 'premium')
 
 

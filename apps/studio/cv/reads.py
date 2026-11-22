@@ -136,7 +136,10 @@ def ensure_ids(account, ids):
         except (TypeError, ValueError, AttributeError):
             continue
     from apps.core.models import FileAsset
-    assets = list(FileAsset.objects.filter(account=account, id__in=known, state='ready', expires_at__gt=timezone.now()))
+    from apps.studio.keeping import held_past_its_day
+    # Nor one kept for an AI document's changes past its own day: the draft refuses it (keeping.refuse_new_held).
+    assets = [asset for asset in FileAsset.objects.filter(account=account, id__in=known, state='ready', expires_at__gt=timezone.now())
+              if not held_past_its_day(asset)]
     return ensure(account, assets, results=False) if assets else {}
 
 

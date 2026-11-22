@@ -26,7 +26,7 @@ from apps.core import storage
 from apps.core.errors import DomainError
 from apps.core.models import FileAsset, Job, Quote, StoredObject
 from apps.core.services import cleanup_expired, execute_job, settle_job, submit_job
-from apps.studio import checkpoints, deck_designs, execution, photos as stock, provider, variants
+from apps.studio import checkpoints, deck_designs, execution, keeping, photos as stock, provider, variants
 from apps.studio.branding import render_style
 from apps.studio.domain import (DOCUMENT, SLIDES, create_draft, draft_data, draft_jobs, generation_quote, pack, unpack, update_draft,
                                 validate_generation_quote)
@@ -721,13 +721,14 @@ def test_a_change_that_outlives_its_document_can_still_be_saved(customer, stock_
     revised = create_draft(customer, {'prompt': 'Make the second slide shorter.', 'options': {'revise_draft_id': str(original.id)}})
     assert run(customer, revised).status == 'succeeded'
     revised.refresh_from_db()
-    assert revised.expires_at > GenerationDraft.objects.get(pk=original.pk).expires_at
+    assert keeping.is_kept(revised.expires_at) and keeping.is_kept(GenerationDraft.objects.get(pk=original.pk).expires_at), 'each was made: each is kept'
     # What a save makes of it while the document is there.
     revised = update_draft(customer, revised.id, {'version': revised.version, 'title': 'Saved in time'})
     before = unpack(revised.encrypted_data)
 
-    # Hour 30: the document went at hour 24, the change has until hour 44. A save makes the same of it.
+    # Hour 30: the customer deleted the document, which no longer expires. A save makes the same of the change.
     clock(30)
+    assert login_client(customer).delete(f'/api/v1/generation/drafts/{original.id}').status_code == 200
     cleanup_expired()
     assert not GenerationDraft.objects.filter(pk=original.pk).exists()
     saved = update_draft(customer, revised.id, {'version': revised.version, 'title': 'Saved a day later'})
@@ -754,25 +755,31 @@ def test_a_change_made_from_a_file_outlives_its_document_as_well(customer, clock
     assert run(customer, revised).status == 'succeeded'
     revised.refresh_from_db()
     clock(30)
+    keeping.delete(GenerationDraft.objects.get(pk=original.pk))
     cleanup_expired()
     assert not GenerationDraft.objects.filter(pk=original.pk).exists()
+    # The file is the change's too: it stays while the change does.
     saved = update_draft(customer, revised.id, {'version': revised.version, 'title': 'Saved a day later'})
     assert unpack(saved.encrypted_data)['title'] == 'Saved a day later'
 
 
-def test_a_change_never_generated_goes_with_the_file_it_is_made_from(customer, clock):
-    """It could not be quoted without that file either: only a result carries its files on."""
+def test_a_change_never_generated_goes_on_after_its_document_and_its_file_have_gone(customer, clock):
+    """Only a kept draft holds its files, so the change's goes; the change still saves and is quoted without it, from what was read of it (keeping.still_there)."""
     source = upload(customer)
     original = create_draft(customer, {'feature_id': DOCUMENT, 'title': 'From a file', 'source_text': 'Notes about the harbour.', 'source_ids': [str(source.id)]})
     assert run(customer, original).status == 'succeeded'
+    read = unpack(GenerationDraft.objects.get(pk=original.pk).encrypted_data)['excerpts']
     clock(23)
     revised = create_draft(customer, {'prompt': 'Make it shorter.', 'options': {'revise_draft_id': str(original.id)}})
+    # The document deleted, its file goes back on its own day, which the change does not hold up.
+    keeping.delete(GenerationDraft.objects.get(pk=original.pk))
     clock(30)
     cleanup_expired()
-    with pytest.raises(DomainError, match='file_unavailable'):
-        update_draft(customer, revised.id, {'version': revised.version, 'title': 'Saved a day later'})
-    with pytest.raises(DomainError, match='file_unavailable'):
-        generation_quote(customer, revised.id, revised.version)
+    assert FileAsset.objects.get(pk=source.pk).state != 'ready'
+    saved = update_draft(customer, revised.id, {'version': revised.version, 'title': 'Saved a day later'})
+    data = unpack(saved.encrypted_data)
+    assert data['source_ids'] == [] and data['excerpts'] == read
+    assert generation_quote(customer, saved.id, saved.version).input_ids == []
 
 
 def test_a_change_never_generated_can_be_reworded_and_made_after_its_document_has_gone(customer, stock_photos, clock):
@@ -780,6 +787,7 @@ def test_a_change_never_generated_can_be_reworded_and_made_after_its_document_ha
     pages = unpack(original.encrypted_data)['content']
     clock(23)
     revised = create_draft(customer, {'prompt': 'Make the second slide shorter.', 'options': {'revise_draft_id': str(original.id)}})
+    keeping.delete(GenerationDraft.objects.get(pk=original.pk))
     clock(30)
     cleanup_expired()
     assert not GenerationDraft.objects.filter(pk=original.pk).exists()
@@ -796,6 +804,7 @@ def test_what_needs_the_document_itself_is_still_refused_once_it_has_gone(custom
     original, _ = generate(customer)
     clock(23)
     revised = create_draft(customer, {'prompt': 'Make the second slide shorter.', 'options': {'revise_draft_id': str(original.id)}})
+    keeping.delete(GenerationDraft.objects.get(pk=original.pk))
     clock(30)
     cleanup_expired()
     data = unpack(revised.encrypted_data)
@@ -1224,12 +1233,13 @@ def a_result_settled(customer, quoted, feature, draft, key):
 
 
 def test_pictures_live_as_long_as_the_deck_and_a_later_result_extends_them(customer, stock_photos, clock):
+    """Kept with the deck, for good once it is made (keeping.py), until it is deleted; a later result shortens nothing."""
     draft, job = generate(customer)
     artifact = job.artifacts.get().file
     pictures = list(kept_pictures(customer))
     assert len(pictures) == 2 * (1 + 2), 'two photos, and two small copies for each'
-    deadline = artifact.expires_at
-    assert draft.expires_at == deadline and all(picture.expires_at == deadline for picture in pictures)
+    assert keeping.is_kept(draft.expires_at) and all(keeping.is_kept(picture.expires_at) for picture in pictures)
+    assert not keeping.is_kept(artifact.expires_at), 'the file it was sent as goes after 24 hours'
 
     # Hour 23: everything is still there.
     clock(23)
@@ -1238,52 +1248,44 @@ def test_pictures_live_as_long_as_the_deck_and_a_later_result_extends_them(custo
     for asset in FileAsset.objects.filter(pk__in=[picture.pk for picture in pictures]):
         assert asset.state == 'ready' and storage.exists(asset.object_key)
 
-    # A later result that keeps the pins, as a redraw will, carries their pictures to its own deadline, and shortens nothing.
-    longer = pictures[0]
-    far = timezone.now() + timedelta(days=30)
-    FileAsset.objects.filter(pk=longer.pk).update(expires_at=far)
-    second = a_result_settled(customer, draft, SLIDES, draft, 'a-later-result')
-    new_deadline = second.artifacts.get().file.expires_at
-    assert new_deadline > deadline
+    # A later result that keeps the pins, as a redraw will, shortens nothing.
+    a_result_settled(customer, draft, SLIDES, draft, 'a-later-result')
     draft.refresh_from_db()
-    assert draft.expires_at == new_deadline
-    for asset in FileAsset.objects.filter(pk__in=[picture.pk for picture in pictures[1:]]):
-        assert asset.expires_at == new_deadline
-    assert FileAsset.objects.get(pk=longer.pk).expires_at == far
+    assert draft.expires_at == keeping.KEPT_UNTIL
+    assert all(keeping.is_kept(asset.expires_at) for asset in FileAsset.objects.filter(pk__in=[picture.pk for picture in pictures]))
 
-    # Hour 30, past where they first would have gone: the pins still draw the deck.
-    clock(30)
+    # A year on, past every file it was sent as: the pins still draw the deck.
+    clock(400 * 24)
     cleanup_expired()
     assert GenerationDraft.objects.filter(pk=draft.pk).exists()
+    assert FileAsset.objects.get(pk=artifact.pk).state == 'deleted'
     pins = pins_of(draft)
     for photo in pins['photos'].values():
         assert FileAsset.objects.get(pk=photo['asset_id']).state == 'ready'
     assert storage.read_bytes(FileAsset.objects.get(pk=pins['photos'][PHOTO]['asset_id']).object_key)
 
-    # Past that deadline they go with the deck, and leave no row: up to sixty a deck, and every key is read back each cleanup.
-    clock(48)
+    # Deleted, they go with the deck, and leave no row: up to sixty a deck, and every key is read back each cleanup.
+    assert login_client(customer).delete(f'/api/v1/generation/drafts/{draft.id}').status_code == 200
     cleanup_expired()
     assert not GenerationDraft.objects.filter(pk=draft.pk).exists()
-    assert FileAsset.objects.get(pk=second.artifacts.get().file_id).state == 'deleted'
-    assert not any(storage.exists(picture.object_key) for picture in pictures[1:])
-    assert list(kept_pictures(customer)) == [longer] and FileAsset.objects.get(pk=longer.pk).state == 'ready'
+    assert not kept_pictures(customer).exists() and not any(storage.exists(picture.object_key) for picture in pictures)
 
 
 def test_pictures_the_pins_no_longer_name_go_by_their_own_clock(customer, stock_photos, clock):
     """Or a customer generating again each day would keep every earlier picture alive, none of them pinned."""
     draft, job = generate(customer)
-    deadline = job.artifacts.get().file.expires_at
     replaced = list(kept_pictures(customer).values_list('pk', flat=True))
 
     clock(20)
     second = run(customer, GenerationDraft.objects.get(pk=draft.pk))
     assert second.status == 'succeeded', second.error_code
-    new_deadline = second.artifacts.get().file.expires_at
     draft.refresh_from_db()
-    assert draft.expires_at == new_deadline
-    assert {picture.expires_at for picture in FileAsset.objects.filter(pk__in=replaced)} == {deadline}
+    assert keeping.is_kept(draft.expires_at)
+    # Back on the day they were made with; the pins' pictures now are the deck's for good.
+    for picture in FileAsset.objects.filter(pk__in=replaced):
+        assert picture.expires_at == picture.created_at + keeping.OWN_CLOCK
     current = kept_pictures(customer).exclude(pk__in=replaced)
-    assert current.count() == len(replaced) and {picture.expires_at for picture in current} == {new_deadline}
+    assert current.count() == len(replaced) and all(keeping.is_kept(picture.expires_at) for picture in current)
     pins = pins_of(draft)
     named = {pins['photos'][PHOTO]['asset_id'], *(offered['asset_id'] for offered in pins['photos'][PHOTO]['candidates'] if offered['asset_id'])}
     assert named <= {str(pk) for pk in current.values_list('pk', flat=True)}
@@ -1298,7 +1300,6 @@ def test_pictures_the_pins_no_longer_name_go_by_their_own_clock(customer, stock_
 
 def test_a_new_plan_leaves_the_pictures_of_the_deck_it_replaces_to_their_own_clock(customer, stock_photos, clock):
     draft, job = generate(customer)
-    deadline = job.artifacts.get().file.expires_at
     clock(20)
     draft.refresh_from_db()
     quote = create_outline_quote(customer, draft.id, draft.version)
@@ -1306,24 +1307,23 @@ def test_a_new_plan_leaves_the_pictures_of_the_deck_it_replaces_to_their_own_clo
     planned = execute_job(planned.id)
     assert planned.status == 'succeeded', planned.error_code
     draft.refresh_from_db()
-    assert draft.expires_at > deadline
-    assert {picture.expires_at for picture in kept_pictures(customer)} == {deadline}
+    assert keeping.is_kept(draft.expires_at), 'a deck was made from it: kept, whatever its plan now'
+    assert all(picture.expires_at == picture.created_at + keeping.OWN_CLOCK for picture in kept_pictures(customer))
 
 
 def test_a_save_that_rebuilt_the_outline_leaves_its_pictures_to_their_own_clock(customer, stock_photos, clock):
     draft, job = generate(customer)
-    deadline = job.artifacts.get().file.expires_at
     clock(20)
     draft = update_draft(customer, draft.id, {'version': draft.version, 'prompt': 'A different deck about ferries'})
-    later = a_result_settled(customer, draft, SLIDES, draft, 'a-result-of-the-new-plan')
+    a_result_settled(customer, draft, SLIDES, draft, 'a-result-of-the-new-plan')
     draft.refresh_from_db()
-    assert draft.expires_at == later.artifacts.get().file.expires_at > deadline
-    assert {picture.expires_at for picture in kept_pictures(customer)} == {deadline}
+    assert keeping.is_kept(draft.expires_at)
+    assert all(picture.expires_at == picture.created_at + keeping.OWN_CLOCK for picture in kept_pictures(customer))
 
 
 def test_a_job_that_fails_extends_nothing(customer, stock_photos, clock, monkeypatch):
     draft, job = generate(customer)
-    deadline = job.artifacts.get().file.expires_at
+    pictures = {picture.pk: picture.expires_at for picture in kept_pictures(customer)}
     clock(5)
 
     def broken(*args, **kwargs):
@@ -1332,8 +1332,8 @@ def test_a_job_that_fails_extends_nothing(customer, stock_photos, clock, monkeyp
     failed = run(customer, GenerationDraft.objects.get(pk=draft.pk))
     assert failed.status == 'failed'
     draft.refresh_from_db()
-    assert draft.expires_at == deadline
-    assert all(picture.expires_at == deadline for picture in kept_pictures(customer))
+    assert draft.expires_at == keeping.KEPT_UNTIL, 'kept from the deck it made, and no shorter for a job that failed'
+    assert {picture.pk: picture.expires_at for picture in kept_pictures(customer)} == pictures
 
 
 def test_a_result_extends_only_a_generations_own_draft(settings, customer):

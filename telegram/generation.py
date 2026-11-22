@@ -46,13 +46,18 @@ def sources(account, file_ids, feature_id=None):
     """
     if feature_id == CV:
         return []
-    assets = {
-        str(asset.id): asset
-        for asset in FileAsset.objects.filter(account=account, id__in=file_ids, state='ready',
-                                              expires_at__gt=timezone.now())
-    }
+    assets = _live(account, file_ids)
     ordered = [assets[key] for key in file_ids if key in assets]
     return [str(asset.id) for asset in ordered if asset.metadata.get('kind') == 'pdf']
+
+
+def _live(account, file_ids):
+    """These files of the account's that a new document may take, by id: still kept, and none held only for changing an
+    AI document past its own day (apps/studio/keeping.py), which is left out as a file that ran out is."""
+    from apps.studio.keeping import held_past_its_day
+    now = timezone.now()
+    return {str(asset.id): asset for asset in FileAsset.objects.filter(account=account, id__in=list(file_ids), state='ready', expires_at__gt=now)
+            if not held_past_its_day(asset, now)}
 
 
 # The kinds of file a category draft reads (apps/studio/categories/sources.py KINDS):
@@ -63,11 +68,7 @@ CATEGORY_KINDS = ('pdf', 'docx', 'doc', 'text')
 
 def category_sources(account, file_ids):
     """The files a category draft is made from, in the order they were sent, once each."""
-    assets = {
-        str(asset.id): asset
-        for asset in FileAsset.objects.filter(account=account, id__in=list(file_ids), state='ready',
-                                              expires_at__gt=timezone.now())
-    }
+    assets = _live(account, file_ids)
     ordered = list(dict.fromkeys(str(key) for key in file_ids))
     return [key for key in ordered if key in assets and assets[key].metadata.get('kind') in CATEGORY_KINDS]
 
@@ -759,8 +760,7 @@ def written_again(account, draft_id):
     data = unpack(draft.encrypted_data)
     way = (data.get('options') or {}).get('cv_source') or TEXT
     ids = [str(identifier) for identifier in data.get('source_ids') or []] if way in (LINKEDIN, FILE) else []
-    kept = {str(key) for key in FileAsset.objects.filter(account=account, id__in=ids, state='ready',
-                                                         expires_at__gt=timezone.now()).values_list('id', flat=True)}
+    kept = set(_live(account, ids))
     notes = (data.get('prompt') or '').strip() if way in (LINKEDIN, FILE) and not data.get('revision') else ''
     return {'cv_source': way, 'source_ids': [identifier for identifier in ids if identifier in kept],
             'notes': [notes] if notes else [], 'portrait_asset_id': usable_portrait(account, portrait_of(draft))}
@@ -976,12 +976,15 @@ def delivered(account, draft_id, kind=None):
     A deck sent again is the deck from then on, as PowerPoint when it was sent as
     one. An older file lacks what was edited, so a send without one ends the search.
     """
+    from apps.studio.keeping import held_past_its_day
     now = timezone.now()
     for job in _made_from(account, draft_id):
         made = FORMAT.get(job.feature_id, 'pptx')
         for artifact in job.artifacts.select_related('file'):
             asset = artifact.file
-            if asset.state == 'ready' and asset.expires_at > now and asset.metadata.get('kind') == (kind or made):
+            # A file kept only as another document's source is not sent again after its day (keeping.py).
+            if (asset.state == 'ready' and asset.expires_at > now and asset.metadata.get('kind') == (kind or made)
+                    and not held_past_its_day(asset, now)):
                 return job, asset
         if job.feature_id in RENDER_IDS or made != (kind or made):
             break
@@ -991,6 +994,39 @@ def delivered(account, draft_id, kind=None):
 def sent_edited(account, draft_id):
     """Whether the newest file of this draft is the customer's own edit sent again: a file older than it is not the same."""
     return _made_from(account, draft_id).values_list('feature_id', flat=True).first() in RENDER_IDS
+
+
+def in_chat(account, draft_id, kind=None, older=False):
+    """Whether a file made from this draft went to the chat as itself (delivery.sent_in_chat), as `kind` when one is
+    named; `older`, one older than its newest file. What the chat says of a copy there is said only then: a document
+    made on the web, or sent as a link, has none."""
+    from .delivery import sent_in_chat
+    jobs = _made_from(account, draft_id)
+    newest = jobs.values_list('pk', flat=True).first() if older else None
+    if newest is not None:
+        jobs = jobs.exclude(pk=newest)
+    return sent_in_chat(jobs, kind)
+
+
+def logo_gone(account, draft):
+    """Whether the logo the draft names is no longer stored: a change of a document whose logo was deleted comes without it."""
+    from apps.studio.branding import logo_kept
+    from apps.studio.domain import unpack
+    return not logo_kept(account, unpack(draft.encrypted_data))
+
+
+def kept_draft(account, job):
+    """The id of the kept draft an AI document, deck or CV of this task was made from, which ✏️ Make changes still changes; else ''.
+
+    A deck sent from its editor (RENDER_IDS) names the deck it sent, kept as the deck it was made as is.
+    """
+    from apps.studio.domain import GENERATION_IDS, RENDER_IDS
+    from apps.studio.keeping import KEPT_UNTIL
+    draft_id = (job.parameters or {}).get('generation_draft_id')
+    if job.feature_id not in GENERATION_IDS | RENDER_IDS or (job.parameters or {}).get('stage') == 'outline' or not draft_id:
+        return ''
+    kept = GenerationDraft.objects.filter(account=account, pk=draft_id, expires_at__gte=KEPT_UNTIL).exists()
+    return str(draft_id) if kept else ''
 
 
 def format_kept(draft):

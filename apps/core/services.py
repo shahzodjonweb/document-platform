@@ -188,6 +188,10 @@ def verify_input_files(job, assets):
 def validate_inputs(account, feature_id, input_ids):
     require_feature(account, feature_id)
     assets = owned_assets(account, input_ids)
+    # A kept draft's upload past its own day is held for a change of that draft, never a file tool's or the editor's
+    # input: its result would serve it again (apps/studio/keeping.py). Said as a download of it says it: kept for the document.
+    from apps.studio.keeping import held_past_its_day, held_refusal
+    if any(held_past_its_day(a) for a in assets): raise held_refusal()
     limits = plan_limits(account)
     multi = feature_id in ('pdf.merge','pdf.images_to_pdf') or feature_id.startswith('editor.')
     cap = limits['max_merge_input_files'] if multi else 1
@@ -342,26 +346,42 @@ def submit_job(account, quote_id, idempotency_key, origin='web'):
     return job,True
 
 def _extend_draft(job, deadline):
-    """A generated result's draft, the deck pictures its pins name and its slides as last drawn, last as long as the result; never less than they already would.
+    """A result's draft, the deck pictures its pins name and its slides as last drawn, last as long as the result; never less than they already would.
 
     Only those: a picture from pins since replaced, or from an attempt that left none, goes by its own clock.
     The files the draft stands on (its sources and logo) go with it unless already expired, as a save or a change
     of it asks for them: a generation's result carries them on as its inputs, and a send has only its pictures.
+    A draft a file was made from is kept for good instead (apps/studio/keeping.py): nothing here shortens it, and
+    a send of one holds what it needs as it now stands, the files it stands on served to the send's end while their
+    own day lasts (keeping.used).
     """
+    from apps.studio import keeping
     from apps.studio.branding import generation_inputs
     from apps.studio.domain import unpack
     from apps.studio.models import GenerationDraft
     draft_id = (job.parameters or {}).get('generation_draft_id')
     draft = GenerationDraft.objects.filter(pk=draft_id,account=job.account).first() if draft_id else None
     if not draft: return
-    GenerationDraft.objects.filter(pk=draft.pk,expires_at__lt=deadline).update(expires_at=deadline)
     data = unpack(draft.encrypted_data)
+    if keeping.is_kept(draft.expires_at):
+        keeping.hold(draft,data)
+        # What it stands on is served to the end of the file's day, as below, unless its own day is over.
+        return keeping.used(job.account.pk,generation_inputs(data),deadline)
+    GenerationDraft.objects.filter(pk=draft.pk,expires_at__lt=deadline).update(expires_at=deadline)
     photos = (data.get('_render') or {}).get('photos') or {}
     pinned = [asset_id for photo in photos.values() for asset_id in (photo.get('asset_id'),*(c.get('asset_id') for c in photo.get('candidates') or [])) if asset_id]
     FileAsset.objects.filter(account=job.account,state='ready',metadata__kind='deck_photo',pk__in=pinned,expires_at__lt=deadline).update(expires_at=deadline)
     FileAsset.objects.filter(account=job.account,state='ready',pk__in=generation_inputs(data),expires_at__gt=timezone.now(),expires_at__lt=deadline).update(expires_at=deadline)
     from apps.studio.tasks import current_pictures
     FileAsset.objects.filter(account=job.account,state='ready',pk__in=current_pictures(draft),expires_at__lt=deadline).update(expires_at=deadline)
+
+def _keep_draft(job):
+    """The draft a document, deck or CV was just made from, kept for good: its ✏️ Make changes works however late (keeping.py)."""
+    from apps.studio import keeping
+    from apps.studio.models import GenerationDraft
+    draft_id = (job.parameters or {}).get('generation_draft_id')
+    draft = GenerationDraft.objects.filter(pk=draft_id,account=job.account).first() if draft_id else None
+    if draft: keeping.keep(draft)
 
 @transaction.atomic
 def settle_job(job_id, status, error_code='', outputs=None, warnings=None, engine=''):
@@ -387,9 +407,16 @@ def settle_job(job_id, status, error_code='', outputs=None, warnings=None, engin
             enqueue(artifact, f'job:{job.id}:{artifact.id}')
     from apps.studio.domain import GENERATION_IDS, RENDER_IDS
     # A send's inputs are its deck's pictures: they go with the deck, and only a file delivered moves it (_extend_draft).
-    if job.feature_id not in RENDER_IDS: FileAsset.objects.filter(account=job.account,id__in=job.input_ids).update(expires_at=deadline)
+    # An input a kept draft holds (its source, its logo) is never brought down to the task's day: its own day, which
+    # serves it, is carried to the task's end instead, as long as it is not over (keeping.used).
+    if job.feature_id not in RENDER_IDS:
+        FileAsset.objects.filter(account=job.account,id__in=job.input_ids,expires_at__lt=deadline).update(expires_at=deadline)
+        from apps.studio.keeping import used
+        used(job.account_id,job.input_ids,deadline)
     if status == 'succeeded' and outputs:
-        if job.feature_id in GENERATION_IDS|RENDER_IDS: _extend_draft(job,deadline)
+        # An outline is a plan, not a file: its draft keeps its own day (allowance.file_made).
+        if job.feature_id in GENERATION_IDS and (job.parameters or {}).get('stage') != 'outline': _keep_draft(job)
+        elif job.feature_id in GENERATION_IDS|RENDER_IDS: _extend_draft(job,deadline)
         from apps.studio.review import keep_output
         keep_output(job)
     job.status,job.error_code,job.completed_at = status,error_code,timezone.now()
@@ -519,6 +546,17 @@ def cleanup_expired():
     from . import storage
     now = timezone.now()
     count = 0
+    # First, before anything expires: drafts a file was made from before drafts were kept are kept now, with their
+    # files; kept files whose drafts went some way other than being deleted get their own clock back; and an account
+    # that asked to be deleted has every draft deleted and every file revoked, should its delete have been cut off.
+    # None ever stops the cleanup: one that fails is logged, and files still expire after it.
+    import logging
+    from apps.studio.keeping import backfill, delete_leaving, release_orphans
+    for name, step in (('backfill', backfill), ('orphans', lambda: release_orphans(now)), ('leaving', lambda: delete_leaving(now))):
+        try:
+            step()
+        except Exception:
+            logging.getLogger(__name__).exception('Keeping drafts: the %s step failed', name)
     time_left = storage.time_limit()
     for asset in FileAsset.objects.filter(expires_at__lte=now).exclude(state='deleted').iterator():
         # What is left waits for the next run: expired, it can no longer be opened.
@@ -575,6 +613,10 @@ def cleanup_expired():
     cleanup_review(now)
     EducationProject.objects.filter(expires_at__lte=now).delete()
     EditorDocument.objects.filter(file__expires_at__lte=now).delete()
+    # A file kept for an AI document's changes never reaches its expiry: its editor draft and what a CV's reader took
+    # from it go when its own day ends instead, as nothing opens them after it (keeping.forget_past_day).
+    from apps.studio.keeping import forget_past_day
+    forget_past_day(now)
     from apps.studio.tasks import prune as prune_editor_tasks
     prune_editor_tasks(now)
     ShareGrant.objects.filter(expires_at__lte=now).delete()

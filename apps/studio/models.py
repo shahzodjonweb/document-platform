@@ -290,7 +290,9 @@ class CvSourceRead(models.Model):
     a draft first asks for a file uploaded before reads were queued, and read
     by `runreader`, never in a request (cv/reads.py). What the file gave is
     the customer's text, encrypted as drafts are. It goes with its file:
-    deleted with the asset, and when the file expires (cleanup_expired).
+    deleted with the asset, and when the file expires (cleanup_expired), or
+    for a file kept for an AI document's changes when its own day ends
+    (keeping.forget_past_day).
     """
     STATUSES=[('queued','queued'),('reading','reading'),('done','done'),('failed','failed')]
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)

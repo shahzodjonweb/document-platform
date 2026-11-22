@@ -689,3 +689,30 @@ CATALOGS['ru'].update(
     catreport_export='Экспорт по категориям', gen_all_categories='Все категории',
 )
 assert CATALOGS['en'].keys() == CATALOGS['uz'].keys() == CATALOGS['ru'].keys()
+
+# A customer's AI documents (user page): counted, never shown, and deleted when the customer asks support.
+CATALOGS['en'].update(
+    documents_title='AI documents kept for changes',
+    documents_desc='Each AI document and the files a change of it needs stay until the customer asks for them to be deleted. Their contents are not shown here.',
+    documents_count='{all} AI documents, {kept} of them kept for changes.',
+    documents_delete='Delete AI documents',
+    documents_delete_desc='Deletes every AI document of this account, with the files kept for changing them: what the customer asks for under the privacy policy. Files already sent stay in their chat. This cannot be undone.',
+    documents_delete_confirm='I understand: every AI document of this account is deleted for good.',
+)
+CATALOGS['uz'].update(
+    documents_title='O‘zgartirish uchun saqlanayotgan AI hujjatlar',
+    documents_desc='Har bir AI hujjat va uni o‘zgartirish uchun kerakli fayllar mijoz o‘chirishni so‘ramaguncha saqlanadi. Ularning mazmuni bu yerda ko‘rsatilmaydi.',
+    documents_count='{all} ta AI hujjat, ulardan {kept} tasi o‘zgartirish uchun saqlanmoqda.',
+    documents_delete='AI hujjatlarni o‘chirish',
+    documents_delete_desc='Bu hisobning barcha AI hujjatlarini ularni o‘zgartirish uchun saqlangan fayllar bilan birga o‘chiradi: mijoz maxfiylik siyosatiga ko‘ra so‘raydigan amal. Yuborilgan fayllar chatda qoladi. Buni qaytarib bo‘lmaydi.',
+    documents_delete_confirm='Tushundim: bu hisobning barcha AI hujjatlari butunlay o‘chiriladi.',
+)
+CATALOGS['ru'].update(
+    documents_title='ИИ-документы, хранящиеся для правок',
+    documents_desc='Каждый ИИ-документ и файлы, нужные для его изменения, хранятся, пока клиент не попросит их удалить. Их содержимое здесь не показывается.',
+    documents_count='ИИ-документов: {all}, из них хранятся для правок: {kept}.',
+    documents_delete='Удалить ИИ-документы',
+    documents_delete_desc='Удаляет все ИИ-документы этого аккаунта вместе с файлами, хранящимися для их изменения: то, о чём клиент просит по политике конфиденциальности. Уже отправленные файлы остаются в чате. Отменить нельзя.',
+    documents_delete_confirm='Понимаю: все ИИ-документы этого аккаунта будут удалены навсегда.',
+)
+assert CATALOGS['en'].keys() == CATALOGS['uz'].keys() == CATALOGS['ru'].keys()
