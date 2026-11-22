@@ -4544,3 +4544,6 @@ tests/test_kept_drafts.py::test_the_chat_offers_no_held_upload_past_its_day_for_
 # in words that fit every place that refuses it (Send to Telegram, a new AI document, a download, a file tool), in every
 # language; the web's editor keeps its own.
 tests/test_kept_drafts.py::test_a_held_file_is_told_to_be_uploaded_again_wherever_it_is_refused
+
+# After the sixth review: a page picture of a held source goes when the source's own day ends.
+tests/test_kept_drafts.py::test_a_page_picture_of_a_held_source_lasts_no_longer_than_its_day

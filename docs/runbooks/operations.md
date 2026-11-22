@@ -35,7 +35,7 @@ API metadata logs contain correlation IDs and stable errors. General logs and an
 
 Analyst sees aggregate reports and anonymized feature CSV. Support can inspect customer/task metadata and resolve cases with reasons. Finance sees currently gated financial views. Operations sees task/system diagnostics. Content manager sees plan/localization status. Administrator may use all implemented operations. There is no staff file-content download endpoint or general impersonation action. Privileged account metadata views and exports are audited.
 
-An account deletion that support handles (a customer who asks for it by message rather than deleting the account in the app) must run Admin → Users → the account → AI documents kept for changes → Delete AI documents (Support, Operations or Administrator; audited as `account.documents_delete`). Nothing else removes the drafts kept for ✏️ Make changes and the files they hold, which never expire on their own: only an account deleted in the app (`DELETE /me`, which sets `deletion_requested_at`) has them deleted by the cleanup, on every pass (`apps/studio/keeping.py` `delete_leaving`).
+An account deletion that support handles (a customer who asks for it by message: neither the web nor the bot has a delete button yet) must run Admin → Users → the account → AI documents kept for changes → Delete AI documents (Support, Operations or Administrator; audited as `account.documents_delete`). Nothing else removes the drafts kept for ✏️ Make changes and the files they hold, which never expire on their own: only an account deleted through `DELETE /me` (which sets `deletion_requested_at`; no screen calls it yet) has them deleted by the cleanup, on every pass (`apps/studio/keeping.py` `delete_leaving`).
 
 ## Metrics and finance
 

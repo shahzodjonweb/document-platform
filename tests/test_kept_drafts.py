@@ -1426,3 +1426,21 @@ def test_a_held_file_is_told_to_be_uploaded_again_wherever_it_is_refused(custome
     assert 'ochib' not in HELD['uz'] and 'Tahrirlash' not in HELD['uz']
     assert 'открыть' not in HELD['ru'] and 'отредакт' not in HELD['ru']
     assert not re.search('[А-Яа-яЁё]', HELD['uz']) and "'" not in HELD['uz'] and 'o‘zgartirish' in HELD['uz']
+
+
+@pytest.mark.django_db
+def test_a_page_picture_of_a_held_source_lasts_no_longer_than_its_day(customer, clock):  # noqa: F811
+    """A page's picture drawn late in a held source's own day goes when that day ends, as one of any file does at its
+    expiry: a held source's expiry is the kept moment, which no picture may borrow."""
+    from apps.core.previews import preview_asset
+    source = upload(customer, 'tides.pdf')
+    document(customer, 'Tides', source_ids=[str(source.id)])
+    clock(23, clean=False)
+    picture = preview_asset(customer, source.id, 1)
+    held = FileAsset.objects.get(pk=source.pk)
+    assert not keeping.is_kept(picture.expires_at)
+    assert picture.expires_at <= keeping.own_until(held)
+    clock(30)
+    client = login_client(customer)
+    assert client.get(f'/api/v1/files/{source.id}/preview').status_code == 410
+    assert client.get(f'/api/v1/files/{picture.id}/download').status_code in (404, 410)
