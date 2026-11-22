@@ -1379,7 +1379,7 @@ def _law_names(sentence):
                     why = 'word'
                     break
                 index, taken = index + 1, taken + 1
-        if opener and not _name_ends(sentence, tokens, index, why, word):
+        if opener and not _name_ends(sentence, tokens, index, why, word, _ru_verb_before(tokens, at, sentence)):
             name = opener + name  # the name goes on past what is read: its opening word is the name's, as c491da9's
         found += [(start, text) for start, text in name if _letters(text) >= 2
                   and not LAW_COUNTRY.fullmatch(normalised(text).casefold())]
@@ -1751,22 +1751,117 @@ LAW_ARTICLE = re.compile(r"the|a|an")
 # (`_joined_ends`), as none of them opens a clause or names anything: the English adverbs and grammar words "and even
 # Auditing", "and not only auditing", ", i.e. auditing" take, and the Russian particles, parenthetical words and adverbs
 # ("и особенно аудите", "а именно аудите", ", то есть аудите", ", т. е. аудите", ", как и об аудите", "и разумеется
-# аудите", "и лишь налогообложении"), with every lower-case Russian word in -о (`_passed`: "конечно", "заодно",
-# "только", "немного", "строго").
+# аудите", "и лишь налогообложении"), with the lower-case Russian adverbs, particles and pronouns in -о (`_ru_adverb`:
+# "конечно", "заодно", "только", "немного", "строго").
 LAW_PASS_EN = re.compile(r"even|only|so|also|too|not|just|especially|particularly|mainly|chiefly|notably|i|e")
 LAW_PASS_RU = re.compile(r"т|е|есть|как|лишь|уж|вот|ведь|же|всё|вдруг|опять|вновь|снова|иногда|всегда|тогда|сначала"
                          r"|сперва|сразу|наряду|полностью|разумеется|кажется|пожалуй|видимо|наверное|притом|причём"
                          r"|причем|вдобавок|главным|чуть|едва|пока|раз")
 # The neuter nouns in -о a list goes on with after a law's name, no adverb (`_passed`): "... учёте и правило ...",
-# "... учёте и законодательство о налогах".
-RU_NEUTER = re.compile(r"[а-яё]+ство|правило|право|дело|число|слово|место|лицо|письмо|сальдо|нетто|брутто|бюро")
+# "... учёте и законодательство о налогах". Their -о is no case a law's name takes after "о"; a noun that keeps its -о
+# in every case is `RU_INDECLINABLE`'s.
+RU_NEUTER = re.compile(r"[а-яё]+ство|правило|право|дело|число|слово|место|лицо|письмо")
+# The Russian nouns that keep their form in every case, loans: one stands in the case a law's name takes after "о"
+# ("... о телевидении и радио", "..., бюро и аудите", "... и интервью") or as a genitive after it ("... учёте казино"),
+# so it is no adverb passed over (`_ru_adverb`) and may go on the name (`_may_go_on`), as c491da9 holds the name. In -о
+# and in -а, a vowel before it makes one ("радио", "видео", "портфолио", "какао", "медиа", "мультимедиа", "буржуа",
+# "амплуа"); the others in -о are the loans words/ru.txt or the adverbs' shapes would read as adverbs ("сопрано",
+# "пиано", "шапито", "инкогнито" of a participle's, "фиаско", "франко", "порно", "бунгало", "жиголо", "лего" of an
+# adverb's, "плато", "тако", "жиро" of an adjective's stem; "фортепьяно", "просекко", "инферно", "москито", "бонито",
+# "кено", "бронко", "пармиджано", "челло", "дьябло", "торо" of either; "эскимо", "мемо", "легато", "стаккато",
+# "фортиссимо", "маккиато" of an adverb's), and the usual ones. In -у, -ю, -а and -я, the usual ones ("шоу", "меню",
+# "интервью", "авеню", "тофу", "хайку", "тату", "па", "ультра", the last parts of "кунг-фу", "ноу-хау" and "фуа-гра",
+# the languages "урду", "банту", "пушту", the places "Баку", "Перу"), as a case of a noun that changes ends so
+# ("учёту", "работу", "налогообложению", "учёта"); "мумиё", read as "мумие"; in -э, any ("каратэ", "алоэ"). One in -е
+# or -и is in the name's case already (`LAW_OF_CASE`: "резюме", "такси").
+RU_INDECLINABLE = re.compile(
+    r"[а-яё]*[аеёиоуыэюя][оа]|кино|казино|метро|евро|авто|мото|фото|лото|депо|бюро|сальдо|нетто|брутто|пальто|табло"
+    r"|лого|карго|эмбарго|рококо|панно|техно|промо|демо|ретро|диско|барокко|мокко|электро|соло|поло|кило|тремоло"
+    r"|инкассо|авизо|сопрано|фортепиано|пиано|гуано|чинзано|американо|орегано|шапито|мохито|буррито|инкогнито|шато"
+    r"|фиаско|фламенко|франко|писко|порно|нано|моно|жиро|сирокко|фреско|альфреско|бунгало|мерло|пуэбло|пикколо|пиколо"
+    r"|жиголо|лимончелло|лего|плато|тако|граффито|[а-яё]*челло|капелло|фрателло|моцарелло|фортепьяно|пьяно|кофепьяно"
+    r"|просекко|инферно|москито|бонито|бандито|кено|ламбреккено|бронко|банко|бьянко|пармиджано|реджано|дьябло|торо"
+    r"|ампло|ментоло|эскимо|мемо|чентезимо|[а-яё]*иссимо|легато|стаккато|пиццикато|модерато|анимато|рубато|вибрато"
+    r"|облигато|сфорцато|остинато|сфумато|маккиато|аффогато|джелато"
+    r"|шоу|меню|интервью|ревю|тату|табу|рагу|кенгуру|гуру|какаду|кешью|барбекю|фондю|иглу|марабу|зебу|эму|гну|урду"
+    r"|банту|пушту|баку|перу|катманду"
+    r"|дежавю|парвеню|рандеву|ушу|фу|хау|авеню|инженю|ню|вагю|тофу|хайку|хокку|бижу|тирамису|зулу|вуду|судоку|кудзу"
+    r"|джитсу|ниндзюцу|дзюдзюцу|сэппуку|манту|паспарту|фрау|бра|па|фа|спа|гала|ультра|экстра|антраша|гра|ля|мумие"
+    r"|[а-яё]+э")
+# The lower-case Russian adverbs, particles and pronouns in -о passed over as LAW_PASS_RU's are (`_ru_adverb`), named
+# where the lexicon or an adverb's shape may not give them: "то есть", "это", "что", "либо", "ибо", "около", "свято",
+# "будто", "надолго", and the adverbs of adjectives the lexicon lacks ("трезво", "храбро", "наскоро"), ё read as е.
+LAW_PASS_RU_O = re.compile(r"то|это|что|оно|одно|само|либо|зато|ибо|около|вместо|помимо|мимо|много|немного|несколько"
+                           r"|сколько|столько|только|сугубо|особо|свято|густо|круто|бодро|щедро|гордо|худо|глухо|криво"
+                           r"|тупо|скупо|слепо|глупо|незримо|туго|будто|надолго|ненадолго|запросто"
+                           r"|трезво|здраво|храбро|резво|шустро|наскоро|сыро|хмуро|лихо|мертво|пестро|толсто|ржаво"
+                           r"|шершаво|дико|угрюмо|упрямо|сноровисто|солоно")
+# The shapes of a Russian word in -о that is no noun keeping it in every case (`_ru_adverb`): a genitive in -ого or
+# -его ("всего", "его", "малого"), a past form or a noun in -ло ("было", "стало", "начало"), an adverb made from an
+# adjective in -ный, -льный, -йный, -кий, -йкий or -ивый ("добросовестно", "ежеквартально", "постатейно", "громко",
+# "стойко", "настойчиво"), -овый ("пошагово"), -истый ("напористо", "золотисто") or -атый ("угловато",
+# "простовато"), a short participle in -ано, -ено, -ято, -ыто, -уто or -ито ("гарантировано", "запрещено", "взято",
+# "закрыто", "развито"), or an adverb of a participle in -имый or -емый ("зримо", "неумолимо", "предсказуемо"); the
+# nouns of those shapes are RU_INDECLINABLE's ("эскимо", "мемо", "легато", "стаккато", "фортиссимо", "маккиато").
+RU_ADVERB_SHAPE = re.compile(r"[а-яё]+(?:[ое]го|ло|[бвгджзйклмнпрстфхцчшщь][нк]о|иво|ово|[ая]но|[её]но|[яыуи]то|исто|ато"
+                             r"|[ие]мо)")
+# The endings of a Russian adjective the lexicon holds, whose stem an adverb in -о is made from (`_ru_adverb`).
+RU_ADJECTIVE_ENDINGS = ('ый', 'ий', 'ой', 'ая', 'яя', 'ое', 'ее', 'ые', 'ие', 'ого', 'его', 'ому', 'ему', 'ым', 'им',
+                        'ую', 'юю', 'ых', 'их', 'ыми', 'ими')
+# The verbs of a Russian clause after its subject that `RU_LAW_VERB` and `RU_VERB` do not give (`_ru_clause_follows`): a
+# modal, a short form or a predicate ("может", "должно", "обязано", "вправе", "нужно"), a present tense in -ёт or -ут
+# ("ведёт", "несут", "даёт"), one in -ёт after a vowel ("сдаёт", "подаёт", "создаёт", "поёт"), one in -ет or -ут after a
+# hushing consonant ("пишет", "ищет", "хочет", "пишут"), and the past forms `_ru_past` cannot read from an infinitive
+# the lexicon holds ("вёл", "перенёс", "перенесли", "шла", "начислил").
+RU_CLAUSE_VERB = re.compile(r"мо(?:жет|гут|г|гл[аои])|долж(?:ен|н[аоы])|обязан[аоы]?|вправе|нужно|надо|можно|нельзя"
+                            r"|вед[её]т|ведут|нес[её]т|несут|да[её]т|дают|ид[её]т|идут|бер[её]т|берут"
+                            r"|[а-яё]+[аеиоуюя]ёт|[а-яё]*(?:пиш|ищ|хоч|плач|пряч|маш|пляш|реж)(?:ет|ут)"
+                            r"|[а-яё]*(?:вёл|нёс|вёз|шёл|вел[аио]|несл[аио]|везл[аио]|шл[аио]|числил[аио]?)")
+# A Russian past form in -л, -ла or -ло, its stem ending in a vowel (`_ru_past`: "платил", "сдала", "считало").
+RU_PAST = re.compile(r"([а-я]{2,}[аеиоуыя])л[ао]?")
+# The prefixes a Russian verb takes before a stem the lexicon holds as an infinitive (`_ru_past`: "оплатил" of
+# "платить", "списал" of "писать").
+RU_VERB_PREFIXES = ('пере', 'недо', 'рас', 'раз', 'под', 'над', 'при', 'про', 'пред', 'из', 'ис', 'вы', 'вз', 'вс',
+                    'воз', 'вос', 'до', 'за', 'на', 'об', 'от', 'по', 'со', 'с', 'у', 'о', 'в')
+# The verbs a law itself may be the subject or the object of, any form (`_ru_law_verb`, the owner's decision on the
+# re-check of round 15): what a law does ("регулирует", "устанавливает", "предусматривает", "определяет", "требует",
+# "запрещает", "разрешает", "гласит", "действует", "распространяется", "вступает", "содержит", "служит", "вводит",
+# "освобождает", "признаёт", "налагает", "описывает", "диктует") and what is done with one ("нарушает", "соблюдает",
+# "применяет", "руководствуется", "пренебрегает", "исполняет", "выполняет", "знает", "изучает", "учитывает", "толкует",
+# "принимает", "утверждает", "отменяет", "изменяет", "обходит", "игнорирует", "следует", "рассматривает"), the lexical
+# verbs of RU_LAW_VERB among them. After a noun that keeps its form such a verb may be the law's, the noun the name's
+# last word ("Знает Закон о ... и радио не нарушает"), so no clause opens there.
+RU_LAW_FAMILY = re.compile(
+    r"(?:регулир|регламентир|устанавлива|установ|предусматрива|предусмотр|определ|требова|требу|потребова|потребу"
+    r"|запрещ|запрет|разреш|дозвол|позвол|допуска|допуст|ограничива|огранич|обязыва|предписыва|предписа|предпиш|глас"
+    r"|закреп|гарантир|обеспеч|предоставл|предостав|возлага|возлож|надел|вменя|вмен|защища|защит|охран|распростран"
+    r"|действ|каса|косн|вступа|вступ|содерж|служ|ввод|введ|отмен|измен|меня|замен|дополн|упраздн|наказыва|противореч"
+    r"|освобожд|призна|налага|налож|лиша|описыва|опис|излага|излож|дикту|диктов|подразумева|предполага|предъявл"
+    r"|преследу|постановл|провозгла|воспрещ|возбраня|уполномоч|упорядочива|нормир|квалифицир|фиксир|охватыва"
+    r"|затрагива|затрон|указыва|упомина|упомян|прописыва|оговарива|оговор|соответству|облада|обнов|облага|облож"
+    r"|ратифицир|денонсир|кодифицир|узакони|легализ|санкционир|конкретизир|детализир|инициир|лоббир|блокир|ветир"
+    r"|воплоща"
+    r"|соблюд|соблюст|соблюл|блюд|блюст|наруш|преступа|преступ|попира|попра|исполн|выполн|примен|использ|руководств"
+    r"|пренебр|игнорир|обход|обойд|обойт|обош|учитыва|изуч|понима|поня|толку|толков|трактов|тракту|интерпретир"
+    r"|разъясн|комментир|цитир|анализир|чита|прочита|прочт|уважа|почита|придержива|подчин|повину|повинова|опира"
+    r"|ссыла|сосла|основыва|принима|приня|утвержд|утверд|подписыва|подпис|подпиш|одобр|отклон|оспарива|оспор|обжал"
+    r"|пересматрива|пересмотр|рассматрива|рассмотр|отстаива|отсто|поддерж|критику|критиков|обсужда|обсуд|обсужд"
+    r"|помн|забыва|забы|реализу|реализова|внедр|изда|апеллир|следова|следу)[а-яё]*"
+    r"|зна(?:ет|ют|ть|л|ла|ли|ло|ешь|ем|ете)|чт(?:ит|ут|ил|ила|или|ить|ят)|уч(?:т[её]т|тут|[её]л|ла|ли|есть)"
+    r"|обяза(?:л|ла|ли|ть)|обяж(?:ет|ут)|обязател(?:ен|ьна|ьны)|основан[аоы]?|прим(?:ет|ут)|кара(?:ет|ют|ть|л|ла|ли)"
+    r"|да[её]т|дают|дал[аи]?|дать|вел(?:ит|ят|ел|ела|ели)")
+# The endings of a Russian verb's form a word must have for RU_LAW_FAMILY to read it (`_ru_law_verb`): a finite form,
+# an infinitive, a gerund, a past form or a short participle ("предусмотрено", "введён"), never an adverb in -о
+# ("дополнительно", "действительно", "определённо") nor a noun of the same stem ("требования", "содержание").
+RU_VERB_FORM = re.compile(r"[а-яё]+(?:[её]т|ут|ют|ат|ят|ит|л|ла|ли|ло|лся|лась|лось|лись|н|на|ны|ен|ена|ены|т|та|ты"
+                          r"|ешь|ишь|ем|им|ете|ите|ть|ться|тся|ти|чь|сь|вши)|[а-яё]+[еая]но|[а-яё]+[яыиу]то")
 # The English determiners a joined word may take, read as the article is (`_joined_ends`): "and its auditing rules",
 # "and every auditing standard", never ", its rules apply to banks".
 LAW_JOINED_DETERMINER = re.compile(LAW_ARTICLE.pattern + r"|its|their|his|her|our|your|all|each|every|any|some|no"
                                                          r"|this|these|those|both|either|such")
 
 
-def _name_ends(sentence, tokens, index, why, word):
+def _name_ends(sentence, tokens, index, why, word, after_verb=False):
     """Whether the name `_law_names` read after a stem's "о", "об", "of" or "on", up to the token at `index` where the
     reading stopped (`why`), ends there: at the sentence's or its clause's end, a verb ("... учёте регулирует", "...
     Accounting applies"), an adverb before them ("... учёте хорошо."), or past a comma, a semicolon, a conjunction,
@@ -1775,7 +1870,8 @@ def _name_ends(sentence, tokens, index, why, word):
     аудите", "... Accounting as well as auditing" go on). After the law's date or number it ends only where it would
     end right after the name (`_dated_ends`: "... от 13 апреля 2016 года и аудите", "... № 404 в банках" go on). Never
     where the reading reached its end, nor before a preposition ("... учёте в банках", "... in Banks") or a word that
-    may go on the name ("... учёте и аудите", "... Accounting, Auditing and Taxes", "... о защите прав инвесторов")."""
+    may go on the name ("... учёте и аудите", "... Accounting, Auditing and Taxes", "... о защите прав инвесторов").
+    `after_verb`: the sentence has its verb before the law's stem (`_ru_verb_before`, `_joined_ends`)."""
     if why == 'reach':
         return False
     if why == 'goes':
@@ -1784,17 +1880,18 @@ def _name_ends(sentence, tokens, index, why, word):
     rest = sentence[start + len(last):]
     rest = rest[LAW_HEAD_CLOSE.match(rest).end():]
     if re.fullmatch(r"No|Nr", last) and re.match(r"\.[ \u00a0]*\d", rest):
-        return _dated_ends(' ' + rest[1:])  # the law's number read as a name word: "... of 13 April 2016 No. 404"
+        return _dated_ends(' ' + rest[1:], after_verb)  # the number read as a name word: "... of 13 April 2016 No. 404"
     if LAW_HEAD_END.match(rest) or index >= len(tokens):
         return True
     if LAW_HEAD_DATED.match(rest):
-        return _dated_ends(rest)
+        return _dated_ends(rest, after_verb)
     token = tokens[index][1]
     low = normalised(token).casefold()
     if why == 'stop':
         following = [normalised(text).casefold() for _, text in tokens[index + 1:index + 3]]
         if (low == 'as' and following == ['well', 'as']) or (low == 'i' and following[:1] == ['e']):
-            return _joined_ends(tokens, index, low == 'as')  # "as well as" joins as "and" does, "i.e." as a comma
+            # "as well as" joins as "and" does, "i.e." as a comma
+            return _joined_ends(tokens, index, low == 'as', sentence, after_verb)
         return LAW_NAME_PREPOSITION.fullmatch(low) is None  # a verb, a pronoun, a conjunction of a clause
     if why == 'word':
         # An adverb after the name ends it where the sentence or its clause ends or a verb follows ("... учёте хорошо.",
@@ -1808,15 +1905,15 @@ def _name_ends(sentence, tokens, index, why, word):
             if at >= len(tokens) or LAW_HEAD_END.match(sentence[start + len(last):]):
                 return True
             if tokens[at][1] in ',;' or LAW_AND.fullmatch(normalised(tokens[at][1]).casefold()):
-                return _joined_ends(tokens, at, tokens[at][1] not in ',;')
+                return _joined_ends(tokens, at, tokens[at][1] not in ',;', sentence, after_verb)
             low = normalised(tokens[at][1]).casefold()
         return RU_LAW_VERB.fullmatch(low) is not None
     if token not in ',;' and not LAW_AND.fullmatch(low):
         return any(stem.fullmatch(token) for stem in NAMED_STEMS)  # another law, read on its own; a mark goes on
-    return _joined_ends(tokens, index + 1, token not in ',;')
+    return _joined_ends(tokens, index + 1, token not in ',;', sentence, after_verb)
 
 
-def _dated_ends(rest):
+def _dated_ends(rest, after_verb=False):
     """Whether a law's name ends past its date or number phrase at the start of `rest` (`LAW_DATE_PHRASE`): only at
     the sentence's or its clause's end, a verb, or past a comma, a semicolon or a conjunction where it cannot go on
     (`_joined_ends`: "... учёте от 13 апреля 2016 года и умеет вести книги"). A preposition, a word in the name's case
@@ -1834,7 +1931,7 @@ def _dated_ends(rest):
     text = tokens[0][1]
     low = normalised(text).casefold()
     if text in ',;' or LAW_AND.fullmatch(low):
-        return _joined_ends(tokens, 0, False)
+        return _joined_ends(tokens, 0, False, rest, after_verb)
     if re.search('[а-яё]', low):
         return RU_LAW_VERB.fullmatch(low) is not None or (
             RU_VERB.fullmatch(low) is not None and LAW_OF_CASE.fullmatch(low) is None)
@@ -1844,19 +1941,47 @@ def _dated_ends(rest):
 
 def _passed(text):
     """Whether a word after a comma, a semicolon or a conjunction is passed over before what follows a law's name is
-    judged (`_joined_ends`): one of `LAW_PASS_EN` or `LAW_PASS_RU`, or a lower-case Russian adverb in -о ("особенно",
-    "конечно", "именно", "то", "заодно", "только", "строго"), never a neuter noun (`RU_NEUTER`: "законодательство",
-    "правило")."""
+    judged (`_joined_ends`): one of `LAW_PASS_EN` or `LAW_PASS_RU`, or a lower-case Russian adverb, particle or pronoun
+    in -о (`_ru_adverb`: "особенно", "конечно", "именно", "то", "заодно", "только", "строго"), never a neuter noun
+    (`RU_NEUTER`: "законодательство", "правило") nor one that keeps its -о in every case ("радио", "казино", "бюро")."""
     low = normalised(text).casefold()
     if not re.search('[а-яё]', low):
         return LAW_PASS_EN.fullmatch(low) is not None
     return LAW_PASS_RU.fullmatch(low) is not None or (
-        text.islower() and low.endswith('о') and RU_NEUTER.fullmatch(low) is None)
+        text.islower() and low.endswith('о') and RU_NEUTER.fullmatch(low) is None and _ru_adverb(low))
 
 
-def _joined_ends(tokens, at, conjoined):
+@functools.cache
+def _ru_adjective_stems():
+    """(the lexicon's Russian words, the stems of its adjectives), ё read as е, read once per process."""
+    words = frozenset(word.replace('ё', 'е') for word in _lexicon()['ru'][0])
+    return words, frozenset(word[:-len(ending)] for word in words for ending in RU_ADJECTIVE_ENDINGS
+                            if word.endswith(ending) and len(word) - len(ending) >= 3)
+
+
+def _ru_adverb(low):
+    """Whether a lower-case Russian word in -о is an adverb, a particle or a pronoun (`_passed`): one of
+    `LAW_PASS_RU_O`, of an adverb's shape (`RU_ADVERB_SHAPE`: "всего", "было", "обязательно"), a word of the lexicon
+    (words/ru.txt: "строго", "хорошо", "конечно") or one made from an adjective it holds ("качественно" of
+    "качественного", "утверждено" of "утверждённый"), or "не" before one ("неплохо", "нечасто", "нескоро",
+    "нетвёрдо"). Never a noun that keeps its -о in every case (`RU_INDECLINABLE`:
+    "радио", "кино", "казино", "метро", "евро", "бюро"), which the lexicon holds too; a word none of them gives is read
+    as one of those, the owner's tie-break: the law's name may go on with it (`_may_go_on`), so its opening word is the
+    name's and must be the customer's."""
+    low = low.replace('ё', 'е')
+    if RU_INDECLINABLE.fullmatch(low):
+        return False
+    if LAW_PASS_RU_O.fullmatch(low) or RU_ADVERB_SHAPE.fullmatch(low):
+        return True
+    words, stems = _ru_adjective_stems()
+    return low in words or low[:-1] in stems or low[:-1] + 'н' in stems \
+        or (low.startswith('не') and len(low) >= 5 and _ru_adverb(low[2:]))
+
+
+def _joined_ends(tokens, at, conjoined, source='', after_verb=False):
     """Whether a law's name ends past the comma, the semicolon or the conjunction before the token at `at`
-    (`_name_ends`, `_law_head_ends`; `conjoined`: a conjunction, which takes what follows into a list).
+    (`_name_ends`, `_law_head_ends`; `conjoined`: a conjunction, which takes what follows into a list; `source`: what
+    `tokens` were read from; `after_verb`: the sentence has its verb before the law's stem).
 
     Past the conjunctions and their fillers ("а также", "as well as") and the words that open no clause (`_passed`:
     "особенно", "а именно", "то есть", "т. е.", "как и", "лишь", "even", "only", "i.e.", "that is"), with a
@@ -1868,32 +1993,191 @@ def _joined_ends(tokens, at, conjoined):
     clause's verb ("... and the Auditing of Banks", "... and its auditing rules"; never "... and the Labour Code", "...
     and this applies to banks"), and after a comma a capitalised word may ("..., the Auditing of Banks"), never a
     clause's subject ("..., the accountant keeps the books", "..., its rules apply to banks", `_clause_follows`: "...,
-    teachers must protect pupils")."""
+    teachers must protect pupils"). A Russian compound with a hyphen is read by its last part (`_compound_end`: "... и
+    интернет-торговле", "... и ток-шоу" go on; "... и интернет-банкинг" does not), which ends the name only where
+    28c1b69's reading of the first part ended it too: never "... и Ростове-на-Дону", "... и кое-чём", nor after a
+    first part that takes no case ("вице", "кое", "мини", "кафе"), whose last part in a genitive or a dative is a
+    conjunct of a name that ends in one ("Закон о защите конкуренции и мини-рынков", "... о помощи семье и
+    мини-предприятиям"); "... учёте и вице-премьер его одобряет" blanks with them, as 28c1b69 blanked it.
+
+    A Russian clause read after the comma or the conjunction (`_ru_clause_follows`) ends the name only where 28c1b69
+    ended it too (`_ended_28c1b69`): every clause that ended a name 28c1b69 let go on, after a noun that keeps its form
+    and "не", an abbreviation in the name's case or "ПО" ("... и радио не искажает", "..., радио не процитирует", "...
+    и СМИ освещает события", "..., ГНИ проверяет отчётность"), printed an invented name in the next re-check: the verbs
+    a law may take and the words that leave the sentence's verb to come are open classes, so the clause may be the
+    name's last word and its verb. The blank 28c1b69 gave stands there, the owner's tie-break; the clause still keeps
+    what 28c1b69 kept ("... и НДС начисляет вовремя", "..., сальдо переносится на следующий период")."""
+    decided, at, conjoined = _joined_word(tokens, at, conjoined, _passed)
+    if decided is not None:
+        return decided
+    last = _compound_end(tokens, at, source)
+    if not conjoined and _clause_follows(tokens, at):
+        return True
+    # A Russian clause's subject and its verb (`_ru_clause_follows`): after a comma or a semicolon, or after "и" where
+    # the sentence has its verb before the law, which the verb after cannot be ("Соблюдает Закон о бухгалтерском учёте
+    # и НДС начисляет вовремя"; never "Согласно Закону о телевидении и радио регулируется вещание"), where 28c1b69's
+    # reading ended the name too.
+    if (not conjoined or after_verb) and _ru_clause_follows(tokens, last) and _ended_28c1b69(tokens, at, conjoined):
+        return True
+    # A compound's last part ends the name only where 28c1b69's reading of its first part ended it too.
+    return not _may_go_on(tokens[last][1]) and (last == at or _ended_28c1b69(tokens, at, conjoined))
+
+
+def _joined_word(tokens, at, conjoined, passed):
+    """(the verdict, or None; the index of the word that decides; whether a conjunction joins it) of `_joined_ends`'s
+    first reading past a comma, a semicolon or a conjunction before the token at `at`: past the conjunctions and their
+    fillers, "that is" and the words `passed` passes over, the name ends at the text's end or "and so on" (True), and
+    after an English article or determiner as `_joined_ends` says; otherwise the word that decides (None)."""
     while at < len(tokens):
         text = tokens[at][1]
         low = normalised(text).casefold()
         following = normalised(tokens[at + 1][1]).casefold() if at + 1 < len(tokens) else ''
         if low == 'so' and following in ('on', 'forth'):
-            return True  # "... and so on"
+            return True, at, conjoined  # "... and so on"
         if low == 'that' and following == 'is':
             at += 1  # ", that is, auditing", read as "i.e."
         elif LAW_AND.fullmatch(low) or LAW_NAME_FILLER.fullmatch(low):
             conjoined = conjoined or LAW_AND.fullmatch(low) is not None
         elif text not in ',;' and (any(stem.fullmatch(text) for stem in NAMED_STEMS)
-                                   or LAW_NAME_PREPOSITION.fullmatch(low) or not _passed(text)):
+                                   or LAW_NAME_PREPOSITION.fullmatch(low) or not passed(text)):
             break
         at += 1
     if at >= len(tokens):
-        return True
+        return True, at, conjoined
     if at + 1 < len(tokens) and LAW_JOINED_DETERMINER.fullmatch(tokens[at][1].casefold()) \
             and WORD.fullmatch(tokens[at + 1][1]):
         at += 1
         if _another_law(tokens, at) or LAW_AUX.fullmatch(normalised(tokens[at][1]).casefold()):
-            return True
-        return not (conjoined or tokens[at][1][0].isupper())
-    if not conjoined and _clause_follows(tokens, at):
+            return True, at, conjoined
+        return not (conjoined or tokens[at][1][0].isupper()), at, conjoined
+    return None, at, conjoined
+
+
+# The neuter nouns 28c1b69 read as `RU_NEUTER`'s, no adverb passed over (`_ended_28c1b69`), with the nouns that keep
+# their -о it named so.
+RU_NEUTER_28C1B69 = re.compile(RU_NEUTER.pattern + r"|сальдо|нетто|брутто|бюро")
+
+
+def _ended_28c1b69(tokens, at, conjoined):
+    """Whether 28c1b69 ended a law's name past the comma, the semicolon or the conjunction before the word at `at`
+    (`_joined_ends`, which reached `at` passing over only words 28c1b69 passed too): it passed every lower-case
+    Russian word in -о but a neuter noun over ("радио", "казино", "видео", "строго"; never "законодательство",
+    "бюро", "сальдо"), and the first other word decided by its case alone (`_may_go_on` with no noun that keeps its
+    form): a word in the name's case, "не" among them, a capital of that shape ("СМИ", "ГНИ") or a preposition's ("ПО")
+    went on, an abbreviation of no case ("НДС", "ООО") or a verb ended the name. Never a clause, nor a compound's last
+    part."""
+    def passed(text):
+        low = normalised(text).casefold()
+        if not re.search('[а-яё]', low):
+            return LAW_PASS_EN.fullmatch(low) is not None
+        return LAW_PASS_RU.fullmatch(low) is not None or (
+            text.islower() and low.endswith('о') and RU_NEUTER_28C1B69.fullmatch(low) is None)
+
+    decided, at, conjoined = _joined_word(tokens, at, conjoined, passed)
+    if decided is not None:
+        return decided
+    return (not conjoined and _clause_follows(tokens, at)) or not _may_go_on(tokens[at][1], unchanged=False)
+
+
+# The words that open a Russian subordinate clause, whose verb leaves the sentence's to come (`_ru_verb_before`): the
+# conjunctions, and the pronouns and adverbs of an indirect question or a comparison ("почему", "зачем", "насколько",
+# "каким образом", "чем").
+RU_SUBORDINATOR = re.compile(r"котор\w*|чей|чья|чьё|чье|чьи|что|чтобы|чтоб|если|когда|где|куда|откуда|пока|покуда"
+                             r"|хотя|поскольку|ибо|раз|будто|словно|как|кто|ли|насколько|сколько|почему|зачем|отчего"
+                             r"|чем|дабы|ежели|как(?:ой|ая|ое|ие|ого|ому|ую|им|ими|их|ом|ов|ова|ово|овы)")
+# The words "как" opens a clause after ("так как", "после того как", "перед тем как", "с тех пор как", "в то время
+# как"); after a verb or an adverb it opens one too ("Бухгалтер знает как ...", "... сразу как ..."); after any other
+# word of its clause "как" names a role ("Бухгалтер как специалист знает ...", `_ru_verb_before`).
+RU_KAK_CONJUNCTION = re.compile(r"так|того|тем|пор|время|то|тогда|потому")
+
+
+# The endings `RU_VERB` reads as a verb's that a noun has too (`_ru_finite`): a present tense's bare -ит or -ят
+# ("следит", "говорят"; "Аудит", "Лимит", "Кредит", "Депозит"), a plural imperative's -ите ("храните"; "аудите",
+# "кредите"), a past plural's -ли ("соблюдали"; "Показатели", "Руководители").
+RU_NOUN_LIKE_VERB = re.compile(r"(.+?)(ит|ят|ите|[аие]ли)")
+# The infinitive's endings after the stem of a verb whose present tense ends in -ит, -ят or -ите (`_ru_finite`):
+# "следить", "говорить", "стоять", "видеть", "держать".
+RU_INFINITIVE_ENDINGS = ('ить', 'еть', 'ать', 'ять')
+# A dash between two words, which opens another clause (`_ru_verb_before`): "Бухгалтер ведёт учёт — Закон о ...".
+RU_DASH = re.compile(r"[—–―‒]|\s-|-\s")
+
+
+def _ru_finite(word, opening=False):
+    """Whether a Russian word is a finite verb, a sentence's own (`_ru_verb_before`): a present, past or imperative
+    form (`RU_LAW_VERB`, `RU_VERB`: "знает", "соблюдает", "ведётся", "руководствуется"), never a gerund nor an
+    infinitive (`RU_GERUND`: "Изучив", "Знать"), which leave the sentence's verb to come. A form in -ит, -ят, -ите or
+    -ли a noun has too (`RU_NOUN_LIKE_VERB`) is a verb only where the lexicon holds that verb's infinitive
+    (`RU_INFINITIVE_ENDINGS`: "следит" of "следить", "соблюдали" of "соблюдать"; never "Аудит", "Лимит", "Кредит",
+    "Показатели"), and never as the capitalised word opening the sentence (`opening`), its subject as often ("Аудит
+    Закона о ... проводится")."""
+    low = normalised(word).casefold()
+    if re.search('[а-яё]', low) is None or RU_GERUND.fullmatch(low) is not None:
+        return False
+    if RU_LAW_VERB.fullmatch(low) is not None:
         return True
-    return not _may_go_on(tokens[at][1])
+    if RU_VERB.fullmatch(low) is None:
+        return False
+    shared = RU_NOUN_LIKE_VERB.fullmatch(low.replace('ё', 'е'))
+    if shared is None:
+        return True
+    if opening and word[0].isupper():
+        return False
+    stem, ending = shared.groups()
+    words = _ru_adjective_stems()[0]
+    if ending.endswith('ли'):
+        return stem + ending[0] + 'ть' in words
+    return any(stem + form in words for form in RU_INFINITIVE_ENDINGS)
+
+
+def _ru_verb_before(tokens, at, source):
+    """Whether a Russian finite verb (`_ru_finite`) stands before the law's stem at `at` of `source` in its clause, no
+    mark or dash between (`RU_DASH`), no "и", "а", "но" or "или" between it and the stem, and no word opening a
+    subordinate clause before it (`RU_SUBORDINATOR`; "как" after a word of its clause that is no verb nor adverb names a
+    role, `RU_KAK_CONJUNCTION`): "Знает Закон о ...", "Бухгалтер соблюдает Закон о ...", "Работа ведётся согласно
+    Закону о ...", "Бухгалтер знает и соблюдает Закон о ...", "Бухгалтер как специалист знает Закон о ..."; never
+    "Согласно Закону о ...", "Изучив Закон о ...", "Бухгалтер, знающий Закон о ...", "Бухгалтер, который знает Закон о
+    ...", "Если знает Закон о ...", "Бухгалтер знает как Закон о ...", "Бухгалтер понимает почему Закон о ...",
+    "Бухгалтер знает своё дело и Закон о ...", "Бухгалтер ведёт учёт — Закон о ...", "Аудит Закона о ...". The sentence has its verb, so a verb after "и" and a noun past the law's name is another clause's
+    (`_joined_ends`); where the law opens a conjunct or a clause of its own, the verb after the name may be its, and the
+    name's."""
+    verb = False
+    for index in range(at - 1, -1, -1):
+        text = tokens[index][1]
+        if not WORD.fullmatch(text) or RU_DASH.search(source[tokens[index][0] + len(text):tokens[index + 1][0]]):
+            break
+        low = normalised(text).casefold()
+        role = low == 'как' and index > 0 and WORD.fullmatch(tokens[index - 1][1]) is not None \
+            and not RU_KAK_CONJUNCTION.fullmatch(normalised(tokens[index - 1][1]).casefold()) \
+            and not _ru_finite(tokens[index - 1][1]) and not _passed(tokens[index - 1][1])
+        if (RU_SUBORDINATOR.fullmatch(low) and not role) or (not verb and LAW_AND.fullmatch(low)):
+            return False
+        verb = verb or _ru_finite(text, _starts(source, tokens[index][0]))
+    return verb
+
+
+# The Russian particles a word takes after a hyphen ("аудите-то", "налогах-таки", "что-нибудь", "аудите-ка"), never the
+# part of a compound that says whether a law's name may go on with it (`_compound_end`).
+RU_PARTICLE_PART = re.compile(r"то|либо|нибудь|ка|таки|де|с")
+
+
+def _compound_end(tokens, at, source):
+    """The index of the last part of the Russian compound with a hyphen the word at `at` opens in `source`
+    ("интернет-торговле", "бизнес-планах", "ток-шоу", "ноу-хау"), or `at`: its first part takes no case of its own
+    ("интернет", "бизнес", "ток"), so the last part says whether a law's name may go on with it (`_joined_ends`). A
+    particle after the hyphen says nothing (`RU_PARTICLE_PART`): the part before it does ("... и аудите-то" goes on as
+    "... и аудите" does; "... и что-то" ends as "... и что" does)."""
+    first = at
+    while at + 1 < len(tokens) and re.search('[а-яё]', normalised(tokens[at][1]).casefold()):
+        start, word = tokens[at]
+        end = start + len(word)
+        following = tokens[at + 1][1]
+        if source[end:end + 1] not in ('-', '‐', '‑') or tokens[at + 1][0] != end + 1 or not WORD.fullmatch(following) \
+                or not re.search('[а-яё]', normalised(following).casefold()):
+            break
+        at += 1
+    while at > first and RU_PARTICLE_PART.fullmatch(normalised(tokens[at][1]).casefold()):
+        at -= 1
+    return at
 
 
 def _clause_follows(tokens, at):
@@ -1910,6 +2194,100 @@ def _clause_follows(tokens, at):
         if not WORD.fullmatch(tokens[index][1]) or LAW_AND.fullmatch(following):
             return False
         if LAW_AUX.fullmatch(following):
+            return True
+    return False
+
+
+def _ru_clause_follows(tokens, at):
+    """Whether the Russian word at `at` is a clause's subject (`_joined_ends`: after a comma or a semicolon, or after
+    "и" past the sentence's own verb): a noun that keeps its form in every case or an abbreviation
+    (`_ru_indeclinable`), which the law's name could go on with, its verb after it (`RU_LAW_VERB`, `RU_VERB`,
+    `RU_CLAUSE_VERB`, `_ru_past`: "... и НДС сдаёт вовремя", "..., ООО оплатил вовремя"), "не" or one word between that is no conjunction, preposition or word in the name's case ("...,
+    сальдо переносится на следующий период", "..., сальдо счёта переносится ...", "...; бюро ведёт учёт", "..., видео
+    не является ...", "..., ООО обязано вести учёт"). A list in a law's name joins its last word with "и", never a
+    comma alone, so the name ended at the comma, as 28c1b69 read it; never "..., сальдо и аудите регулируется ..." nor
+    "..., бюро в банках ...". An infinitive or a gerund is no clause's verb (`RU_GERUND`): after a verb that governs it
+    the law is its fronted object ("Умеет Закон о телевидении и радио не нарушать", "Старается Законом о ... и радио
+    не пренебрегать"), so the name may go on with the noun; a modal after it still is ("..., сальдо переносить
+    нельзя"). A verb a law itself may take (`_ru_law_verb`: "нарушает", "регулирует", "регулируется", "соблюдать"),
+    there or right after the clause's verb ("..., сальдо может нарушать", "... и видео было изменено"), opens no clause,
+    finite or not, with "не" or without (the owner's decision): the law may be its subject or its object, the noun the
+    name's last word ("Знает Закон о ... и радио не нарушает", "Руководствуется при этом Законом о ... и ПО регулируется
+    работа", "..., радио не регулирует"); one that cannot take a law leaves the clause ("... и НДС начисляет вовремя",
+    "..., сальдо переносится на следующий период", "..., бюро ведёт учёт самостоятельно"). A word in the name's case
+    is the name's (`LAW_OF_CASE`: "... и АУДИТЕ ведёт книги", "... и кафе ..."), in capitals too, unless it is a short
+    abbreviation (`_ru_case_abbreviation`: "..., ГНИ проверяет отчётность"), which takes its verb right after it or
+    after "не": a word between may be the clause's own subject, the abbreviation the name's ("... и СМИ редактор
+    освещает ..."). The clause ends the name only where 28c1b69 ended it too (`_joined_ends`, `_ended_28c1b69`)."""
+    text = tokens[at][1]
+    low = normalised(text).casefold()
+    in_case = LAW_OF_CASE.fullmatch(low) is not None
+    if not WORD.fullmatch(text) or not re.search('[а-яё]', low) or (in_case and not _ru_case_abbreviation(text)) \
+            or not _ru_indeclinable(text):
+        return False
+    between = in_case
+    for index in range(at + 1, min(at + 4, len(tokens))):
+        following = tokens[index][1]
+        word = normalised(following).casefold()
+        if not WORD.fullmatch(following) or not re.search('[а-яё]', word) or _ru_law_verb(word):
+            return False
+        if RU_CLAUSE_VERB.fullmatch(word) or RU_LAW_VERB.fullmatch(word) or _ru_past(word) \
+                or (RU_VERB.fullmatch(word) and not LAW_OF_CASE.fullmatch(word) and not RU_GERUND.fullmatch(word)):
+            return not _ru_law_verb_follows(tokens, index)
+        if word == 'не':
+            continue
+        if between or LAW_AND.fullmatch(word) or LAW_NAME_PREPOSITION.fullmatch(word) or LAW_OF_CASE.fullmatch(word) \
+                or any(stem.fullmatch(following) for stem in NAMED_STEMS):
+            return False
+        between = True
+    return False
+
+
+def _ru_past(word):
+    """Whether a Russian word (lower case) is a past form in -л, -ла or -ло whose infinitive in -ть the lexicon holds
+    (words/ru.txt), with or without a verbal prefix (`RU_PAST`, `RU_VERB_PREFIXES`): "платил" of "платить", "сдала" of
+    "сдать", "оплатил" of "платить", "списал" of "писать" (`_ru_clause_follows`); never a noun of that shape ("канал",
+    "журнал", "протокол", "отдел", "персонал") nor a neuter noun ("правило", `RU_NEUTER`)."""
+    low = word.replace('ё', 'е')
+    shaped = RU_PAST.fullmatch(low)
+    if shaped is None or RU_NEUTER.fullmatch(low):
+        return False
+    stem, words = shaped.group(1), _ru_adjective_stems()[0]
+    return stem + 'ть' in words or any(stem.startswith(prefix) and len(stem) - len(prefix) >= 2
+                                       and stem[len(prefix):] + 'ть' in words for prefix in RU_VERB_PREFIXES)
+
+
+def _ru_case_abbreviation(text):
+    """Whether a word in capitals with the letters of a word in the name's case (`LAW_OF_CASE`: "СМИ", "НИИ", "ГАИ",
+    "ГНИ") is an abbreviation, which stands in no case (`_ru_clause_follows`): two to four letters, neither a word of
+    the lexicon (words/ru.txt) nor a case of one ("ИХ", "ДОМЕ"); never a word written in capitals ("АУДИТЕ",
+    "НАЛОГАХ")."""
+    low = normalised(text).casefold().replace('ё', 'е')
+    if not text.isupper() or not 2 <= _letters(text) <= 4:
+        return False
+    words = _lexicon()['ru'][0]
+    return low not in words and not (len(low) > 3 and low[:3] in words and low[3:] in SHORT_ENDINGS['ru'])
+
+
+def _ru_law_verb(word):
+    """Whether a Russian word (lower case) is a form of a verb a law itself may take (`RU_LAW_FAMILY`, of a verb's form,
+    `RU_VERB_FORM`): "нарушает", "регулируется", "соблюдать", "предусмотрено", "знает"; never "начисляет",
+    "переносится", "ведёт", nor "дополнительно", "требования"."""
+    low = word.replace('ё', 'е')
+    return RU_LAW_FAMILY.fullmatch(low) is not None and RU_VERB_FORM.fullmatch(low) is not None
+
+
+def _ru_law_verb_follows(tokens, at):
+    """Whether a verb a law itself may take (`_ru_law_verb`) is among the three words after the verb at `at`, before a
+    mark or a conjunction: a modal's or a copula's ("... может нарушать", "... может строго соблюдать", "... может
+    быть изменено", "... было изменено", `_ru_clause_follows`); never past them ("... начисляет вовремя и соблюдает
+    ...", "..., сальдо переносится, как предусмотрено ...")."""
+    for index in range(at + 1, min(at + 4, len(tokens))):
+        following = tokens[index][1]
+        word = normalised(following).casefold()
+        if not WORD.fullmatch(following) or LAW_AND.fullmatch(word):
+            return False
+        if _ru_law_verb(word):
             return True
     return False
 
@@ -1933,19 +2311,34 @@ def _another_law(tokens, at):
     return False
 
 
-def _may_go_on(text):
+def _may_go_on(text, unchanged=True):
     """Whether a word after a comma or a conjunction may go on a law's name (`_name_ends`): a mark, a preposition, a
-    Russian word in the case the name's words take after "о" (`LAW_OF_CASE`: "аудите", "налогах", "аудиторской"), or
-    an English word of a name, capitalised or in lower case ("Auditing", "auditing"), never a stem of its own ("... и
-    Закон об аудите" is read on its own) nor an English word that goes on the sentence (`LAW_OF_STOP`, "the")."""
+    Russian word in the case the name's words take after "о" (`LAW_OF_CASE`: "аудите", "налогах", "аудиторской") or,
+    with `unchanged`, one that stands unchanged in it (`_ru_indeclinable`: "радио", "казино", "бюро", "шоу", "интервью"
+    keep their form in every case), or an English word of a name, capitalised or in lower case ("Auditing",
+    "auditing"), never a stem of its own ("... и Закон об аудите" is read on its own) nor an English word that goes on
+    the sentence (`LAW_OF_STOP`, "the")."""
     if any(stem.fullmatch(text) for stem in NAMED_STEMS):
         return False
     low = normalised(text).casefold()
     if not WORD.fullmatch(text) or LAW_NAME_PREPOSITION.fullmatch(low):
         return True
     if re.search('[а-яё]', low):
-        return LAW_OF_CASE.fullmatch(low) is not None
+        return LAW_OF_CASE.fullmatch(low) is not None or (unchanged and _ru_indeclinable(text))
     return text[0].isupper() or not (LAW_OF_STOP.fullmatch(low) or LAW_OF_GRAMMAR.fullmatch(low))
+
+
+def _ru_indeclinable(text):
+    """Whether a Russian word stands unchanged in the case a law's name takes after "о" or as its genitive, so the name
+    may go on with it (`_may_go_on`), in lower case or capitalised: a noun that keeps its form in every case
+    (`RU_INDECLINABLE`: "радио", "шоу", "меню", "каратэ") or a word in -о that is no adverb nor a neuter noun of a list
+    (`_ru_adverb`, `RU_NEUTER`: "казино", "бюро"); capitalised, never an adverb mid-sentence ("Осло"). An abbreviation
+    in capitals of two letters or more stands unchanged in any case ("НДС", "ООО", "АО", "МСФО")."""
+    low = normalised(text).casefold()
+    if text.isupper():
+        return _letters(text) >= 2
+    return RU_INDECLINABLE.fullmatch(low.replace('ё', 'е')) is not None or (
+        low.endswith('о') and RU_NEUTER.fullmatch(low) is None and (not text.islower() or not _ru_adverb(low)))
 
 
 def _law_head(sentence, tokens, at, word):
@@ -2040,13 +2433,18 @@ def _law_head_ends(sentence, start, word):
     учёте от 13 апреля 2016 года."), or past "и", a comma or a semicolon and the words that open no clause a word that
     cannot go on it (`_joined_ends`), as `_name_ends` reads the name. Before a preposition, a word in the name's case
     ("... учёте и аудите", "... учёте; аудите", "... учёте и особенно аудите", "... учёте от 13 апреля 2016 года и
-    аудите") or any other word the name may go on past what `_law_names` reads."""
+    аудите") or any other word the name may go on past what `_law_names` reads. Where the sentence has its verb before
+    the law's stem (`_ru_verb_before`: "Бухгалтер знает Закон о ..."), a verb after "и" is another clause's."""
     rest = sentence[start + len(word):]
     rest = rest[LAW_HEAD_CLOSE.match(rest).end():]
     if not re.search('[а-яё]', normalised(word).casefold()):
         after = LAW_TOKEN.match(rest, len(rest) - len(rest.lstrip(' \u00a0')))
         low = normalised(after.group(0)).casefold() if after is not None else ''
         return LAW_ABOUT.fullmatch(low) is not None or UZ_LAW_STEM.fullmatch(low) is not None
+    before = [(match.start(), match.group(0)) for match in LAW_TOKEN.finditer(sentence[:start])]
+    at = next((index for index in range(len(before) - 1, -1, -1)
+               if any(stem.fullmatch(before[index][1]) for stem in NAMED_STEMS)), None)
+    after_verb = at is not None and _ru_verb_before(before, at, sentence)
     adverb = re.match(r"[ \u00a0]+([^\W\d_]+)(?![^\W\d_])", rest)
     while adverb is not None and _passed(adverb.group(1)) \
             and not LAW_NAME_PREPOSITION.fullmatch(normalised(adverb.group(1)).casefold()):
@@ -2055,7 +2453,7 @@ def _law_head_ends(sentence, start, word):
     if LAW_HEAD_END.match(rest):
         return True
     if LAW_HEAD_DATED.match(rest):
-        return _dated_ends(rest)
+        return _dated_ends(rest, after_verb)
     verb = re.match(r"[ \u00a0]+([^\W\d_]+)(?![^\W\d_]|-)", rest)
     if verb is not None and RU_LAW_VERB.fullmatch(normalised(verb.group(1)).casefold()) is not None:
         return True
@@ -2064,7 +2462,7 @@ def _law_head_ends(sentence, start, word):
     # кодекс"); never "... учёте и аудите", "... учёте и особенно аудите", "... учёте, как и об аудите".
     joined = re.match(r"[ \u00a0]*[,;]|[ \u00a0]+(?:и|а|или)(?![^\W\d_])", rest)
     tokens = [(match.start(), match.group(0)) for match in LAW_TOKEN.finditer(rest)]
-    return joined is not None and _joined_ends(tokens, 0, False)
+    return joined is not None and _joined_ends(tokens, 0, False, rest, after_verb)
 
 
 def _legal_known(sentence, concepts, trusted, translated, *, names=True):
