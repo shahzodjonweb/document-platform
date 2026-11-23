@@ -266,8 +266,8 @@ def test_a_webhook_alone_grants_nothing(bank):
     switch_on(signing='')  # no signing secret saved: unsigned webhooks are listened to
     account = customer()
     row, _ = checkout.create(account, 'plus', 'web')
-    # inPAY still says the payment is waiting.
-    assert post_webhook(event(row.provider_id)).status_code == 200
+    # inPAY still says the payment is waiting: nothing granted, and inPAY is asked to send the news again later.
+    assert post_webhook(event(row.provider_id)).status_code == 503
     row.refresh_from_db()
     assert row.status == 'pending' and effective_plan(account) == 'free' and not Payment.objects.exists()
     # About a payment that is not ours: taken, nothing asked.
@@ -288,14 +288,14 @@ def test_an_unsigned_webhook_still_gets_a_real_payment_through(bank):
 def test_an_unsigned_webhook_cannot_make_us_ask_inpay_without_end(bank):
     switch_on(signing='')
     row, _ = checkout.create(customer(), 'plus', 'web')
-    assert post_webhook(event(row.provider_id)).status_code == 200
+    assert post_webhook(event(row.provider_id)).status_code == 503  # inPAY says it is still waiting
     asked = bank.count('GET', '/api/v2/payments/')
     # Asked a moment ago: "again later", and inPAY is left alone.
     assert post_webhook(event(row.provider_id)).status_code == 503
     assert bank.count('GET', '/api/v2/payments/') == asked
 
 
-def test_a_wrong_or_old_signature_is_turned_away(bank):
+def test_a_wrong_signature_is_turned_away(bank):
     switch_on()
     account = customer()
     row, _ = checkout.create(account, 'plus', 'web')
@@ -304,12 +304,29 @@ def test_a_wrong_or_old_signature_is_turned_away(bank):
     raw = event(row.provider_id)
     assert post_webhook(raw).status_code == 401
     assert post_webhook(raw, HTTP_X_INPAY_SIGNATURE=signature(raw, secret='whsec_someone_elses')).status_code == 401
-    assert post_webhook(raw, HTTP_X_INPAY_SIGNATURE=signature(raw, at=time.time() - 3600)).status_code == 401
     # Signed for another body.
     assert post_webhook(raw + b' ', HTTP_X_INPAY_SIGNATURE=signature(raw)).status_code == 401
     assert len(bank.calls) == asked and effective_plan(account) == 'free'
     assert post_webhook(raw, HTTP_X_INPAY_SIGNATURE=signature(raw)).status_code == 200
     assert effective_plan(account) == 'plus'
+
+
+def test_an_old_signature_by_inpay_is_listened_to_like_an_unsigned_webhook(bank):
+    """A retry may carry its first timestamp: it is still inPAY's, but only a reason to ask, at a waiting page's pace."""
+    switch_on()
+    account = customer()
+    row, _ = checkout.create(account, 'plus', 'web')
+    bank.pay(row.provider_id)
+    raw = event(row.provider_id)
+    old = signature(raw, at=time.time() - 3600)
+    assert post_webhook(raw, HTTP_X_INPAY_SIGNATURE=old).status_code == 200 and effective_plan(account) == 'plus'
+    other, _ = checkout.create(customer(7002), 'plus', 'web')
+    raw = event(other.provider_id)
+    assert post_webhook(raw, HTTP_X_INPAY_SIGNATURE=signature(raw, at=time.time() - 3600)).status_code == 503
+    asked = bank.count('GET', '/api/v2/payments/')
+    # Repeated at once: not forced, so inPAY is not asked again so soon.
+    assert post_webhook(raw, HTTP_X_INPAY_SIGNATURE=signature(raw, at=time.time() - 3600)).status_code == 503
+    assert bank.count('GET', '/api/v2/payments/') == asked
 
 
 @pytest.mark.parametrize('change,problem', [({'amount': 1_000}, 'amount_mismatch'), ({'currency': 'USD'}, 'currency_mismatch'),
@@ -434,12 +451,11 @@ def test_the_periodic_check_asks_about_a_few_payments_a_run_and_backs_off(bank):
     switch_on()
     rows = [checkout.create(customer(7100 + i), 'plus', 'web')[0] for i in range(5)]
     now = timezone.now()
-    assert checkout.housekeeping(now + timedelta(minutes=3))['asked'] == checkout.RECONCILE_BATCH
-    assert checkout.housekeeping(now + timedelta(minutes=4))['asked'] == 2
+    assert checkout.housekeeping(now + timedelta(minutes=3))['asked'] == 5
     Checkout.objects.update(checked_at=now + timedelta(minutes=4))
     # Asked lately: left alone until the wait has passed, which grows with the payment's age.
     assert checkout.housekeeping(now + timedelta(minutes=6))['asked'] == 0
-    assert checkout.housekeeping(now + timedelta(minutes=10))['asked'] == checkout.RECONCILE_BATCH
+    assert checkout.housekeeping(now + timedelta(minutes=10))['asked'] == 5
     Checkout.objects.update(checked_at=now + timedelta(hours=2))
     assert checkout.housekeeping(now + timedelta(hours=2, minutes=10))['asked'] == 0
     closed = checkout.housekeeping(now + timedelta(hours=25))
@@ -612,7 +628,7 @@ def test_the_classic_api_takes_a_payment_the_same_way(bank):
     assert bank.payments[row.provider_id]['callback_url'] == 'https://docmaster.live/api/v1/webhooks/inpay'
     # Its webhook carries no signature and its own word for the status: still only a reason to ask.
     v1_event = json.dumps({'amount': '20000.00', 'status': 'success', 'order_id': row.provider_id, 'transaction_id': 149}).encode()
-    assert post_webhook(v1_event).status_code == 200
+    assert post_webhook(v1_event).status_code == 503
     assert effective_plan(account) == 'free'
     bank.pay(row.provider_id)
     Checkout.objects.filter(pk=row.pk).update(checked_at=None)
@@ -769,3 +785,182 @@ def test_a_gateway_page_or_a_dead_line_is_inpay_being_away(monkeypatch):
     with pytest.raises(inpay.Refused) as refused:
         inpay._answer(403, {'success': False, 'error': {'code': 'merchant_inactive'}})
     assert refused.value.code == 'merchant_inactive'
+
+
+
+# ---------------------------------------------------------------- found in review: waiting, budgets, old ids
+
+
+def open_row(account, at, bank, api='v2'):
+    """A payment opened at `at`, as checkout.create leaves it, without asking inPAY."""
+    identifier = secrets.token_hex(8)
+    bank.payments[identifier] = {'id': identifier, 'order_id': identifier, 'amount': 20_000, 'currency': 'UZS',
+                                 'status': 'requires_payment_method', 'livemode': True, 'metadata': {}}
+    return Checkout.objects.create(account=account, plan='plus', amount=20_000, regular_amount=20_000, api=api, livemode=True,
+                                   provider_id=identifier, checkout_url=f'https://inpay.uz/checkout/{identifier}',
+                                   status='pending', created_at=at, expires_at=at + timedelta(hours=24))
+
+
+def test_a_paid_payment_is_found_even_behind_fifty_older_open_ones(bank):
+    switch_on()
+    now = timezone.now()
+    shopper, payer = customer(8000), customer(9001)
+    for i in range(50):  # opened 7 h ago, asked 1 h ago: not due for another hour
+        row = open_row(shopper, now - timedelta(hours=7), bank)
+        Checkout.objects.filter(pk=row.pk).update(checked_at=now - timedelta(hours=1, seconds=i))
+    row = open_row(payer, now - timedelta(minutes=12), bank)
+    Checkout.objects.filter(pk=row.pk).update(checked_at=now - timedelta(minutes=6))
+    bank.pay(row.provider_id)
+    assert checkout.housekeeping(now)['asked'] == 1 and effective_plan(payer) == 'plus'
+
+
+@pytest.mark.parametrize('per_day', [60, 200])
+def test_a_lost_webhook_waits_minutes_not_hours_however_many_payments_are_abandoned(bank, monkeypatch, per_day):
+    switch_on()
+    start = timezone.now().replace(microsecond=0)
+    clock = [start]
+    monkeypatch.setattr(timezone, 'now', lambda: clock[0])
+    shopper, payer = customer(8000), customer(9000 + per_day)
+    step, every = timedelta(minutes=5), timedelta(days=1) / per_day
+    state = {'next': start}
+
+    def run(k):
+        clock[0] = start + k * step
+        while state['next'] <= clock[0]:
+            open_row(shopper, state['next'], bank)
+            state['next'] += every
+        checkout.housekeeping(clock[0])
+    warm = 30 * 12
+    for k in range(warm):
+        run(k)
+    row = open_row(payer, clock[0], bank)
+    run(warm)
+    run(warm + 1)
+    bank.pay(row.provider_id)  # paid ten minutes after opening; the webhook is lost
+    waited = None
+    for k in range(warm + 2, warm + 2 + 24 * 12):
+        run(k)
+        if effective_plan(payer) == 'plus':
+            waited = (k - (warm + 1)) * 5
+            break
+    assert waited is not None and waited <= 15, f'{per_day}/day: waited {waited} minutes'
+
+
+def test_a_card_declined_then_accepted_on_the_same_page_is_found_without_a_webhook(bank):
+    switch_on()
+    payer = customer(9002)
+    row, _ = checkout.create(payer, 'plus', 'web')
+    bank.payments[row.provider_id]['status'] = 'failed'
+    checkout.refresh(row, force=True)
+    assert Checkout.objects.get(pk=row.pk).status == 'failed'
+    bank.pay(row.provider_id)
+    now = timezone.now()
+    asked = sum(checkout.housekeeping(now + timedelta(minutes=5 * k))['asked'] for k in range(1, 13))
+    assert asked >= 1 and effective_plan(payer) == 'plus'
+    # Two days on, a closed payment is no longer looked at by the periodic check.
+    late, _ = checkout.create(customer(9003), 'plus', 'web')
+    Checkout.objects.filter(pk=late.pk).update(status='expired', created_at=now - timedelta(hours=checkout.REOPEN_HOURS + 1))
+    before = bank.count('GET', '/api/v2/payments/')
+    checkout.housekeeping(now + timedelta(hours=3))
+    assert bank.count('GET', '/api/v2/payments/') == before
+
+
+def test_a_month_old_payment_no_longer_makes_us_call_inpay(bank):
+    from django.test import Client
+    switch_on()
+    row, _ = checkout.create(customer(9004), 'plus', 'web')
+    old = timezone.now() - timedelta(days=30)
+    Checkout.objects.filter(pk=row.pk).update(status='expired', created_at=old, expires_at=old + timedelta(hours=24), checked_at=old)
+    before = bank.count('GET', '/api/v2/payments/')
+    assert Client().get(f'/api/v1/billing/checkout/{row.id}').status_code == 200
+    assert post_webhook(event(row.provider_id)).status_code == 401  # unsigned, with a secret saved
+    assert bank.count('GET', '/api/v2/payments/') == before
+    # inPAY's own signed news about it is still acted on.
+    bank.pay(row.provider_id)
+    assert signed_webhook(row.provider_id).status_code == 200
+    assert Checkout.objects.get(pk=row.pk).status == 'paid'
+
+
+def test_the_classic_apis_hundred_requests_an_hour_are_never_exceeded_and_opening_keeps_its_share(bank, monkeypatch):
+    switch_on_v1()
+    start = timezone.now().replace(microsecond=0)
+    clock = [start]
+    monkeypatch.setattr(timezone, 'now', lambda: clock[0])
+    monkeypatch.setattr(inpay.time, 'time', lambda: clock[0].timestamp())
+    watching, opened = {}, 0
+    for second in range(0, 3600, 5):  # a waiting page asks us every five seconds
+        clock[0] = start + timedelta(seconds=second)
+        if second % 180 == 0:  # a new customer every three minutes
+            row, _ = checkout.create(customer(9100 + second), 'plus', 'web')
+            opened += 1
+            Checkout.objects.filter(pk=row.pk).update(created_at=clock[0])
+            watching[row.pk] = clock[0] + timedelta(minutes=10)
+        for pk, until in watching.items():
+            if clock[0] < until:
+                checkout.refresh(Checkout.objects.get(pk=pk))
+        if second % 300 == 0:
+            checkout.housekeeping(clock[0])
+    assert len(bank.calls) <= inpay.V1_HOURLY and opened == 20
+    assert Checkout.objects.filter(status='pending').count() == 20, 'every customer could open a payment'
+
+
+def test_inpays_limit_reached_tells_the_owner(bank):
+    switch_on()
+    answer = bank.__call__
+
+    def limited(method, path, **request):
+        if method == 'POST':
+            return 429, {'success': False, 'error': {'code': 'rate_limited'}}
+        return answer(method, path, **request)
+    inpay._call = limited
+    with pytest.raises(DomainError):
+        checkout.create(customer(), 'plus', 'web')
+    assert StaffAlert.objects.get().kind == 'inpay_rate_limited'
+
+
+def test_a_status_inpay_refuses_to_give_tells_the_owner_once(bank):
+    switch_on()
+    row, _ = checkout.create(customer(), 'plus', 'web')
+    del bank.payments[row.provider_id]  # inPAY no longer knows it: 404
+    for _ in range(2):
+        Checkout.objects.filter(pk=row.pk).update(checked_at=None)
+        checkout.refresh(Checkout.objects.get(pk=row.pk))
+    assert list(StaffAlert.objects.values_list('kind', flat=True)) == ['inpay_lookup_refused']
+
+
+def test_a_review_alert_names_the_customer_and_what_inpay_reported(bank, settings):
+    settings.ADMIN_ORIGIN = 'https://api.docmaster.live'
+    switch_on()
+    account = customer()
+    row, _ = checkout.create(account, 'plus', 'web')
+    bank.pay(row.provider_id, amount=1_000)
+    checkout.refresh(row, force=True)
+    text = StaffAlert.objects.get().text
+    assert "20 000 so'm expected, inPAY reports 1 000 UZS" in text and f'/ops/users/{account.id}' in text
+
+
+def test_lower_case_currency_from_inpay_is_still_so_m(bank):
+    switch_on()
+    account = customer()
+    row, _ = checkout.create(account, 'plus', 'web')
+    bank.pay(row.provider_id, currency='uzs')
+    checkout.refresh(row, force=True)
+    assert effective_plan(account) == 'plus'
+
+
+def test_a_forged_signature_about_no_payment_of_ours_pages_nobody(bank):
+    switch_on()
+    raw = event('f' * 16)
+    assert post_webhook(raw, HTTP_X_INPAY_SIGNATURE=signature(raw, secret='whsec_forged_one')).status_code == 401
+    assert not StaffAlert.objects.exists()
+
+
+@pytest.mark.parametrize('header', ['t=\u00b2,v1=abc', 't={now},v1=\u00e9'])
+def test_a_signature_header_that_is_not_ascii_is_turned_away_not_a_crash(bank, header):
+    from django.test import Client
+    switch_on()
+    header = header.format(now=int(time.time()))
+    raw = event('f' * 16)
+    answer = Client(raise_request_exception=False).post('/api/v1/webhooks/inpay', data=raw, content_type='application/json',
+                                                         HTTP_X_INPAY_SIGNATURE=header)
+    assert answer.status_code == 401

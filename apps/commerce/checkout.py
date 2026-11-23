@@ -44,8 +44,12 @@ OPEN_HOURS = 24
 REUSE_MINUTES = 30
 # A payment worth showing on the billing page: the open one, or one decided this lately.
 SHOWN_DAYS = 7
-# Payments the periodic check asks inPAY about in one run (every five minutes).
-RECONCILE_BATCH = 3
+# Payments the periodic check asks inPAY about in one run (every five minutes),
+# by API: v1 shares 100 requests an hour with everything else.
+RECONCILE_BATCH = {'v2': 10, 'v1': 3}
+# A payment that failed, was cancelled or ran out of time is still looked at
+# this long: the customer may pay on the same page after all.
+REOPEN_HOURS = 48
 FINAL = ('paid', 'refunded')
 DESCRIPTION = {'en': 'DocMaster {plan} — 30 days', 'uz': 'DocMaster {plan} — 30 kun', 'ru': 'DocMaster {plan} — 30 дней'}
 
@@ -152,6 +156,8 @@ def ask(request):
                                   webhook_url=request['webhook_url']), ''
     except inpay.Refused as refused:
         return None, 'refused:' + refused.code
+    except inpay.Unavailable as away:
+        return None, 'provider_rate_limited' if away.reason == 'rate_limited' else 'provider_unavailable'
     except Exception:
         return None, 'provider_unavailable'
 
@@ -166,7 +172,11 @@ def complete(row, opened, failure):
         Checkout.objects.filter(pk=row.pk, status='created').update(status='failed', failure=failure[:64])
         # inPAY saying no is a setting only the owner can put right (a key, the
         # kassa, a domain); inPAY not answering passes by itself.
-        if failure != 'provider_unavailable':
+        if failure == 'provider_rate_limited':
+            _alert('inpay_rate_limited', '⚠️ inPAY\'s hourly request limit is spent: customers cannot open new payments '
+                   'until the hour is over. With the classic API (v1) the limit is 100 requests an hour; API v2 keys avoid it.',
+                   once_an_hour=True)
+        elif failure != 'provider_unavailable':
             _alert('inpay_refused', '⚠️ inPAY could not open a payment: ' + failure.removeprefix('refused:') +
                    '\nAutomatic payment is not working. Check Admin → Integrations → inPAY and the kassa in the inPAY cabinet.',
                    once_an_hour=True)
@@ -205,6 +215,10 @@ def due(row, force=False, now=None):
     now = now or timezone.now()
     if row.status in FINAL or row.status == 'created' or not row.provider_id:
         return None
+    # Long closed: nothing a page or an unsigned webhook says makes us ask again.
+    # A signed webhook (force) still does.
+    if not force and row.created_at < now - timedelta(hours=OPEN_HOURS + REOPEN_HOURS):
+        return None
     claimed = Checkout.objects.filter(pk=row.pk)
     if not force:
         claimed = claimed.filter(Q(checked_at__isnull=True) | Q(checked_at__lte=now - timedelta(seconds=_gap(row, now))))
@@ -217,6 +231,13 @@ def due(row, force=False, now=None):
 def look(question):
     """Ask inPAY where the payment stands. No database is touched; raises inpay.Unavailable or inpay.Refused."""
     return inpay.fetch(question['cfg'], question['api'], question['id'])
+
+
+def lookup_refused(refused):
+    """inPAY understood a question about a payment and would not answer it: only the owner can put that right."""
+    _alert('inpay_lookup_refused', f'⚠️ inPAY refused to say how a payment stands ({refused.code}).'
+           '\nPayments cannot be confirmed until this is fixed. Check the key in Admin → Integrations → inPAY '
+           '(press Test connection) and that the kassa is active in the inPAY cabinet.', once_an_hour=True)
 
 
 def _mismatch(row, remote):
@@ -248,12 +269,21 @@ def apply(pk, remote):
             # Money was taken for something this row does not describe. Nothing
             # is granted on a guess: the owner looks at it.
             if row.status != 'review':
+                from apps.core.links import admin_url
                 row.status, row.failure = 'review', problem
                 row.save(update_fields=['status', 'failure'])
-                _action(row, 'checkout.review', {'problem': problem, 'reported_amount': remote['amount']})
+                _action(row, 'checkout.review', {'problem': problem, 'reported_amount': remote['amount'],
+                                                 'reported_currency': remote['currency'], 'reported_live': remote['live']})
+                payer = Account.objects.filter(pk=row.account_id).first()
+                reported = f"{_money(remote['amount'])} {remote['currency']}" if remote['amount'] is not None else 'no amount'
+                link = admin_url(f'/ops/users/{row.account_id}')
                 _alert('inpay_review', '⚠️ inPAY payment needs a look: ' + problem +
-                       f"\n{row.plan.title()} · {_money(row.amount)} so'm expected · inPAY id {row.provider_id}"
-                       '\nNo plan was granted. Compare it with the payment in the inPAY cabinet.')
+                       f"\n{row.plan.title()} · {_money(row.amount)} so'm expected, inPAY reports {reported}"
+                       f"{'' if remote['live'] else ' (test mode)'} · inPAY id {row.provider_id}"
+                       f"\nCustomer: {(payer.display_name if payer else '') or (payer.telegram_user_id if payer else '') or row.account_id}"
+                       + (f'\n{link}' if link else '') +
+                       '\nNo plan was granted. Compare it with the payment in the inPAY cabinet; if the money is right, '
+                       'give the plan on the customer\'s page, or return the money in inPAY.')
             return row
         account = Account.objects.select_for_update().get(pk=row.account_id)
         period = None
@@ -303,7 +333,12 @@ def refresh(row, force=False, strict=False):
         return row
     try:
         remote = look(question)
-    except (inpay.Unavailable, inpay.Refused):
+    except inpay.Refused as refused:
+        lookup_refused(refused)
+        if strict:
+            raise
+        return row
+    except inpay.Unavailable:
         if strict:
             raise
         return row
@@ -324,7 +359,11 @@ def _reconcile_due(row, now):
     age = now - row.created_at
     if age < timedelta(minutes=2):
         return False
-    wait = timedelta(minutes=5) if age < timedelta(hours=1) else timedelta(minutes=30) if age < timedelta(hours=6) else timedelta(hours=2)
+    if row.status != 'pending':
+        # Closed on our side, still payable on inPAY's page for a while: looked at now and then.
+        wait = timedelta(minutes=30)
+    else:
+        wait = timedelta(minutes=5) if age < timedelta(hours=1) else timedelta(minutes=30) if age < timedelta(hours=6) else timedelta(hours=2)
     return row.checked_at is None or now - row.checked_at >= wait
 
 
@@ -340,15 +379,23 @@ def housekeeping(now=None):
     # A row inPAY was never asked about is nothing to wait for.
     Checkout.objects.filter(status='created', created_at__lte=now - timedelta(minutes=10)).update(
         status='failed', failure='never_opened')
-    asked = 0
-    open_ = Checkout.objects.filter(status='pending').exclude(provider_id='').order_by(
-        F('checked_at').asc(nulls_first=True))[:50]
-    for row in open_:
-        if asked >= RECONCILE_BATCH:
-            break
+    # Newest first: a payment just made is the one most likely paid, and old
+    # abandoned ones must not stand in its way. Every row still open is looked
+    # at (a day's worth, plus the closed ones of the last two), so none is
+    # skipped for sitting behind others.
+    asked = {'v1': 0, 'v2': 0}
+    candidates = Checkout.objects.filter(
+        Q(status='pending') | Q(status__in=('failed', 'cancelled', 'expired'), created_at__gt=now - timedelta(hours=REOPEN_HOURS)),
+    ).exclude(provider_id='').order_by('-created_at')
+    for row in candidates.iterator():
+        batch = RECONCILE_BATCH.get(row.api, 3)
+        if asked.get(row.api, 0) >= batch:
+            if all(asked.get(api, 0) >= limit for api, limit in RECONCILE_BATCH.items()):
+                break
+            continue
         if not _reconcile_due(row, now):
             continue
-        asked += 1
+        asked[row.api] = asked.get(row.api, 0) + 1
         try:
             refresh(row, force=True)
         except Exception:
@@ -365,7 +412,7 @@ def housekeeping(now=None):
         row = Checkout.objects.filter(payment=period.payment).first()
         if row and not later:
             _notice(row, 'renewal_reminder')
-    return {'asked': asked, 'expired': expired}
+    return {'asked': sum(asked.values()), 'expired': expired}
 
 
 def refund(payment, actor, reason):

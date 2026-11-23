@@ -163,11 +163,11 @@ def checkout_detail(request,checkout_id):
 def inpay_webhook(request):
     """inPAY says a payment moved. That is a reason to ask inPAY, never the answer itself.
 
-    A v2 webhook is signed, and a wrong signature is turned away once the
-    signing secret is saved. Either way nothing is granted from what is posted
-    here: the payment is looked up by its id and inPAY is asked where it
-    stands (checkout.refresh). When inPAY cannot be asked, the answer is an
-    error, so inPAY sends the webhook again later.
+    A v2 webhook is signed, and one signed with anything but the saved secret
+    is turned away. Either way nothing is granted from what is posted here: the
+    payment is looked up by its id and inPAY is asked where it stands. The
+    answer is an error, so inPAY sends the webhook again later, whenever we
+    could not ask, or inPAY says "paid" in the webhook and not yet when asked.
     """
     from operations.integrations import inpay_config
     from . import inpay
@@ -175,26 +175,34 @@ def inpay_webhook(request):
     if request.method!='POST': return JsonResponse({'ok':False},status=405)
     raw=request.body
     if len(raw)>65536: return JsonResponse({'ok':False},status=413)
+    try: payload=json.loads(raw or b'{}')
+    except ValueError: payload=None
+    identifier=inpay.webhook_payment(payload)
+    row=Checkout.objects.filter(provider=checkout.PROVIDER,provider_id=identifier).first() if identifier else None
     cfg=inpay_config()
     signed=False
     if cfg['api']=='v2' and cfg['webhook_secret']:
-        if not inpay.signature_ok(cfg['webhook_secret'],request.headers.get('X-Inpay-Signature',''),raw):
-            # Signed, but not with the secret we hold: the owner should know, since payments then wait for the periodic check.
-            if request.headers.get('X-Inpay-Signature'): checkout.signature_refused()
+        header=request.headers.get('X-Inpay-Signature','')
+        state=inpay.signature_state(cfg['webhook_secret'],header,raw)
+        if state=='invalid':
+            # Signed, about one of our payments, and not with the secret we hold: the
+            # secret was likely changed in the cabinet, and the owner should know.
+            if header and row is not None: checkout.signature_refused()
             return JsonResponse({'ok':False},status=401)
-        signed=True
-    try: payload=json.loads(raw or b'{}')
-    except ValueError: return JsonResponse({'ok':False},status=400)
-    identifier=inpay.webhook_payment(payload)
-    row=Checkout.objects.filter(provider=checkout.PROVIDER,provider_id=identifier).first() if identifier else None
-    # About something that is not one of our payments: taken, so it is not sent again.
-    if row is None: return JsonResponse({'ok':True})
-    if row.status in checkout.FINAL: return JsonResponse({'ok':True})
+        signed=state=='valid'
+    if payload is None: return JsonResponse({'ok':False},status=400)
+    # About something that is not one of our payments, or one already settled: taken, so it is not sent again.
+    if row is None or row.status in checkout.FINAL: return JsonResponse({'ok':True})
     # An unsigned call could be anyone repeating a payment's id: it asks inPAY no more often than a waiting page does.
     question=checkout.due(row,force=signed)
     # inPAY was asked a moment ago and this news may be newer than its answer: "again later".
     if question is None: return JsonResponse({'ok':False},status=503)
     try: remote=checkout.look(question)
-    except (inpay.Unavailable,inpay.Refused): return JsonResponse({'ok':False},status=503)
+    except inpay.Refused as refused:
+        checkout.lookup_refused(refused)
+        return JsonResponse({'ok':False},status=503)
+    except inpay.Unavailable: return JsonResponse({'ok':False},status=503)
     checkout.apply(row.pk,remote)
+    # inPAY's event says paid and inPAY's own answer does not, yet: be told again.
+    if inpay.webhook_claim(payload)=='paid' and remote['state']!='paid': return JsonResponse({'ok':False},status=503)
     return JsonResponse({'ok':True})

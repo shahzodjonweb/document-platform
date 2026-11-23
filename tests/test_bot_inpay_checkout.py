@@ -210,3 +210,18 @@ def test_the_screens_speak_the_customers_language(settings, bank, locale):
     assert pay['label'] == COPY[locale]['checkout_pay'].format(price='20 000')
     # inPAY shows the customer what they are paying for in their own language.
     assert bank.payments[Checkout.objects.get().provider_id]['description'] in ('DocMaster Plus — 30 kun', 'DocMaster Plus — 30 дней')
+
+
+
+def test_checking_a_failed_payment_soon_after_does_not_say_nothing_was_charged(customer, bank):
+    """The customer may have paid on the same page since we last asked: "not received yet", not "failed"."""
+    switch_on()
+    shown = dispatch_local(customer, callback_data=token(dispatch_local(customer, text='/plans'), 'commerce_checkout_plan', plan='plus'))
+    row = Checkout.objects.get()
+    bank.payments[row.provider_id]['status'] = 'failed'
+    checkout.refresh(row, force=True)
+    told = dispatch_local(customer, callback_data=token(shown, 'commerce_checkout_check', checkout_id=str(row.id)))
+    assert COPY['en']['checkout_waiting'] in texts(told) and COPY['en']['checkout_failed'] not in texts(told)
+    Checkout.objects.filter(pk=row.pk).update(checked_at=None)
+    told = dispatch_local(customer, callback_data=token(shown, 'commerce_checkout_check', checkout_id=str(row.id)))
+    assert COPY['en']['checkout_failed'] in texts(told)

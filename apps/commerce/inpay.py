@@ -28,6 +28,11 @@ TIMEOUT = 8
 # A webhook older than this is not acted on (inPAY's own rule for its signature).
 SIGNATURE_AGE = 300
 BEARER_SECONDS = 23 * 3600
+# v1 takes 100 requests an hour from one address, for everything. We stop short
+# of that, and checks on a payment's status stop sooner still, so a customer
+# can always open a payment within the hour.
+V1_HOURLY = 90
+V1_STATUS_HOURLY = 65
 _ID = re.compile(r'[A-Za-z0-9_-]{6,64}')
 
 
@@ -42,7 +47,15 @@ _opener = urllib.request.build_opener(_NoRedirect)
 
 
 class Unavailable(Exception):
-    """inPAY did not answer, or answered with something that may pass: worth asking again."""
+    """inPAY did not answer, or answered with something that may pass: worth asking again.
+
+    `reason` is 'rate_limited' when inPAY's request limit (or our own share of
+    it) is spent: that too passes, within the hour, but the owner should know.
+    """
+
+    def __init__(self, reason='unavailable'):
+        self.reason = reason
+        super().__init__(reason)
 
 
 class Refused(Exception):
@@ -64,7 +77,11 @@ def _call(method, path, *, headers=None, body=None, query=None):
         with _opener.open(request, timeout=TIMEOUT) as response:
             status, raw = response.status, response.read(262144)
     except urllib.error.HTTPError as error:
-        status, raw = error.code, error.read(262144)
+        status = error.code
+        try:
+            raw = error.read(262144)
+        except Exception:
+            raise Unavailable() from None
     except Exception:
         raise Unavailable() from None
     try:
@@ -84,7 +101,9 @@ def _answer(status, parsed):
     error = parsed.get('error') if isinstance(parsed.get('error'), dict) else {}
     code = error.get('code') or parsed.get('error_code') or f'http_{status}'
     # Too many requests and inPAY's own faults pass by themselves.
-    if status == 429 or status >= 500 or code in ('RATE_LIMIT_EXCEEDED', 'TRANSACTION_SAVE_FAILED'):
+    if status == 429 or code in ('RATE_LIMIT_EXCEEDED', 'rate_limited', 'rate_limit_exceeded'):
+        raise Unavailable('rate_limited')
+    if status >= 500 or code == 'TRANSACTION_SAVE_FAILED':
         raise Unavailable()
     raise Refused(code, status)
 
@@ -112,6 +131,31 @@ def _whole(amount):
 
 # ---- v1: merchant id and token, a bearer token a day -----------------------------------------
 
+def _spend(kind):
+    """Count one v1 request against the last hour, or refuse it when this kind's share is spent.
+
+    Counted in ten-minute buckets and summed over the last seven, so no stretch
+    of sixty minutes, wherever it starts, holds more than the share. Kept where
+    every process counts, so the API, the bot and the cleanup share one budget.
+    With that store away nothing is refused: inPAY's own limit still answers,
+    and is reported.
+    """
+    from django.core.cache import caches
+    cache, bucket = caches['limits'], int(time.time()) // 600
+    keys = [f'inpay:v1:calls:{bucket - back}' for back in range(7)]
+    try:
+        used = sum(value or 0 for value in cache.get_many(keys).values())
+    except Exception:
+        return
+    if used >= (V1_HOURLY if kind == 'open' else V1_STATUS_HOURLY):
+        raise Unavailable('rate_limited')
+    try:
+        if not cache.add(keys[0], 1, 4500):
+            cache.incr(keys[0])
+    except Exception:
+        pass
+
+
 def _bearer_key(cfg):
     digest = hashlib.sha256(f"{cfg['merchant_id']}:{cfg['merchant_token']}".encode()).hexdigest()[:24]
     return f'inpay:bearer:{digest}'
@@ -127,6 +171,7 @@ def _bearer(cfg, fresh=False):
         token = None
     if token:
         return token
+    _spend('open')
     parsed = _answer(*_call('GET', '/api/v1/authorization/', query={
         'merchant_id': cfg['merchant_id'], 'merchant_token': cfg['merchant_token']}))
     token = parsed.get('bearer_token')
@@ -139,10 +184,11 @@ def _bearer(cfg, fresh=False):
     return token
 
 
-def _v1(cfg, method, path, **request):
+def _v1(cfg, method, path, kind, **request):
     """A v1 call with the bearer token; a token inPAY no longer takes is fetched again, once."""
     for fresh in (False, True):
         headers = {'Authorization': 'Bearer ' + _bearer(cfg, fresh)}
+        _spend(kind)
         try:
             return _answer(*_call(method, path, headers=headers, **request))
         except Refused as refused:
@@ -168,7 +214,7 @@ def open_payment(cfg, *, reference, amount, description, return_url, webhook_url
         data = parsed.get('data') if isinstance(parsed.get('data'), dict) else {}
         identifier, url, live = data.get('id'), data.get('checkout_url'), data.get('livemode') is not False
     elif cfg['api'] == 'v1':
-        parsed = _v1(cfg, 'POST', '/api/v1/create/', body={
+        parsed = _v1(cfg, 'POST', '/api/v1/create/', 'open', body={
             'merchant_id': str(cfg['merchant_id']), 'token': cfg['merchant_token'], 'amount': amount,
             'description': description, 'callback_url': webhook_url, 'return_url': return_url})
         identifier, url, live = parsed.get('order_id'), parsed.get('pay_url'), True
@@ -200,10 +246,10 @@ def fetch(cfg, api, identifier):
         if data.get('id') != identifier:
             raise Unavailable()
         return {'state': _V2_STATES.get(data.get('status'), 'pending'), 'amount': _whole(data.get('amount')),
-                'currency': str(data.get('currency') or 'UZS'), 'live': data.get('livemode') is not False,
+                'currency': str(data.get('currency') or 'UZS').upper(), 'live': data.get('livemode') is not False,
                 'reference': str(metadata.get('checkout') or '') or None, 'receipt': _receipt(data.get('fiscal_url'))}
     if api == 'v1' and cfg.get('merchant_id') and cfg.get('merchant_token'):
-        parsed = _v1(cfg, 'GET', '/api/v1/transactions/', query={'order_id': identifier})
+        parsed = _v1(cfg, 'GET', '/api/v1/transactions/', 'status', query={'order_id': identifier})
         if parsed.get('order_id') != identifier:
             raise Unavailable()
         return {'state': _V1_STATES.get(parsed.get('status'), 'pending'), 'amount': _whole(parsed.get('amount')),
@@ -222,16 +268,41 @@ def _receipt(url):
     return str(url) if parts.scheme == 'https' and (host == 'soliq.uz' or host.endswith('.soliq.uz')) else ''
 
 
-def signature_ok(secret, header, raw, now=None):
-    """Whether a v2 webhook was signed by inPAY, lately: `t=<unix>,v1=<hex>` over "<t>.<raw body>"."""
+def signature_state(secret, header, raw, now=None):
+    """How a v2 webhook is signed: `t=<unix>,v1=<hex>` over "<t>.<raw body>".
+
+    'valid': by inPAY, lately. 'stale': by inPAY, but long ago, which a retry
+    sent with its first timestamp would be as well as a replay; either way the
+    payment is only looked up, so it is listened to like an unsigned webhook.
+    'invalid': not by inPAY.
+    """
     parts = dict(part.strip().split('=', 1) for part in str(header or '').split(',') if '=' in part)
-    stamp, given = parts.get('t', ''), parts.get('v1', '')
-    if not secret or not stamp.isdigit() or not given:
-        return False
-    if abs((now if now is not None else time.time()) - int(stamp)) > SIGNATURE_AGE:
-        return False
+    stamp, given = parts.get('t', ''), parts.get('v1', '').strip().lower()
+    if not secret or not stamp.isascii() or not stamp.isdigit() or not given:
+        return 'invalid'
     expected = hmac.new(secret.encode(), stamp.encode() + b'.' + raw, hashlib.sha256).hexdigest()
-    return hmac.compare_digest(expected, given.strip().lower())
+    try:
+        if not hmac.compare_digest(expected.encode(), given.encode()):
+            return 'invalid'
+    except (TypeError, ValueError, UnicodeError):
+        return 'invalid'
+    return 'valid' if abs((now if now is not None else time.time()) - int(stamp)) <= SIGNATURE_AGE else 'stale'
+
+
+def signature_ok(secret, header, raw, now=None):
+    """Whether a v2 webhook was signed by inPAY, lately."""
+    return signature_state(secret, header, raw, now) == 'valid'
+
+
+def webhook_claim(payload):
+    """What a webhook says happened: 'paid', 'failed', or None. Only ever a reason to ask inPAY."""
+    if not isinstance(payload, dict):
+        return None
+    if payload.get('object') == 'event':
+        kind = str(payload.get('type') or '')
+        return 'paid' if kind == 'payment.succeeded' else 'failed' if kind in ('payment.failed', 'payment.canceled') else None
+    status = payload.get('status')
+    return 'paid' if status == 'success' else 'failed' if status in ('failed', 'cancelled') else None
 
 
 def webhook_payment(payload):

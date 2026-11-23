@@ -1,7 +1,7 @@
 from datetime import timedelta
 from django.db.models import Sum,Count,Min,Q
 from django.core.paginator import Paginator
-from django.http import HttpResponseBadRequest,HttpResponseForbidden
+from django.http import HttpResponseBadRequest,HttpResponseForbidden,HttpResponseNotAllowed
 from django.shortcuts import redirect
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
@@ -78,7 +78,10 @@ def payment_detail(request,pk):
     payment=Payment.objects.select_related('account','invoice').filter(pk=pk).first()
     if not payment:return HttpResponseBadRequest('Unknown payment')
     data=context(request,'payments');data['f']=LABELS[data['lang']]
+    paid_online=Checkout.objects.filter(payment=payment).first()
     if request.method=='POST':
+        # Only an inPAY payment has anything to post: every other row here is history.
+        if paid_online is None:return HttpResponseNotAllowed(['GET'])
         try:
             if request.POST.get('action')!='refund':raise DomainError('invalid_parameters')
             checkout.refund(payment,request.ops_user,'Refund recorded by staff')
@@ -86,7 +89,8 @@ def payment_detail(request,pk):
             return redirect(request.path+'?lang='+data['lang'])
         except DomainError:data['error']=data['f']['refund_failed']
     data['payment']=payment;data['refund']=Refund.objects.filter(payment=payment).first()
-    data['checkout']=Checkout.objects.filter(payment=payment).first()
+    if paid_online is not None:paid_online.refresh_from_db()
+    data['checkout']=paid_online
     return finish_render(request,'ops/payment.html',data)
 
 

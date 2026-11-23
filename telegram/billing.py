@@ -477,16 +477,22 @@ async def check_checkout(message, account, checkout_id):
     if row is None:
         raise DomainError('not_found', 404)
     question = await sync_to_async(checkout.due)(row)
+    asked = False
     if question is not None:
         try:
             remote = await asyncio.to_thread(checkout.look, question)
-        except (inpay.Unavailable, inpay.Refused):
+        except inpay.Refused as refused:
+            await sync_to_async(checkout.lookup_refused)(refused)
+            remote = None
+        except inpay.Unavailable:
             remote = None
         if remote is not None:
-            row = await sync_to_async(checkout.apply)(row.pk, remote)
+            row, asked = await sync_to_async(checkout.apply)(row.pk, remote), True
     else:
         await sync_to_async(row.refresh_from_db)()
-    if row.status in ('paid', 'failed', 'cancelled', 'expired', 'refunded'):
+    # A failure is said only when inPAY has just said so: the customer may have
+    # paid on the same page since we last asked.
+    if row.status in ('paid', 'refunded') or (asked and row.status in ('failed', 'cancelled', 'expired')):
         text = await sync_to_async(_checkout_result)(account, row)
         rows = [[await button(account, 'subscription', 'subscription'), await button(account, 'plans', 'plans', FROM_PAYMENT)],
                 *(await navigation(account))]
