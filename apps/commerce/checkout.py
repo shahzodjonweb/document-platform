@@ -50,6 +50,9 @@ RECONCILE_BATCH = {'v2': 10, 'v1': 3}
 # A payment that failed, was cancelled or ran out of time is still looked at
 # this long: the customer may pay on the same page after all.
 REOPEN_HOURS = 48
+# Card transfer stands in for inPAY this long after inPAY could not open a
+# payment; the first customer after it tries inPAY again.
+FALLBACK_MINUTES = 10
 FINAL = ('paid', 'refunded')
 DESCRIPTION = {'en': 'DocMaster {plan} — 30 days', 'uz': 'DocMaster {plan} — 30 kun', 'ru': 'DocMaster {plan} — 30 дней'}
 
@@ -69,30 +72,84 @@ def offers():
     return priced()
 
 
+def _card_ready():
+    from operations.integrations import manual_payment_config
+    return bool(manual_payment_config()['ready'])
+
+
+def failing(live, now=None):
+    """Whether the last payment we tried to open at inPAY, a short while ago, could not be opened.
+
+    inPAY refusing (a key, the kassa) or not answering both count; a row the
+    server lost before asking (`never_opened`) says nothing about inPAY.
+    """
+    from .models import Checkout
+    now = now or timezone.now()
+    opened = ~Q(provider_id='')
+    refused = Q(status='failed', provider_id='') & ~Q(failure='never_opened')
+    last = (Checkout.objects.filter(livemode=live, created_at__gt=now - timedelta(minutes=FALLBACK_MINUTES))
+            .filter(opened | refused).order_by('-created_at').values_list('provider_id', flat=True).first())
+    return last == ''
+
+
+def _standing_in(live):
+    """Whether card transfer takes inPAY's place for now: inPAY just failed, and there is a card to pay to.
+
+    Without card transfer set up there is nothing to fall back to, and every
+    customer goes on trying inPAY.
+    """
+    return failing(live) and _card_ready()
+
+
 def availability(account=None):
-    """Whether this customer may pay automatically right now: {'available', 'provider', 'test'}."""
+    """Whether this customer may pay automatically right now: {'available', 'provider', 'test'}.
+
+    Available, it is the only way offered: card transfer is the way to pay
+    only while automatic payment is not (apps/commerce/manual.py `options`).
+    """
     from apps.core.links import web_origin
     cfg = _config()
     # inPAY returns the customer to the website: without its address there is nowhere to come back to.
     if not cfg['ready'] or not offers() or not web_origin():
         return {'available': False}
-    if cfg['live']:
-        return {'available': True, 'provider': PROVIDER, 'test': False}
     # A test key takes no money, so a payment made with it must reach nobody
     # but the owner trying it out: the Telegram ID saved for alerts.
     owner = _owner()
-    if account is not None and owner and account.telegram_user_id == owner:
-        return {'available': True, 'provider': PROVIDER, 'test': True}
-    return {'available': False}
+    if not cfg['live'] and not (account is not None and owner and account.telegram_user_id == owner):
+        return {'available': False}
+    if _standing_in(cfg['live']):
+        return {'available': False}
+    return {'available': True, 'provider': PROVIDER, 'test': not cfg['live']}
+
+
+def fallback():
+    """Whether card transfer stands in right now for an inPAY that is set up but could not open a payment."""
+    cfg = _config()
+    return bool(cfg['ready']) and _standing_in(cfg['live'])
+
+
+def payment_way():
+    """How customers pay right now, for the admin: inpay, inpay_test, card, card_fallback or none."""
+    from apps.core.links import web_origin
+    cfg, priced = _config(), bool(offers())
+    card = priced and _card_ready()
+    if priced and cfg['ready'] and web_origin():
+        if card and failing(cfg['live']):
+            return 'card_fallback'
+        return 'inpay' if cfg['live'] else 'inpay_test'
+    return 'card' if card else 'none'
 
 
 def on_sale():
-    """What the public site may say about paying: {'automatic', 'card'}. A test key is not on sale."""
-    from operations.integrations import manual_payment_config
+    """What the public site may say about paying: {'automatic', 'card'}. A test key is not on sale.
+
+    One way at a time, as customers are offered it: card transfer only while
+    automatic payment is not on sale.
+    """
     from apps.core.links import web_origin
     priced, cfg = bool(offers()), _config()
-    return {'automatic': bool(priced and cfg['ready'] and cfg['live'] and web_origin()),
-            'card': bool(priced and manual_payment_config()['ready'])}
+    automatic = bool(priced and cfg['ready'] and cfg['live'] and web_origin()) and not _standing_in(True)
+    return {'automatic': automatic, 'card': bool(priced and _card_ready()) and not automatic}
 
 
 def _urls(row, locale):

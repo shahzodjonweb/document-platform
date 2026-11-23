@@ -20,7 +20,7 @@ from apps.core.errors import DomainError
 from apps.core.models import StaffAlert
 from operations import plans as plan_settings
 from operations.integrations import inpay_config, save_config, test_inpay as check_inpay
-from tests.test_manual_payments import PRICES, configure as configure_card, customer, finance, paid, signed_in, staff_client
+from tests.test_manual_payments import PRICES, configure as configure_card, customer, finance, paid, png, signed_in, staff_client
 
 pytestmark = pytest.mark.django_db
 LIVE, TEST, SIGNING = 'sk_live_4f1c0b7e2a9d55aa', 'sk_test_4f1c0b7e2a9d55aa', 'whsec_b82e6d10c4f771ac'
@@ -241,9 +241,9 @@ def test_a_discount_is_what_inpay_is_asked_for_and_buys_thirty_days(bank):
 
 
 def test_a_plan_bought_while_one_runs_follows_it_and_a_higher_one_starts_at_once(bank):
-    switch_on(card=True)
     account = customer()
-    paid(account, 'plus')  # by card transfer
+    paid(account, 'plus')  # by card transfer, before inPAY was set up
+    switch_on(card=True)
     held = SubscriptionPeriod.objects.get()
     row, _ = checkout.create(account, 'plus', 'web')
     bank.pay(row.provider_id)
@@ -562,11 +562,11 @@ def test_inpay_money_is_in_the_finance_totals(bank):
     from apps.core.identity import resolve_account
     from operations.commerce_views import financial_report
     from operations.metrics import Filters
-    switch_on(card=True)
     # Real accounts: the finance pages leave test accounts out of production's money.
     by_card = resolve_account({'id': 7101, 'first_name': 'Card', 'language_code': 'en'}, is_test=False)
     online = resolve_account({'id': 7102, 'first_name': 'Online', 'language_code': 'en'}, is_test=False)
-    paid(by_card, 'premium')
+    paid(by_card, 'premium')  # before inPAY was set up
+    switch_on(card=True)
     row, _ = checkout.create(online, 'plus', 'web')
     bank.pay(row.provider_id)
     checkout.refresh(row, force=True)
@@ -964,3 +964,130 @@ def test_a_signature_header_that_is_not_ascii_is_turned_away_not_a_crash(bank, h
     answer = Client(raise_request_exception=False).post('/api/v1/webhooks/inpay', data=raw, content_type='application/json',
                                                          HTTP_X_INPAY_SIGNATURE=header)
     assert answer.status_code == 401
+
+
+# ---------------------------------------------------------------- one way at a time: inPAY, card transfer as the fallback
+
+
+def way_on_admin(client):
+    import re
+    page = client.get('/ops/integrations?lang=en').content.decode()
+    found = re.search(r'data-testid="payment-way-manual">Customers pay by: <strong>([^<]+)</strong>', page)
+    return found.group(1)
+
+
+def test_with_both_set_up_customers_are_offered_inpay_alone(bank):
+    switch_on(card=True)
+    account = customer()
+    client = signed_in(account)
+    options = client.get('/api/v1/billing/manual').json()
+    assert options['automatic']['available'] is True and options['enabled'] is False
+    assert [item['plan'] for item in options['plans']] == ['plus', 'premium']
+    refused = client.post('/api/v1/billing/manual', {'plan': 'plus'}, content_type='application/json')
+    assert refused.status_code == 409 and refused.json()['error']['code'] == 'checkout_disabled'
+    assert client.get('/api/v1/plans').json()['checkout'] == {'automatic': True, 'card': False}
+    assert client.post('/api/v1/billing/checkout', {'plan': 'plus'}, content_type='application/json').status_code == 201
+
+
+def test_without_inpay_card_transfer_is_the_way_as_before(bank):
+    configure_card()
+    save_config('telegram', {'webapp_url': 'https://docmaster.live/en/app'})
+    client = signed_in(customer())
+    options = client.get('/api/v1/billing/manual').json()
+    assert options['enabled'] is True and options['automatic'] == {'available': False}
+    assert client.post('/api/v1/billing/manual', {'plan': 'plus'}, content_type='application/json').status_code in (200, 201)
+    assert client.get('/api/v1/plans').json()['checkout'] == {'automatic': False, 'card': True}
+    # Saved but not ticked is not set up.
+    save_config('inpay', {'secret_key': LIVE, 'enabled': 'false'})
+    assert client.get('/api/v1/billing/manual').json()['enabled'] is True
+
+
+def test_a_card_transfer_begun_before_inpay_is_finished_the_same_way(bank):
+    from django.core.files.uploadedfile import SimpleUploadedFile
+    configure_card()
+    account = customer()
+    from apps.commerce import manual
+    begun, _ = manual.create(account, 'plus')
+    switch_on(card=True)
+    client = signed_in(account)
+    again = client.post('/api/v1/billing/manual', {'plan': 'plus'}, content_type='application/json')
+    assert again.json()['reference'] == begun.reference
+    receipt = client.post(f'/api/v1/billing/manual/{begun.id}/receipt', {'file': SimpleUploadedFile('r.jpg', png(), 'image/jpeg'), 'note': ''})
+    assert receipt.status_code == 200 and receipt.json()['status'] == 'submitted'
+    # Another plan is not a card transfer any more.
+    other = client.post('/api/v1/billing/manual', {'plan': 'premium'}, content_type='application/json')
+    assert other.status_code == 409 and other.json()['error']['code'] == 'checkout_disabled'
+
+
+def test_card_transfer_stands_in_for_ten_minutes_after_inpay_cannot_open_a_payment(bank):
+    switch_on(card=True)
+    account = customer()
+    client = signed_in(account)
+    admin, _ = staff_client('Administrator')
+    assert way_on_admin(admin).startswith('Automatic payment through inPAY')
+    bank.down = True
+    failed = client.post('/api/v1/billing/checkout', {'plan': 'plus'}, content_type='application/json')
+    assert failed.status_code == 503 and failed.json()['error']['code'] == 'checkout_unavailable'
+    bank.down = False
+    # Everyone, not only this customer, pays by card for now.
+    for who in (client, signed_in(customer(7002))):
+        options = who.get('/api/v1/billing/manual').json()
+        assert options['enabled'] is True and options['automatic'] == {'available': False}
+    assert client.post('/api/v1/billing/manual', {'plan': 'plus'}, content_type='application/json').status_code in (200, 201)
+    assert client.post('/api/v1/billing/checkout', {'plan': 'plus'}, content_type='application/json').status_code == 409
+    assert client.get('/api/v1/plans').json()['checkout'] == {'automatic': False, 'card': True}
+    assert way_on_admin(admin).startswith('Card transfer for now')
+    # Ten minutes on, the next customer tries inPAY again.
+    Checkout.objects.update(created_at=timezone.now() - timedelta(minutes=checkout.FALLBACK_MINUTES, seconds=5))
+    options = client.get('/api/v1/billing/manual').json()
+    assert options['automatic']['available'] is True and options['enabled'] is False
+    assert signed_in(customer(7003)).post('/api/v1/billing/checkout', {'plan': 'plus'}, content_type='application/json').status_code == 201
+    assert way_on_admin(admin).startswith('Automatic payment through inPAY')
+
+
+def test_one_payment_opened_after_a_failure_ends_the_fallback(bank):
+    switch_on(card=True)
+    bank.down = True
+    with pytest.raises(DomainError):
+        checkout.create(customer(), 'plus', 'web')
+    assert checkout.fallback() is True
+    bank.down = False
+    # The owner trying with a test key, or a row the server lost before asking, says nothing about live payments.
+    Checkout.objects.create(account=customer(7004), plan='plus', amount=20_000, regular_amount=20_000, provider='inpay',
+                            api='v2', livemode=True, status='failed', failure='never_opened', channel='web',
+                            expires_at=timezone.now() + timedelta(hours=1))
+    assert checkout.fallback() is True
+    Checkout.objects.filter(failure='never_opened').delete()
+    # A payment that did open, later than the failure, means inPAY is answering again.
+    Checkout.objects.update(created_at=timezone.now() - timedelta(minutes=2))
+    Checkout.objects.create(account=customer(7005), plan='plus', amount=20_000, regular_amount=20_000, provider='inpay',
+                            api='v2', livemode=True, status='pending', provider_id='pay_' + secrets.token_hex(6),
+                            checkout_url='https://inpay.uz/checkout/x', channel='web',
+                            expires_at=timezone.now() + timedelta(hours=1))
+    assert checkout.fallback() is False
+
+
+def test_with_no_card_transfer_inpay_failing_leaves_inpay_the_way(bank):
+    """Nothing to fall back to: every customer goes on trying inPAY."""
+    switch_on()
+    bank.down = True
+    with pytest.raises(DomainError):
+        checkout.create(customer(), 'plus', 'web')
+    bank.down = False
+    assert checkout.availability(customer(7002))['available'] is True and checkout.fallback() is False
+    admin, _ = staff_client('Administrator')
+    assert way_on_admin(admin).startswith('Automatic payment through inPAY')
+
+
+def test_the_admin_says_how_customers_pay(bank):
+    admin, _ = staff_client('Administrator')
+    assert way_on_admin(admin).startswith('Nothing yet')
+    configure_card()
+    assert way_on_admin(admin).startswith('Card transfer. Automatic payment is not set up')
+    switch_on(key=TEST, card=True)
+    assert way_on_admin(admin).startswith('Card transfer. With the test key only you see')
+    switch_on(card=True)
+    page = admin.get('/ops/integrations?lang=en').content.decode()
+    assert page.count('Customers pay by: <strong>Automatic payment through inPAY') == 2
+    for lang in ('uz', 'ru'):
+        assert admin.get(f'/ops/integrations?lang={lang}').status_code == 200

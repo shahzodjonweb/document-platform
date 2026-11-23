@@ -84,20 +84,68 @@ def test_with_only_inpay_a_plan_leads_straight_to_its_payment_page(customer, ban
     assert BotConversation.objects.get(pk=customer.telegram_user_id).state == ''
 
 
-def test_with_both_ways_on_a_plan_asks_how_to_pay(customer, bank):
+def test_with_both_set_up_inpay_is_the_way_and_card_transfer_is_not_offered(customer, bank):
     switch_on(card=True)
     plans = dispatch_local(customer, text='/plans')
-    assert PLAN_COPY['en']['how_both'].split('\n')[2] in plans['messages'][-1]['text']
-    choice = dispatch_local(customer, callback_data=token(plans, 'commerce_pay_plan', plan='premium'))
-    labels = [button['label'] for button in buttons(choice)]
-    assert COPY['en']['pay_online'] in labels and COPY['en']['pay_card_transfer'] in labels
-    assert not Checkout.objects.exists() and not ManualPayment.objects.exists(), 'choosing a plan opens nothing yet'
-    online = dispatch_local(customer, callback_data=token(choice, 'commerce_checkout_plan', plan='premium'))
+    last = plans['messages'][-1]['text']
+    assert PLAN_COPY['en']['how_auto'].split('\n')[2] in last
+    assert PLAN_COPY['en']['how'].split('\n')[2] not in last and COPY['en']['automatic_soon'] not in last
+    assert not BotCallback.objects.filter(account=customer, action='commerce_manual_plan').exists()
+    shown = dispatch_local(customer, callback_data=token(plans, 'commerce_checkout_plan', plan='premium'))
     assert Checkout.objects.get().amount == 60_000
-    assert any(button['url'] and button['url'].startswith('https://inpay.uz/checkout/') for button in buttons(online))
-    # The other way from the same choice is the card transfer it always was.
-    by_card = dispatch_local(customer, callback_data=token(choice, 'commerce_manual_plan', plan='premium'))
-    assert ManualPayment.objects.get().plan == 'premium' and any('PM-' in text for text in texts(by_card))
+    assert any(button['url'] and button['url'].startswith('https://inpay.uz/checkout/') for button in buttons(shown))
+    assert not ManualPayment.objects.exists()
+
+
+def test_a_card_transfer_button_from_before_inpay_leads_to_inpay(customer, bank):
+    from tests.test_manual_payments import configure as configure_card
+    configure_card()
+    before = dispatch_local(customer, text='/plans')
+    old = token(before, 'commerce_manual_plan', plan='plus')
+    switch_on(card=True)
+    shown = dispatch_local(customer, callback_data=old)
+    assert any(button['url'] and button['url'].startswith('https://inpay.uz/checkout/') for button in buttons(shown))
+    assert Checkout.objects.get().plan == 'plus' and not ManualPayment.objects.exists()
+
+
+def test_a_card_transfer_begun_before_inpay_is_finished_in_the_chat(customer, bank):
+    from tests.test_manual_payments import configure as configure_card
+    configure_card()
+    before = dispatch_local(customer, text='/plans')
+    old = token(before, 'commerce_manual_plan', plan='plus')
+    begun = dispatch_local(customer, callback_data=old)
+    reference = ManualPayment.objects.get().reference
+    assert any(reference in text for text in texts(begun))
+    switch_on(card=True)
+    again = dispatch_local(customer, callback_data=old)
+    assert any(reference in text for text in texts(again)) and not Checkout.objects.exists()
+    assert token(again, 'commerce_manual_receipt', payment_id=str(ManualPayment.objects.get().id))
+
+
+def test_when_inpay_cannot_open_the_payment_the_customer_pays_by_card_transfer(customer, bank):
+    switch_on(card=True)
+    plans = dispatch_local(customer, text='/plans')
+    bank.down = True
+    failed = dispatch_local(customer, callback_data=token(plans, 'commerce_checkout_plan', plan='plus'))
+    bank.down = False
+    assert Checkout.objects.get().status == 'failed'
+    said = texts(failed)
+    assert COPY['en']['checkout_fallback'] in said
+    reference = ManualPayment.objects.get().reference
+    # The card screen comes after the words that explain it.
+    assert said.index(COPY['en']['checkout_fallback']) < next(i for i, text in enumerate(said) if reference in text)
+    # The plans screen offers card transfer meanwhile, with no "coming soon" for what is already set up.
+    meanwhile = dispatch_local(customer, text='/plans')
+    last = meanwhile['messages'][-1]['text']
+    assert PLAN_COPY['en']['how'].split('\n')[2] in last and COPY['en']['automatic_soon'] not in last
+    assert token(meanwhile, 'commerce_manual_plan', plan='plus')
+    # The inPAY button shown before the failure leads to card transfer too, not to an error.
+    tapped = dispatch_local(customer, callback_data=token(plans, 'commerce_checkout_plan', plan='plus'))
+    assert any(reference in text for text in texts(tapped)) and Checkout.objects.count() == 1
+    # Ten minutes on, inPAY is the way again.
+    Checkout.objects.update(created_at=timezone.now() - timedelta(minutes=checkout.FALLBACK_MINUTES, seconds=5))
+    later = dispatch_local(customer, text='/plans')
+    assert token(later, 'commerce_checkout_plan', plan='premium')
 
 
 def test_checking_says_it_is_still_waiting_then_that_it_is_paid_once(customer, bank):
@@ -203,14 +251,15 @@ def test_the_screens_speak_the_customers_language(settings, bank, locale):
     switch_on(card=True)
     account = chat(982010, locale)
     plans = dispatch_local(account, text='/plans')
-    choice = dispatch_local(account, callback_data=token(plans, 'commerce_pay_plan', plan='plus'))
-    assert COPY[locale]['pay_online'] in [button['label'] for button in buttons(choice)]
-    shown = dispatch_local(account, callback_data=token(choice, 'commerce_checkout_plan', plan='plus'))
+    assert PLAN_COPY[locale]['how_auto'].split('\n')[2] in plans['messages'][-1]['text']
+    shown = dispatch_local(account, callback_data=token(plans, 'commerce_checkout_plan', plan='plus'))
     pay = next(button for button in buttons(shown) if button['url'])
     assert pay['label'] == COPY[locale]['checkout_pay'].format(price='20 000')
     # inPAY shows the customer what they are paying for in their own language.
     assert bank.payments[Checkout.objects.get().provider_id]['description'] in ('DocMaster Plus — 30 kun', 'DocMaster Plus — 30 дней')
-
+    bank.down = True
+    failed = dispatch_local(account, callback_data=token(plans, 'commerce_checkout_plan', plan='premium'))
+    assert COPY[locale]['checkout_fallback'] in texts(failed)
 
 
 def test_checking_a_failed_payment_soon_after_does_not_say_nothing_was_charged(customer, bank):

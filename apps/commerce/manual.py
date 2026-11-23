@@ -58,17 +58,19 @@ def regular_prices():
 
 
 def options(account=None):
-    """What a customer may choose right now.
+    """How a customer pays right now: one way, never a choice.
 
-    `enabled` is card transfer; `automatic` is payment through inPAY
-    (apps/commerce/checkout.py), which may be on for this customer when card
-    transfer is not. The plans are listed when either can be used.
+    `automatic` is payment through inPAY (apps/commerce/checkout.py). While it
+    is available it is the way; card transfer (`enabled`) is the fallback, for
+    when inPAY is not set up, is set up with a test key for the owner alone,
+    or could not open a payment a moment ago. The plans are listed when either
+    can be used.
     """
     from .checkout import availability
     config = _config()
     automatic = availability(account)
     priced = offers()
-    card = bool(priced) and config['ready']
+    card = bool(priced) and config['ready'] and not automatic['available']
     offered = priced if card or automatic['available'] else {}
     return {'enabled': card, 'currency': 'UZS', 'period_days': PERIOD_DAYS,
             'plans': [{'plan': plan, 'price': offer['price'], 'regular_price': offer['regular'],
@@ -120,6 +122,12 @@ def create(account, plan, channel='web'):
         # for the owner (period_days).
         if existing.plan == plan and not (existing.status == 'awaiting' and existing.amount != price):
             return existing, False
+    # A request already open is finished as it began; a new one is not made
+    # while customers pay through inPAY.
+    from .checkout import availability
+    if availability(account)['available']:
+        raise DomainError('checkout_disabled', 409)
+    if existing:
         # A receipt already sent waits for the owner: one payment at a time.
         if existing.status == 'submitted':
             raise DomainError('manual_payment_pending', 409)
