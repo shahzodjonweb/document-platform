@@ -13,6 +13,7 @@
   "password_required": "Davom etish uchun PDF parolini kiriting.",
   "feature_unavailable": "Bu imkoniyat hali mavjud emas.",
   "checkout_disabled": "To‘lovlar hali yoqilmagan.",
+  "checkout_unavailable": "To‘lov sahifasini ochib bo‘lmadi. Bir daqiqadan so‘ng qayta urinib ko‘ring.",
   "csrf_failed": "Xavfsizlik tokeni eskirdi. Sahifani yangilang va qayta urining.",
   "telegram_not_configured": "Bu o‘rnatmada Telegram orqali kirish sozlanmagan.",
   "challenge_expired": "Kirish havolasi eskirdi. Yangi kirishni boshlang.",

@@ -4,8 +4,9 @@ A card transfer the owner approved and the Plus months earned by inviting
 friends both become the same records: an Invoice, a Payment, the account's
 Subscription and a SubscriptionPeriod. So the plan, its weekly limits, "until
 when", and what follows what all come from the code every plan already uses.
-Only `provider` tells them apart: 'manual' for a card transfer, 'referral' for
-an invitation reward (which costs nothing and is never money).
+Only `provider` tells them apart: 'manual' for a card transfer, 'inpay' for an
+automatic payment, 'referral' for an invitation reward (which costs nothing
+and is never money).
 """
 import hashlib
 from datetime import timedelta
@@ -15,7 +16,9 @@ from django.utils import timezone
 RANK = {'free': 0, 'plus': 1, 'premium': 2}
 # Subscriptions this deployment writes itself, and never renews: their periods
 # are laid end to end, so the subscription runs to the end of the last one.
-OWN = ('manual', 'referral')
+OWN = ('manual', 'inpay', 'referral')
+# The ones someone paid for.
+PAID = ('manual', 'inpay')
 
 
 def start_for(account, plan, now):
@@ -70,9 +73,9 @@ def grant(account, plan, days, *, provider, charge, amount, currency, offer, sna
     subscription.invoice, subscription.offer = invoice, offer
     subscription.plan, subscription.status = current.plan, 'active'
     subscription.renewal_enabled, subscription.sandbox = False, False
-    # Paying by card makes it a card subscription; a reward only names it when
-    # nothing was ever paid by card, so "manual" keeps meaning someone paid.
-    if provider == 'manual' or subscription.provider != 'manual':
+    # Paying names the subscription after how it was paid; a reward only names
+    # it when nothing was ever paid, so a paid provider keeps meaning someone paid.
+    if provider in PAID or subscription.provider not in PAID:
         subscription.provider = provider
     subscription.scheduled_plan, subscription.scheduled_at = '', None
     subscription.save()

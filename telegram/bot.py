@@ -62,7 +62,8 @@ async def account_for(user):
 REUSABLE={'home','menu','account','plans','subscription','language','help','recent','controls','settings',
           'prompt','attach','preview','done','retry','cancel','new','tool','start_tool','ai_tool','ai_examples',
           'ai_revise','ai_count','ai_retarget','support','contacts','job','download','channels_check',
-          'commerce_manual_plan','commerce_manual_receipt','cv_mode','cv_wait_check','invite'}
+          'commerce_manual_plan','commerce_manual_receipt','commerce_pay_plan','commerce_checkout_plan',
+          'commerce_checkout_check','cv_mode','cv_wait_check','invite'}
 def usable(ref,now=None):
     """Whether a stored button may still be acted on."""
     return bool(ref) and (ref.expires_at>(now or timezone.now()) or ref.action in REUSABLE)

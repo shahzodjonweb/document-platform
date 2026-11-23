@@ -57,14 +57,23 @@ def regular_prices():
     return {plan: offer['regular'] for plan, offer in offers().items()}
 
 
-def options():
-    """What a customer may choose right now. Automatic payment is not built yet."""
+def options(account=None):
+    """What a customer may choose right now.
+
+    `enabled` is card transfer; `automatic` is payment through inPAY
+    (apps/commerce/checkout.py), which may be on for this customer when card
+    transfer is not. The plans are listed when either can be used.
+    """
+    from .checkout import availability
     config = _config()
-    offered = offers() if config['ready'] else {}
-    return {'enabled': bool(offered), 'currency': 'UZS', 'period_days': PERIOD_DAYS,
+    automatic = availability(account)
+    priced = offers()
+    card = bool(priced) and config['ready']
+    offered = priced if card or automatic['available'] else {}
+    return {'enabled': card, 'currency': 'UZS', 'period_days': PERIOD_DAYS,
             'plans': [{'plan': plan, 'price': offer['price'], 'regular_price': offer['regular'],
                        'discount': offer['discount']} for plan, offer in offered.items()],
-            'automatic': {'available': False}}
+            'automatic': automatic}
 
 
 def open_payment(account):

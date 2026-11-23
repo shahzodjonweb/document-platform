@@ -201,6 +201,18 @@ tests/test_referral_rewards.py::test_free_months_are_never_money
 # Card payment in the Telegram bot
 tests/test_bot_manual_payments.py::test_a_receipt_photo_goes_to_the_payment_not_to_the_pdf_tools
 
+# Automatic payment through inPAY: the plan starts from inPAY's own answer and
+# from nothing else; a test key is the owner's alone and grants nothing
+tests/test_inpay_checkout.py::test_a_customer_pays_and_the_plan_starts_by_itself
+tests/test_inpay_checkout.py::test_a_webhook_alone_grants_nothing
+tests/test_inpay_checkout.py::test_a_wrong_or_old_signature_is_turned_away
+tests/test_inpay_checkout.py::test_a_test_key_is_for_the_owner_alone_and_grants_nothing
+tests/test_inpay_checkout.py::test_the_periodic_check_finds_a_payment_whose_webhook_never_came
+tests/test_inpay_checkout.py::test_money_taken_after_we_stopped_waiting_still_buys_the_plan
+tests/test_inpay_checkout.py::test_the_classic_api_takes_a_payment_the_same_way
+tests/test_bot_inpay_checkout.py::test_with_only_inpay_a_plan_leads_straight_to_its_payment_page
+tests/test_bot_inpay_checkout.py::test_checking_says_it_is_still_waiting_then_that_it_is_paid_once
+
 # Payment notices to the owner
 tests/test_bot_manual_payments.py::test_the_owner_is_alerted_once_with_a_link_to_the_review_page
 

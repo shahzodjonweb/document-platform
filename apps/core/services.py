@@ -637,6 +637,15 @@ def cleanup_expired():
     # their own prefix, outside the backstop above.
     from apps.commerce.manual import housekeeping
     housekeeping(now)
+    # Automatic payments: inPAY is asked about the ones still open, in case a
+    # webhook never arrived, and renewals are reminded. A failure here (inPAY
+    # away) never stops the cleanup.
+    try:
+        from apps.commerce.checkout import housekeeping as checkout_housekeeping
+        checkout_housekeeping(now)
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception('Checking inPAY payments failed; the next cleanup tries again')
     # Invitations: friends who finished a first task are counted, and the Plus
     # months they earn are given. A failure here never stops the cleanup.
     try:

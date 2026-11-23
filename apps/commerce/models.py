@@ -32,8 +32,9 @@ class Invoice(models.Model):
     payload_hash=models.CharField(max_length=64)
     invoice_url=models.TextField(blank=True)
     sandbox=models.BooleanField(default=True)
-    # Who took the money: 'manual' for a card transfer the owner reviewed. The
-    # 'telegram_stars' rows date from before Stars was removed and stay as history.
+    # Who took the money: 'manual' for a card transfer the owner reviewed,
+    # 'inpay' for an automatic payment. The 'telegram_stars' rows date from
+    # before Stars was removed and stay as history.
     provider=models.CharField(max_length=24,default='telegram_stars')
     created_at=models.DateTimeField(default=timezone.now)
     expires_at=models.DateTimeField()
@@ -269,14 +270,63 @@ class ManualPayment(models.Model):
         constraints=[models.UniqueConstraint(fields=['account'],condition=models.Q(status__in=('awaiting','submitted')),name='one_open_manual_payment')]
 
 
-class PaymentNotice(models.Model):
-    """A bot message about a card transfer: to the customer, or to the owner.
+class Checkout(models.Model):
+    """One automatic payment through inPAY, from the page it opens to the plan it buys.
 
-    Durable like BotDelivery, so a Telegram hiccup is retried rather than lost,
-    and one row per kind so nothing is ever sent twice.
+    The amount and the plan are ours, fixed when the customer chose them. The
+    row grants nothing by itself: a plan starts only when inPAY's own answer
+    says this payment succeeded, for exactly this amount (apps/commerce/checkout.py),
+    and then through the same Invoice, Payment and SubscriptionPeriod every paid
+    plan is held in, tagged `inpay`.
+
+    `status` is where we last knew it to stand. Only `paid` and `refunded` are
+    final: a payment inPAY reports as paid is honoured whatever the row said
+    before, since the customer's money is already taken.
     """
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
-    manual=models.ForeignKey(ManualPayment,on_delete=models.CASCADE,related_name='notices')
+    account=models.ForeignKey('core.Account',on_delete=models.PROTECT,related_name='checkouts')
+    plan=models.CharField(max_length=12)
+    amount=models.PositiveIntegerField()
+    # The plan's regular price when the payment was opened, as ManualPayment keeps it.
+    regular_amount=models.PositiveIntegerField(null=True)
+    currency=models.CharField(max_length=3,default='UZS')
+    provider=models.CharField(max_length=24,default='inpay')
+    # Which of inPAY's APIs opened it ('v2' or 'v1'): its status is asked the same way.
+    api=models.CharField(max_length=4)
+    # False for a payment made with a test key: no money moved, so no plan is granted.
+    livemode=models.BooleanField(default=True)
+    # inPAY's id for the payment; empty until inPAY has answered.
+    provider_id=models.CharField(max_length=64,blank=True)
+    checkout_url=models.TextField(blank=True)
+    # created (inPAY not asked yet) → pending → paid | failed | cancelled | expired;
+    # review: inPAY took a payment that does not match this row; refunded.
+    status=models.CharField(max_length=16,default='created')
+    failure=models.CharField(max_length=64,blank=True)
+    channel=models.CharField(max_length=8,default='web')
+    created_at=models.DateTimeField(default=timezone.now)
+    expires_at=models.DateTimeField()
+    paid_at=models.DateTimeField(null=True)
+    # When inPAY was last asked about it, and how many times.
+    checked_at=models.DateTimeField(null=True)
+    checks=models.PositiveIntegerField(default=0)
+    receipt_url=models.TextField(blank=True)
+    payment=models.OneToOneField(Payment,null=True,on_delete=models.PROTECT,related_name='checkout')
+    class Meta:
+        indexes=[models.Index(fields=['status','created_at'],name='checkout_queue'),
+                 models.Index(fields=['account','created_at'],name='checkout_account')]
+        constraints=[models.UniqueConstraint(fields=['provider','provider_id'],condition=~models.Q(provider_id=''),name='one_checkout_per_provider_id')]
+
+
+class PaymentNotice(models.Model):
+    """A bot message about a payment: to the customer, or to the owner.
+
+    About a card transfer (`manual`) or an automatic payment (`checkout`),
+    never both. Durable like BotDelivery, so a Telegram hiccup is retried
+    rather than lost, and one row per kind so nothing is ever sent twice.
+    """
+    id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
+    manual=models.ForeignKey(ManualPayment,null=True,on_delete=models.CASCADE,related_name='notices')
+    checkout=models.ForeignKey(Checkout,null=True,on_delete=models.CASCADE,related_name='notices')
     kind=models.CharField(max_length=24)
     status=models.CharField(max_length=16,default='pending')
     attempts=models.PositiveIntegerField(default=0)
@@ -287,5 +337,6 @@ class PaymentNotice(models.Model):
     created_at=models.DateTimeField(default=timezone.now)
     delivered_at=models.DateTimeField(null=True)
     class Meta:
-        constraints=[models.UniqueConstraint(fields=['manual','kind'],name='one_payment_notice')]
+        constraints=[models.UniqueConstraint(fields=['manual','kind'],name='one_payment_notice'),
+                     models.UniqueConstraint(fields=['checkout','kind'],name='one_checkout_notice')]
         indexes=[models.Index(fields=['status','next_attempt_at'],name='payment_notice_due')]

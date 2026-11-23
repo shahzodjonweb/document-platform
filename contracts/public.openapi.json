@@ -396,6 +396,111 @@
         ],
         "type": "object"
       },
+      "Checkout": {
+        "properties": {
+          "active_until": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "amount": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "bot_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "channel": {
+            "enum": [
+              "web",
+              "bot"
+            ]
+          },
+          "checkout_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "paid_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "plan": {
+            "enum": [
+              "plus",
+              "premium"
+            ]
+          },
+          "receipt_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "starts_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "paid",
+              "failed",
+              "cancelled",
+              "expired",
+              "refunded"
+            ]
+          },
+          "test": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "plan",
+          "amount",
+          "currency",
+          "status",
+          "test",
+          "channel",
+          "checkout_url",
+          "bot_url",
+          "created_at",
+          "expires_at",
+          "paid_at",
+          "starts_at",
+          "active_until",
+          "receipt_url"
+        ],
+        "type": "object"
+      },
       "CoverLines": {
         "properties": {
           "lines": {
@@ -2643,6 +2748,14 @@
           "automatic": {
             "properties": {
               "available": {
+                "description": "Whether this customer may pay online through inPAY now.",
+                "type": "boolean"
+              },
+              "provider": {
+                "const": "inpay"
+              },
+              "test": {
+                "description": "The owner trying it with a test key: no money moves and no plan is granted.",
                 "type": "boolean"
               }
             },
@@ -2650,6 +2763,17 @@
               "available"
             ],
             "type": "object"
+          },
+          "checkout": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Checkout"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "This customer's automatic payment worth showing: the open one, or one decided in the last week."
           },
           "currency": {
             "type": "string"
@@ -2716,7 +2840,8 @@
           "period_days",
           "plans",
           "automatic",
-          "payment"
+          "payment",
+          "checkout"
         ],
         "type": "object"
       },
@@ -3495,7 +3620,7 @@
     }
   },
   "info": {
-    "description": "Local development beta. Studio, editor, document jobs and card-transfer billing are covered. Staff operations are excluded. Live providers require server configuration.",
+    "description": "Local development beta. Studio, editor, document jobs and billing (card transfer and inPAY) are covered. Staff operations are excluded. Live providers require server configuration.",
     "title": "DocMaster public API",
     "version": "1.1.0"
   },
@@ -5688,9 +5813,143 @@
         ]
       }
     },
+    "/billing/checkout": {
+      "post": {
+        "description": "Open an automatic payment for a plan at inPAY and return its payment page; 200 with the one already open for the same plan and price.",
+        "operationId": "createCheckout",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "plan": {
+                    "enum": [
+                      "plus",
+                      "premium"
+                    ]
+                  }
+                },
+                "required": [
+                  "plan"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Checkout"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
+    "/billing/checkout/{id}": {
+      "get": {
+        "description": "Where an automatic payment stands. Open without signing in, for the page inPAY returns the customer to; asking while it is pending makes the server ask inPAY, at most every few seconds.",
+        "operationId": "getCheckout",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Checkout"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": []
+      }
+    },
     "/billing/manual": {
       "get": {
-        "description": "Card transfer to the owner, reviewed by hand. The card is shown only to signed-in customers.",
+        "description": "The ways to pay: card transfer to the owner, reviewed by hand, and automatic payment through inPAY. The card is shown only to signed-in customers.",
         "operationId": "getManualPayment",
         "responses": {
           "200": {
@@ -10923,6 +11182,23 @@
               "application/json": {
                 "schema": {
                   "properties": {
+                    "checkout": {
+                      "properties": {
+                        "automatic": {
+                          "description": "Online payment through inPAY is on sale.",
+                          "type": "boolean"
+                        },
+                        "card": {
+                          "description": "Card transfer is on sale.",
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "automatic",
+                        "card"
+                      ],
+                      "type": "object"
+                    },
                     "currency": {
                       "const": "UZS"
                     },
@@ -10944,7 +11220,8 @@
                     "plans",
                     "draft",
                     "currency",
-                    "period_seconds"
+                    "period_seconds",
+                    "checkout"
                   ],
                   "type": "object"
                 }
