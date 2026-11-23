@@ -7,7 +7,7 @@ from apps.core.errors import DomainError
 from .auth import require_staff,audit,development_access
 from .views import context,finish_render
 from datetime import datetime
-from .integrations import telegram_config,ai_config,google_config,email_config,antibot_config,pixabay_config,manual_payment_config,channel_gate_config,test_channels,CARD_LABELS,save_config,test_telegram,test_email,test_pixabay,control_runner,runner_status,object_storage_config,test_object_storage
+from .integrations import inpay_config,test_inpay,telegram_config,ai_config,google_config,email_config,antibot_config,pixabay_config,manual_payment_config,channel_gate_config,test_channels,CARD_LABELS,save_config,test_telegram,test_email,test_pixabay,control_runner,runner_status,object_storage_config,test_object_storage
 from .models import IntegrationConfig
 from apps.studio.tuning import EFFORTS,TIERS
 
@@ -189,6 +189,14 @@ CARD_SECTION_LABELS = {
            'manual_payments_not_configured': 'Укажите номер и владельца карты, прежде чем включать оплату переводом.'},
 }
 for language, labels in CARD_SECTION_LABELS.items(): LABELS[language].update(labels)
+# Automatic payments through inPAY (apps/commerce/checkout.py).
+INPAY_SECTION_LABELS = {'en': {'inpay': 'Automatic payments (inPAY)', 'inpay_enabled': 'Let customers pay online through inPAY', 'inpay_secret_key': 'API v2 secret key (sk_live_… or sk_test_…)', 'inpay_webhook_secret': 'Webhook signing secret (whsec_…), optional', 'inpay_remove_key': 'Remove the saved v2 key', 'inpay_v1': 'Classic API v1, only if the kassa has no v2 keys', 'inpay_merchant_id': 'Merchant ID', 'inpay_merchant_token': 'Merchant token', 'inpay_hint': 'Customers choose a plan, pay on inPAY’s page with Click, Payme, Uzcard or Humo, and the plan switches on by itself. In the inPAY cabinet create a kassa of type «Veb-sayt» for the website shown above, open Kassa → API v2 keys and paste the secret key here. Save, press Test connection, then tick the box. With a test key (sk_test_) only you see the option, as the Telegram ID saved under Card transfer payments, and a test payment grants nothing; save the live key to start selling. inPAY returns money only from its own cabinet: return it there, then mark the refund on the payment’s page under Payments.', 'inpay_site': 'Kassa website', 'inpay_webhook_url': 'Webhook address (sent with every payment; set it as the kassa’s default too)', 'inpay_mode': 'Mode', 'inpay_mode_live': 'Live: real payments', 'inpay_mode_test': 'Test: only you see it, nothing is granted', 'inpay_mode_none': 'No key saved', 'inpay_signed': 'Webhooks are checked by signature.', 'inpay_unsigned': 'No signing secret is saved. Every payment is still confirmed by asking inPAY directly; Test connection fetches the secret when the key is live.', 'inpay_no_owner': 'With a test key the option is shown only to the Telegram ID saved under Card transfer payments. Save yours there first (send /myid to the bot).', 'inpay_no_site': 'Save the web application URL under Telegram bot first: inPAY returns customers to that website.', 'inpay_connected': 'inPAY accepted the saved credentials.', 'invalid_inpay_key': 'That is not an inPAY v2 secret key. It starts with sk_live_ or sk_test_.', 'invalid_inpay_webhook_secret': 'A webhook signing secret starts with whsec_.', 'invalid_inpay_merchant': 'Check the merchant ID (digits only) and the merchant token.', 'inpay_not_configured': 'Save an inPAY key before switching automatic payments on.', 'inpay_connection_failed': 'inPAY did not accept the saved credentials. Check the key, and that the kassa is approved.'},
+ 'uz': {'inpay': 'Avtomatik to‘lovlar (inPAY)', 'inpay_enabled': 'Mijozlarga inPAY orqali onlayn to‘lashga ruxsat berish', 'inpay_secret_key': 'API v2 maxfiy kaliti (sk_live_… yoki sk_test_…)', 'inpay_webhook_secret': 'Webhook imzo siri (whsec_…), ixtiyoriy', 'inpay_remove_key': 'Saqlangan v2 kalitini o‘chirish', 'inpay_v1': 'Klassik API v1, faqat kassada v2 kalitlari bo‘lmasa', 'inpay_merchant_id': 'Merchant ID', 'inpay_merchant_token': 'Merchant token', 'inpay_hint': 'Mijoz tarifni tanlaydi, inPAY sahifasida Click, Payme, Uzcard yoki Humo orqali to‘laydi va tarif o‘zi yoqiladi. inPAY kabinetida yuqorida ko‘rsatilgan sayt uchun «Veb-sayt» turidagi kassa yarating, Kassa → API v2 kalitlari bo‘limini ochib, maxfiy kalitni shu yerga kiriting. Saqlang, «Ulanishni tekshirish»ni bosing, so‘ng belgini qo‘ying. Sinov kaliti (sk_test_) bilan bu usulni faqat siz ko‘rasiz (Karta orqali to‘lov bo‘limidagi Telegram ID bo‘yicha) va sinov to‘lovi hech narsa bermaydi; sotishni boshlash uchun jonli kalitni saqlang. inPAY pulni faqat o‘z kabineti orqali qaytaradi: avval o‘sha yerda qaytaring, so‘ng To‘lovlar bo‘limidagi to‘lov sahifasida belgilang.', 'inpay_site': 'Kassa sayti', 'inpay_webhook_url': 'Webhook manzili (har bir to‘lov bilan yuboriladi; kassaning standart manzili sifatida ham kiriting)', 'inpay_mode': 'Rejim', 'inpay_mode_live': 'Jonli: haqiqiy to‘lovlar', 'inpay_mode_test': 'Sinov: faqat siz ko‘rasiz, hech narsa berilmaydi', 'inpay_mode_none': 'Kalit saqlanmagan', 'inpay_signed': 'Webhooklar imzo bo‘yicha tekshiriladi.', 'inpay_unsigned': 'Imzo siri saqlanmagan. Har bir to‘lov baribir inPAY’dan to‘g‘ridan-to‘g‘ri so‘rab tasdiqlanadi; kalit jonli bo‘lsa, «Ulanishni tekshirish» sirni o‘zi oladi.', 'inpay_no_owner': 'Sinov kaliti bilan bu usul faqat Karta orqali to‘lov bo‘limida saqlangan Telegram ID’ga ko‘rinadi. Avval o‘zingiznikini o‘sha yerda saqlang (botga /myid yuboring).', 'inpay_no_site': 'Avval Telegram bot bo‘limida veb ilova manzilini saqlang: inPAY mijozni o‘sha saytga qaytaradi.', 'inpay_connected': 'inPAY saqlangan ma’lumotlarni qabul qildi.', 'invalid_inpay_key': 'Bu inPAY v2 maxfiy kaliti emas. U sk_live_ yoki sk_test_ bilan boshlanadi.', 'invalid_inpay_webhook_secret': 'Webhook imzo siri whsec_ bilan boshlanadi.', 'invalid_inpay_merchant': 'Merchant ID (faqat raqamlar) va merchant tokenni tekshiring.', 'inpay_not_configured': 'Avtomatik to‘lovlarni yoqishdan oldin inPAY kalitini saqlang.', 'inpay_connection_failed': 'inPAY saqlangan ma’lumotlarni qabul qilmadi. Kalitni va kassa tasdiqlanganini tekshiring.'},
+ 'ru': {'inpay': 'Автоматическая оплата (inPAY)', 'inpay_enabled': 'Разрешить онлайн-оплату через inPAY', 'inpay_secret_key': 'Секретный ключ API v2 (sk_live_… или sk_test_…)', 'inpay_webhook_secret': 'Секрет подписи вебхуков (whsec_…), необязательно', 'inpay_remove_key': 'Удалить сохранённый ключ v2', 'inpay_v1': 'Классический API v1, только если у кассы нет ключей v2', 'inpay_merchant_id': 'Merchant ID', 'inpay_merchant_token': 'Merchant token', 'inpay_hint': 'Клиент выбирает тариф, платит на странице inPAY через Click, Payme, Uzcard или Humo, и тариф включается сам. В кабинете inPAY создайте кассу типа «Veb-sayt» для сайта, указанного выше, откройте Касса → Ключи API v2 и вставьте секретный ключ сюда. Сохраните, нажмите «Проверить соединение», затем отметьте флажок. С тестовым ключом (sk_test_) способ видите только вы (по Telegram ID из раздела «Оплата переводом на карту»), и тестовая оплата ничего не выдаёт; чтобы начать продажи, сохраните боевой ключ. inPAY возвращает деньги только из своего кабинета: верните их там, затем отметьте возврат на странице платежа в разделе «Платежи».', 'inpay_site': 'Сайт кассы', 'inpay_webhook_url': 'Адрес вебхука (передаётся с каждым платежом; укажите его и как адрес кассы по умолчанию)', 'inpay_mode': 'Режим', 'inpay_mode_live': 'Боевой: реальные платежи', 'inpay_mode_test': 'Тестовый: видите только вы, ничего не выдаётся', 'inpay_mode_none': 'Ключ не сохранён', 'inpay_signed': 'Вебхуки проверяются по подписи.', 'inpay_unsigned': 'Секрет подписи не сохранён. Каждый платёж всё равно подтверждается прямым запросом в inPAY; с боевым ключом «Проверить соединение» получает секрет само.', 'inpay_no_owner': 'С тестовым ключом способ показывается только Telegram ID из раздела «Оплата переводом на карту». Сначала сохраните там свой (отправьте боту /myid).', 'inpay_no_site': 'Сначала сохраните адрес веб-приложения в разделе Telegram-бота: inPAY возвращает клиентов на этот сайт.', 'inpay_connected': 'inPAY принял сохранённые данные.', 'invalid_inpay_key': 'Это не секретный ключ inPAY v2. Он начинается с sk_live_ или sk_test_.', 'invalid_inpay_webhook_secret': 'Секрет подписи вебхуков начинается с whsec_.', 'invalid_inpay_merchant': 'Проверьте Merchant ID (только цифры) и merchant token.', 'inpay_not_configured': 'Сохраните ключ inPAY, прежде чем включать автоматическую оплату.', 'inpay_connection_failed': 'inPAY не принял сохранённые данные. Проверьте ключ и что касса одобрена.'}}
+for language, labels in INPAY_SECTION_LABELS.items(): LABELS[language].update(labels)
+# How customers pay right now: shown on both payment cards.
+PAYMENT_WAY_LABELS = {'en': {'payment_way': 'Customers pay by', 'way_inpay': 'Automatic payment through inPAY. Card transfer is not shown; it comes back by itself if inPAY cannot open a payment.', 'way_inpay_test': 'Card transfer. With the test key only you see automatic payment.', 'way_card': 'Card transfer. Automatic payment is not set up.', 'way_card_fallback': 'Card transfer for now: inPAY could not open the last payment. inPAY is tried again within 10 minutes.', 'way_none': 'Nothing yet: neither way to pay is ready.'}, 'uz': {'payment_way': 'Mijozlar to‘lov usuli', 'way_inpay': 'inPAY orqali avtomatik to‘lov. Kartaga o‘tkazma ko‘rsatilmaydi; inPAY to‘lov ocha olmasa, o‘zi qaytadi.', 'way_inpay_test': 'Kartaga o‘tkazma. Sinov kaliti bilan avtomatik to‘lovni faqat siz ko‘rasiz.', 'way_card': 'Kartaga o‘tkazma. Avtomatik to‘lov sozlanmagan.', 'way_card_fallback': 'Hozircha kartaga o‘tkazma: inPAY oxirgi to‘lovni ocha olmadi. inPAY 10 daqiqa ichida qayta sinab ko‘riladi.', 'way_none': 'Hozircha hech qaysi: ikkala usul ham tayyor emas.'}, 'ru': {'payment_way': 'Клиенты платят', 'way_inpay': 'Автоматической оплатой через inPAY. Перевод на карту не показывается; он вернётся сам, если inPAY не сможет открыть платёж.', 'way_inpay_test': 'Переводом на карту. С тестовым ключом автоматическую оплату видите только вы.', 'way_card': 'Переводом на карту. Автоматическая оплата не настроена.', 'way_card_fallback': 'Пока переводом на карту: inPAY не смог открыть последний платёж. inPAY попробуем снова в течение 10 минут.', 'way_none': 'Пока никак: ни один способ оплаты не готов.'}}
+for language, labels in PAYMENT_WAY_LABELS.items(): LABELS[language].update(labels)
 CHANNEL_SECTION_LABELS = {
     'en': {'bot_not_configured': 'Set the Telegram bot token above first.', 'channels': 'Required Telegram channels', 'channels_enabled': 'Free and Plus customers must join these channels to use the services',
            'channels_list': 'Channels, one per line',
@@ -301,7 +309,7 @@ for language, labels in COMPANY_LABELS.items(): LABELS[language].update(labels)
 
 
 @require_staff()
-@sensitive_post_parameters('token','api_key','client_secret','password','secret_key','pixabay_key','access_key')
+@sensitive_post_parameters('token','api_key','client_secret','password','secret_key','pixabay_key','access_key','webhook_secret','merchant_token')
 @require_http_methods(['GET','POST'])
 def integrations(request):
     data=context(request,'integrations');labels=LABELS[data['lang']];data['i']=labels;data['title']=labels['integrations']
@@ -309,13 +317,14 @@ def integrations(request):
         action=request.POST.get('action','save')
         try:
             key=request.POST.get('integration','telegram')
-            if action!='save' and key!='telegram' and not (key in ('email','pixabay','channels','object_storage') and action=='test'):raise DomainError('invalid_parameters')
+            if action!='save' and key!='telegram' and not (key in ('email','pixabay','channels','object_storage','inpay') and action=='test'):raise DomainError('invalid_parameters')
             if action=='save':save_config(key,request.POST);message='saved'
             elif action=='test':
                 if key=='email':test_email();message='email_connected'
                 elif key=='pixabay':test_pixabay();message='pixabay_connected'
                 elif key=='object_storage':test_object_storage();message='storage_connected'
                 elif key=='channels':test_channels();message='channels_connected'
+                elif key=='inpay':test_inpay();message='inpay_connected'
                 else:test_telegram();message='connected'
             elif action in ('start','stop'):
                 if not development_access(request):raise DomainError('local_control_only',403)
@@ -325,6 +334,9 @@ def integrations(request):
             # Who changed the card customers pay into, and to which one, must be traceable.
             if key=='manual_payments':
                 card=manual_payment_config();after.update(card_last4=card['card_number'][-4:],enabled=card['enabled'])
+            # Which kind of key takes customers' money, and whether it is switched on; never any part of the key.
+            if key=='inpay':
+                pay=inpay_config();after.update(api=pay['api'],live=pay['live'],enabled=pay['enabled'])
             audit(request.ops_user,'integration.'+action,key,after=after)
             return redirect('/ops/integrations?lang='+data['lang']+'&notice='+message)
         except DomainError as e:
@@ -366,4 +378,13 @@ def integrations(request):
     data['manual'] = {**{key: card[key] for key in ('enabled','configured','ready','card_number','card_holder','card_label','alert_telegram_id')},
                       'priced':bool(card_prices()),
                       'labels':CARD_LABELS,'card_display':' '.join(card['card_number'][i:i+4] for i in range(0,len(card['card_number']),4))}
+    # The keys never reach the page: only which API they speak, their mode, and whether a signing secret is saved.
+    from apps.core.links import web_origin
+    pay=inpay_config();site=web_origin()
+    data['inpay']={**{key: pay[key] for key in ('enabled','configured','ready','live','api','merchant_id')},
+                   'signed':bool(pay['webhook_secret']),'site':site,'webhook_url':site+'/api/v1/webhooks/inpay' if site else '',
+                   'priced':bool(card_prices()),'owner_known':bool(card['alert_telegram_id'])}
+    # Customers are offered one way at a time; both cards say which it is now.
+    from apps.commerce.checkout import payment_way
+    data['payment_way']=payment_way()
     return finish_render(request,'ops/integrations.html',data)

@@ -227,7 +227,9 @@ def plans(request):
         public={field:value for field,value in limits.items() if field not in ('discount_price_uzs','discount_until')}
         return {'id':key,'name':key.title(),'price_uzs':offer['regular'] if offer else None,'discount':offer['discount'] if offer else None,'limits':public,
                 'features':[fid for fid in released if FEATURES[fid]['plans'][key] not in ('none','excluded','not_included','unavailable')]}
-    return {'draft':True,'currency':'UZS','period_seconds':SEED['period_seconds'],'plans':[row(key,limits_for_plan(key)) for key in SEED['plans']]}
+    # How a plan can be paid for today, so the pricing page describes the way that exists.
+    from apps.commerce.checkout import on_sale
+    return {'draft':True,'currency':'UZS','period_seconds':SEED['period_seconds'],'plans':[row(key,limits_for_plan(key)) for key in SEED['plans']],'checkout':on_sale()}
 
 @api()
 def usage(request): return usage_snapshot(request.account)

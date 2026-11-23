@@ -27,3 +27,16 @@ def admin_url(path):
     """A page of the admin, such as /ops/payments, as a whole link; '' when no origin is known."""
     origin = admin_origin()
     return origin + path if origin else ''
+
+
+def web_origin():
+    """The customer website's origin, such as https://docmaster.live, or '' when none is set.
+
+    Taken from the web application address saved in Admin → Integrations, as
+    the Google sign-in return is: never from a request.
+    """
+    from operations.integrations import telegram_config
+    parts = urlsplit(str(telegram_config().get('webapp_url') or ''))
+    if not parts.hostname or not (parts.scheme == 'https' or (settings.DEBUG and parts.scheme == 'http')):
+        return ''
+    return f'{parts.scheme}://{parts.netloc}'

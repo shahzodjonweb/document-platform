@@ -121,7 +121,10 @@ def plans_screen(filters,t,with_viewers=False):
     viewers=Account.objects.filter(pk__in=events.values('account_id')).annotate(
         first_view=Subquery(mine.order_by('occurred_at').values('occurred_at')[:1]))
     requested=ManualPayment.objects.filter(account_id=OuterRef('pk'),created_at__gte=OuterRef('first_view'))
-    viewers=viewers.annotate(started=Exists(requested),paid=Exists(requested.filter(status='approved')))
+    # An inPAY payment is started once its page exists, and paid when real money came (a test key's payments are neither).
+    from apps.commerce.models import Checkout
+    online=Checkout.objects.filter(account_id=OuterRef('pk'),created_at__gte=OuterRef('first_view'),livemode=True).exclude(status='created')
+    viewers=viewers.annotate(started=Exists(requested)|Exists(online),paid=Exists(requested.filter(status='approved'))|Exists(online.filter(status='paid')))
     result['started']=viewers.filter(started=True).count()
     result['paid']=viewers.filter(paid=True).count()
     result['started_share'],result['paid_share']=share(result['started'],people),share(result['paid'],people)

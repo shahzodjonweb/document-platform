@@ -29,6 +29,8 @@ def no_photo_network(monkeypatch):
     monkeypatch.setattr('apps.studio.photo_choice._post', refuse)
     # Nor Telegram, when checking whether a customer joined the owner's channels.
     monkeypatch.setattr('apps.core.channel_gate._call', refuse)
+    # Nor inPAY: a payment provider is only ever faked (tests/test_inpay_checkout.py).
+    monkeypatch.setattr('apps.commerce.inpay._call', refuse)
 
 
 @pytest.fixture(autouse=True)

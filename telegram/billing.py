@@ -1,7 +1,9 @@
-"""Plans, card transfers and the subscription in the bot.
+"""Plans, payments and the subscription in the bot.
 
 Prices, discounts included, come from apps.commerce.pricing; the financial
-decisions stay in apps.commerce. Card transfer in so'm is the only way to pay.
+decisions stay in apps.commerce. A plan is paid for in so'm, online through
+inPAY (apps/commerce/checkout.py) or by card transfer with a receipt
+(apps/commerce/manual.py), whichever the owner has switched on.
 """
 import html
 
@@ -36,6 +38,16 @@ COPY = {
         "manual_approved": "✅ Payment confirmed! {plan} is active until {date}. Thank you!",
         "manual_rejected": "⚠️ We couldn't confirm payment {reference}: {reason}\nIf you did pay, write to us: /paysupport",
         "manual_reminder": "⏰ Your {plan} plan ends on {date}. To keep it, pay again: /plans",
+        "checkout_fallback": "⚠️ Online payment isn't working right now, so you can pay by card transfer instead.",
+        "checkout_screen": "<b>⚡ {plan} — {price} so'm for 30 days</b>{note}\n\nTap «Pay» to open inPAY's payment page and pay with Click, Payme, Uzcard or Humo.\n\nYour plan switches on by itself after the payment, usually within a minute, and we message you here. Nothing renews by itself.",
+        "checkout_test_note": "\n\n🧪 Test mode: no money moves and your plan does not change.",
+        "checkout_pay": "💳 Pay {price} so'm",
+        "checkout_check": "🔄 I've paid — check",
+        "checkout_waiting": "⏳ We haven't received the payment yet. If you have just paid, wait a minute and check again.",
+        "checkout_paid": "✅ Payment received! {plan} is active until {date}. Thank you!",
+        "checkout_failed": "The payment didn't go through, and nothing was charged. You can try again.",
+        "checkout_refunded": "This payment was refunded, and its plan period ended with it.",
+        "checkout_paid_test": "🧪 Test payment received. The payment system works: no money moved and your plan was not changed.",
         "myid": "Your Telegram ID: <code>{id}</code>",
         'unavailable': 'Payments aren’t ready yet. You can keep using your current plan.',
         'active_until': 'Paid access until',
@@ -62,6 +74,16 @@ COPY = {
         "manual_approved": "✅ To‘lov tasdiqlandi! {plan} tarifi {date} gacha faol. Rahmat!",
         "manual_rejected": "⚠️ {reference} to‘lovini tasdiqlay olmadik: {reason}\nAgar to‘lagan bo‘lsangiz, bizga yozing: /paysupport",
         "manual_reminder": "⏰ {plan} tarifingiz {date} kuni tugaydi. Davom ettirish uchun qayta to‘lang: /plans",
+        "checkout_fallback": "⚠️ Onlayn to‘lov hozir ishlamayapti, shuning uchun kartaga o‘tkazma orqali to‘lashingiz mumkin.",
+        "checkout_screen": "<b>⚡ {plan} — 30 kun uchun {price} so'm</b>{note}\n\n«To‘lash» tugmasini bosing: inPAY to‘lov sahifasi ochiladi, u yerda Click, Payme, Uzcard yoki Humo orqali to‘laysiz.\n\nTo‘lovdan keyin tarifingiz o‘zi yoqiladi, odatda bir daqiqa ichida, va shu yerga yozamiz. Hech narsa o‘z-o‘zidan uzaytirilmaydi.",
+        "checkout_test_note": "\n\n🧪 Sinov rejimi: pul yechilmaydi va tarifingiz o‘zgarmaydi.",
+        "checkout_pay": "💳 {price} so'm to‘lash",
+        "checkout_check": "🔄 To‘ladim — tekshirish",
+        "checkout_waiting": "⏳ To‘lov hali kelib tushmadi. Hozirgina to‘lagan bo‘lsangiz, bir daqiqa kutib, qayta tekshiring.",
+        "checkout_paid": "✅ To‘lov qabul qilindi! {plan} tarifi {date} gacha faol. Rahmat!",
+        "checkout_failed": "To‘lov o‘tmadi, hech narsa yechilmadi. Qayta urinib ko‘rishingiz mumkin.",
+        "checkout_refunded": "Bu to‘lov qaytarilgan, uning tarif muddati ham tugatilgan.",
+        "checkout_paid_test": "🧪 Sinov to‘lovi qabul qilindi. To‘lov tizimi ishlayapti: pul yechilmadi va tarifingiz o‘zgarmadi.",
         "myid": "Telegram ID: <code>{id}</code>",
         'unavailable': 'To‘lov hozircha ishlamayapti. Joriy tarifdan foydalanishingiz mumkin.',
         'active_until': 'Pullik tarif muddati',
@@ -88,6 +110,16 @@ COPY = {
         "manual_approved": "✅ Оплата подтверждена! Тариф {plan} действует до {date}. Спасибо!",
         "manual_rejected": "⚠️ Не удалось подтвердить платёж {reference}: {reason}\nЕсли вы оплатили, напишите нам: /paysupport",
         "manual_reminder": "⏰ Ваш тариф {plan} заканчивается {date}. Чтобы продолжить, оплатите снова: /plans",
+        "checkout_fallback": "⚠️ Онлайн-оплата сейчас не работает, поэтому можно оплатить переводом на карту.",
+        "checkout_screen": "<b>⚡ {plan} — {price} сум за 30 дней</b>{note}\n\nНажмите «Оплатить»: откроется страница оплаты inPAY, где можно заплатить через Click, Payme, Uzcard или Humo.\n\nПосле оплаты тариф включится сам, обычно в течение минуты, и мы напишем вам здесь. Автоматического продления нет.",
+        "checkout_test_note": "\n\n🧪 Тестовый режим: деньги не списываются, тариф не меняется.",
+        "checkout_pay": "💳 Оплатить {price} сум",
+        "checkout_check": "🔄 Я оплатил — проверить",
+        "checkout_waiting": "⏳ Оплата пока не поступила. Если вы только что оплатили, подождите минуту и проверьте снова.",
+        "checkout_paid": "✅ Оплата получена! Тариф {plan} действует до {date}. Спасибо!",
+        "checkout_failed": "Оплата не прошла, ничего не списано. Можно попробовать ещё раз.",
+        "checkout_refunded": "Этот платёж возвращён, и его период тарифа завершён.",
+        "checkout_paid_test": "🧪 Тестовая оплата получена. Платёжная система работает: деньги не списаны, тариф не изменён.",
         "myid": "Ваш Telegram ID: <code>{id}</code>",
         'unavailable': 'Оплата пока недоступна. Текущий тариф продолжает работать.',
         'active_until': 'Оплачено до',
@@ -128,6 +160,8 @@ PLAN_COPY = {
         'files_unlimited': 'File tools: unlimited',
         'no_channels': 'No channel subscription needed',
         'every_tool': '✅ Every plan includes every tool.',
+        'how_auto': '<b>How to pay</b>\n1. Choose a plan below.\n2. Pay on inPAY\'s page with Click, Payme, Uzcard or Humo.\n'
+                    '3. Your plan switches on by itself, usually within a minute.',
         'how': '<b>How to pay</b>\n1. Choose a plan below.\n2. Send the amount from your bank app to the card shown.\n'
                '3. Send the receipt here. We switch your plan on after checking, usually within a few hours.',
     },
@@ -147,6 +181,8 @@ PLAN_COPY = {
         'files_unlimited': 'Fayl vositalari: cheksiz',
         'no_channels': 'Kanallarga obuna bo‘lish shart emas',
         'every_tool': '✅ Har bir tarifda barcha vositalar bor.',
+        'how_auto': '<b>Qanday to‘lanadi</b>\n1. Quyidan tarifni tanlang.\n2. inPAY sahifasida Click, Payme, Uzcard yoki Humo orqali to‘lang.\n'
+                    '3. Tarifingiz o‘zi yoqiladi, odatda bir daqiqa ichida.',
         'how': '<b>Qanday to‘lanadi</b>\n1. Quyidan tarifni tanlang.\n2. Ko‘rsatilgan kartaga bank ilovangizdan pul o‘tkazing.\n'
                '3. Kvitansiyani shu yerga yuboring. Tekshirgach tarifingizni yoqamiz, odatda bir necha soat ichida.',
     },
@@ -166,6 +202,8 @@ PLAN_COPY = {
         'files_unlimited': 'Задачи с файлами: без ограничений',
         'no_channels': 'Без обязательной подписки на каналы',
         'every_tool': '✅ Все инструменты есть в каждом тарифе.',
+        'how_auto': '<b>Как оплатить</b>\n1. Выберите тариф ниже.\n2. Оплатите на странице inPAY через Click, Payme, Uzcard или Humo.\n'
+                    '3. Тариф включится сам, обычно в течение минуты.',
         'how': '<b>Как оплатить</b>\n1. Выберите тариф ниже.\n2. Переведите сумму из банковского приложения на указанную карту.\n'
                '3. Отправьте сюда квитанцию. После проверки включим тариф, обычно в течение нескольких часов.',
     },
@@ -300,22 +338,30 @@ async def show_offers(message, account, edit=False, source=None, tap=''):
     """The plans screen. `source` is where it was opened from, and `tap` the
     button tapped to open it, for the admin's count."""
     from .bot import callback
-    from apps.commerce import manual
+    from apps.commerce import checkout, manual
     await leave_input_prompt(account)
-    cards = await sync_to_async(manual.options)()
+    cards = await sync_to_async(manual.options)(account)
+    automatic = cards['automatic']['available']
     rows = []
-    # Card transfer is the way to pay. Automatic payment is announced, not
-    # offered, until it exists.
+    # One way to pay at a time: inPAY while it works, card transfer otherwise.
+    action = 'commerce_checkout_plan' if automatic else 'commerce_manual_plan'
     for item in cards['plans']:
         rows.append([InlineKeyboardButton(
             text=card_label(account, item),
-            callback_data=await callback(account, 'commerce_manual_plan', {'plan': item['plan']}),
+            callback_data=await callback(account, action, {'plan': item['plan']}),
         )])
     rows.append([await button(account, 'subscription', 'subscription')])
     rows.extend(await navigation(account))
     overview = await sync_to_async(plans_overview)(account)
-    if cards['enabled']:
-        tail = PLAN_COPY.get(account.locale, PLAN_COPY['en'])['how'] + '\n\n' + html.escape(copy(account, 'automatic_soon'))
+    words = PLAN_COPY.get(account.locale, PLAN_COPY['en'])
+    if automatic:
+        tail = words['how_auto']
+    elif cards['enabled']:
+        tail = words['how']
+        # Automatic payment is announced until the owner sets it up; while card
+        # transfer only stands in for a moment, it is not "coming soon".
+        if not await sync_to_async(checkout.fallback)():
+            tail += '\n\n' + html.escape(copy(account, 'automatic_soon'))
     else:
         tail = html.escape(copy(account, 'unavailable'))
     shown = await show(message, overview + '\n\n' + tail, rows, edit, 'HTML')
@@ -328,12 +374,113 @@ async def show_offers(message, account, edit=False, source=None, tap=''):
         await sync_to_async(funnel.plans_viewed)(account, source, tap)
 
 
-async def show_manual(message, account, plan, edit=False):
+async def show_manual(message, account, plan, edit=False, switch=True):
     """The card, the price and the code for one plan, and how to send the receipt."""
     from apps.commerce import manual
     await leave_input_prompt(account)
-    payment, _ = await sync_to_async(manual.create)(account, plan, 'bot')
+    try:
+        payment, _ = await sync_to_async(manual.create)(account, plan, 'bot')
+    except DomainError as exc:
+        # Customers pay through inPAY now: a card-transfer button from before leads there.
+        if not switch or exc.code != 'checkout_disabled' or not (await sync_to_async(manual.options)(account))['automatic']['available']:
+            raise
+        return await show_checkout(message, account, plan, edit, switch=False)
     await show_manual_payment(message, account, payment, edit)
+
+
+async def show_checkout(message, account, plan, edit=False, switch=True):
+    """Open a payment at inPAY for one plan and show the button that leads to its page.
+
+    When inPAY cannot open it, or stopped being the way since the plans were
+    shown, card transfer is the way now wherever it is set up: the customer
+    is taken there instead of being left with an error.
+    """
+    import asyncio
+    from apps.commerce import checkout, manual
+    await leave_input_prompt(account)
+    try:
+        row, request = await sync_to_async(checkout.begin)(account, plan, 'bot')
+        if request is not None:
+            # inPAY is asked off the thread the bot's queries share: a slow answer holds no other chat up.
+            opened, failure = await asyncio.to_thread(checkout.ask, request)
+            row = await sync_to_async(checkout.complete)(row, opened, failure)
+    except DomainError as exc:
+        if not switch or exc.code not in ('checkout_disabled', 'checkout_unavailable') or not (await sync_to_async(manual.options)(account))['enabled']:
+            raise
+        if exc.code == 'checkout_unavailable':
+            # Said first, then the card screen under it as a message of its own.
+            await message.answer(copy(account, 'checkout_fallback'))
+            edit = False
+        return await show_manual(message, account, plan, edit, switch=False)
+    await show_checkout_row(message, account, row, edit)
+
+
+async def show_checkout_row(message, account, row, edit=False):
+    from .bot import callback
+    note = await sync_to_async(discount_note)(account, row)
+    body = copy(account, 'checkout_screen').format(plan=row.plan.title(), price=money(row.amount), note=note)
+    if not row.livemode:
+        body += copy(account, 'checkout_test_note')
+    rows = [
+        # A link, not a Mini App: Click and Payme hand over to their own apps, which a browser does and a web view does not.
+        [InlineKeyboardButton(text=copy(account, 'checkout_pay').format(price=money(row.amount)), url=row.checkout_url)],
+        [InlineKeyboardButton(text=copy(account, 'checkout_check'), callback_data=await callback(account, 'commerce_checkout_check', {'checkout_id': str(row.id)}))],
+        *(await navigation(account, 'plans', FROM_PAYMENT)),
+    ]
+    await show(message, body, rows, edit, 'HTML')
+
+
+def _checkout_result(account, row):
+    """What to say about a payment that is no longer waiting, and that it has been said.
+
+    The same words the paid notice carries, so the notice still queued for
+    this chat is not sent after them.
+    """
+    from apps.commerce.models import PaymentNotice, SubscriptionPeriod
+    from .clock import local_time
+    if row.status != 'paid':
+        return copy(account, 'checkout_refunded' if row.status == 'refunded' else 'checkout_failed')
+    kind = 'paid' if row.livemode else 'paid_test'
+    PaymentNotice.objects.filter(checkout=row, kind=kind, status__in=('pending', 'retrying')).update(
+        status='skipped', error_code='shown_in_chat')
+    if not row.livemode:
+        return copy(account, 'checkout_paid_test')
+    period = SubscriptionPeriod.objects.filter(payment=row.payment).first() if row.payment_id else None
+    date = local_time(account, period.ends_at).strftime('%d.%m.%Y') if period else ''
+    return copy(account, 'checkout_paid').format(plan=row.plan.title(), date=date)
+
+
+async def check_checkout(message, account, checkout_id):
+    """«I've paid — check»: ask inPAY about this payment now, and say where it stands."""
+    import asyncio
+    from apps.commerce import checkout, inpay
+    from apps.commerce.models import Checkout
+    row = await sync_to_async(lambda: Checkout.objects.filter(pk=checkout_id, account=account).first())()
+    if row is None:
+        raise DomainError('not_found', 404)
+    question = await sync_to_async(checkout.due)(row)
+    asked = False
+    if question is not None:
+        try:
+            remote = await asyncio.to_thread(checkout.look, question)
+        except inpay.Refused as refused:
+            await sync_to_async(checkout.lookup_refused)(refused)
+            remote = None
+        except inpay.Unavailable:
+            remote = None
+        if remote is not None:
+            row, asked = await sync_to_async(checkout.apply)(row.pk, remote), True
+    else:
+        await sync_to_async(row.refresh_from_db)()
+    # A failure is said only when inPAY has just said so: the customer may have
+    # paid on the same page since we last asked.
+    if row.status in ('paid', 'refunded') or (asked and row.status in ('failed', 'cancelled', 'expired')):
+        text = await sync_to_async(_checkout_result)(account, row)
+        rows = [[await button(account, 'subscription', 'subscription'), await button(account, 'plans', 'plans', FROM_PAYMENT)],
+                *(await navigation(account))]
+        return await show(message, text, rows, edit=True)
+    # Still waiting: the Pay button above stays where it is.
+    await message.answer(copy(account, 'checkout_waiting'))
 
 
 def discount_note(account, payment):
@@ -477,6 +624,10 @@ def register_billing_handlers(dp):
         try:
             if ref.action == 'commerce_manual_plan':
                 await show_manual(query.message, account, ref.payload['plan'], edit=True)
+            elif ref.action == 'commerce_checkout_plan':
+                await show_checkout(query.message, account, ref.payload['plan'], edit=True)
+            elif ref.action == 'commerce_checkout_check':
+                await check_checkout(query.message, account, ref.payload['checkout_id'])
             elif ref.action == 'commerce_manual_receipt':
                 from .bot import set_prompt
                 await sync_to_async(set_prompt)(account, 'payment_receipt', {'payment_id': ref.payload['payment_id']})

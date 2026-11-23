@@ -333,6 +333,58 @@ def manual_payment_config():
             'alert_telegram_id': alert if type(alert) is int and alert > 0 else None}
 
 
+# inPAY's keys as its cabinet issues them. A v2 secret key says in its name
+# whether it moves money (sk_live_) or only drives the simulator (sk_test_).
+_INPAY_KEY = re.compile(r'sk_(live|test)_[A-Za-z0-9_-]{8,200}')
+_INPAY_WEBHOOK_SECRET = re.compile(r'whsec_[A-Za-z0-9_-]{8,200}')
+_INPAY_MERCHANT_ID = re.compile(r'[0-9]{1,12}')
+_INPAY_MERCHANT_TOKEN = re.compile(r'[A-Za-z0-9]{16,64}')
+
+
+def inpay_config():
+    """Automatic payments through inPAY (apps/commerce/inpay.py). `enabled` is the switch.
+
+    A v2 secret key is used when one is saved; otherwise the classic merchant
+    id and token (v1). `live` is False only for a v2 test key, which moves no
+    money: with one, automatic payment is shown to the owner alone and grants
+    nothing (apps/commerce/checkout.py).
+    """
+    cfg, secret = read_config('inpay')
+    key = str(secret.get('secret_key') or '')
+    merchant_id, token = str(cfg.get('merchant_id') or ''), str(secret.get('merchant_token') or '')
+    api = 'v2' if key else 'v1' if merchant_id and token else ''
+    enabled = bool(cfg.get('enabled', False))
+    return {'enabled': enabled, 'api': api, 'configured': bool(api), 'ready': enabled and bool(api),
+            'live': bool(api) and not key.startswith('sk_test_'),
+            'secret_key': key, 'webhook_secret': str(secret.get('webhook_secret') or ''),
+            'merchant_id': merchant_id, 'merchant_token': token}
+
+
+def test_inpay():
+    """One harmless call with the saved credentials, so the owner knows they work before a customer pays.
+
+    With a live v2 key it also fetches the secret inPAY signs webhooks with,
+    when none is saved yet: inPAY gives that secret to a live key only.
+    """
+    from apps.commerce import inpay
+    cfg = inpay_config()
+    if not cfg['configured']: raise DomainError('inpay_not_configured', 409)
+    try: inpay.check(cfg)
+    except Exception: raise DomainError('inpay_connection_failed', 409) from None
+    if cfg['api'] == 'v2' and cfg['live'] and not cfg['webhook_secret']:
+        try: fetched = inpay.webhook_secret(cfg)
+        except Exception: fetched = ''
+        if fetched:
+            with transaction.atomic():
+                row = IntegrationConfig.objects.select_for_update().get(pk='inpay')
+                secrets = json.loads(cipher().decrypt(bytes(row.encrypted_secrets))) if row.encrypted_secrets else {}
+                secrets['webhook_secret'] = fetched
+                row.encrypted_secrets = cipher().encrypt(json.dumps(secrets).encode())
+                row.save(update_fields=['encrypted_secrets'])
+    IntegrationConfig.objects.filter(pk='inpay').update(check_status='connected', checked_at=timezone.now())
+    return inpay_config()
+
+
 _PUBLIC_CHANNEL = re.compile(r'(?:https://)?(?:t\.me|telegram\.me)/([A-Za-z][A-Za-z0-9_]{3,31})/?|@([A-Za-z][A-Za-z0-9_]{3,31})')
 _INVITE_LINK = re.compile(r'https://t\.me/(?:\+|joinchat/)[A-Za-z0-9_-]{8,64}')
 _CHAT_ID = re.compile(r'-100[0-9]{6,15}')
@@ -589,6 +641,32 @@ def save_config(key, values):
         enabled = _boolean(values.get('enabled', False))
         if enabled and not (cfg.get('card_number') and cfg.get('card_holder')):
             raise DomainError('manual_payments_not_configured')
+        cfg.update(enabled=enabled)
+    elif key == 'inpay':
+        # A blank secret field keeps what is saved; "remove" boxes take a credential away.
+        secret_key = str(values.get('secret_key', '') or '').strip()
+        if secret_key:
+            if not _INPAY_KEY.fullmatch(secret_key): raise DomainError('invalid_inpay_key')
+            # Another key is another kassa or another mode: its webhooks are signed with another secret.
+            if secret_key != secrets.get('secret_key'): secrets.pop('webhook_secret', None)
+            secrets['secret_key'] = secret_key
+        elif _boolean(values.get('remove_secret_key', False)):
+            secrets.pop('secret_key', None); secrets.pop('webhook_secret', None)
+        webhook_secret = str(values.get('webhook_secret', '') or '').strip()
+        if webhook_secret:
+            if not _INPAY_WEBHOOK_SECRET.fullmatch(webhook_secret): raise DomainError('invalid_inpay_webhook_secret')
+            secrets['webhook_secret'] = webhook_secret
+        merchant_id = str(values.get('merchant_id', cfg.get('merchant_id', '')) or '').strip()
+        if merchant_id and not _INPAY_MERCHANT_ID.fullmatch(merchant_id): raise DomainError('invalid_inpay_merchant')
+        cfg['merchant_id'] = merchant_id
+        merchant_token = str(values.get('merchant_token', '') or '').strip()
+        if merchant_token:
+            if not _INPAY_MERCHANT_TOKEN.fullmatch(merchant_token): raise DomainError('invalid_inpay_merchant')
+            secrets['merchant_token'] = merchant_token
+        if not merchant_id: secrets.pop('merchant_token', None)
+        enabled = _boolean(values.get('enabled', False))
+        if enabled and not (secrets.get('secret_key') or (merchant_id and secrets.get('merchant_token'))):
+            raise DomainError('inpay_not_configured')
         cfg.update(enabled=enabled)
     elif key == 'contacts':
         cfg.update({kind: _contact_username(values.get(kind, '')) for kind in CONTACT_KINDS})

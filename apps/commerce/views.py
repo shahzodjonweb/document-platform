@@ -9,13 +9,16 @@ from apps.core.errors import DomainError,error_data
 from apps.core.models import Artifact
 from .models import Payment,BotDelivery
 from . import services
-from .serializers import payment_data,subscription_data,manual_payment_data
+from django.views.decorators.csrf import csrf_exempt
+from apps.core.views import api
+from .serializers import payment_data,subscription_data,manual_payment_data,checkout_data
 from . import manual
+from . import checkout
 
 MESSAGES={
-'en':{'checkout_disabled':'Payments aren’t available right now.','invalid_plan':'Choose Plus or Premium.','manual_payment_pending':'Your previous payment is being reviewed. Wait for it, or cancel it first.','manual_payment_closed':'This payment is already closed. Start a new one.','manual_payment_expired':'This payment expired after two days without a receipt. Start a new one.','invalid_receipt':'Send the receipt as a photo or screenshot (JPG or PNG) or a PDF.','receipt_too_large':'The receipt must be smaller than 10 MB.','manual_payment_unavailable':'Couldn’t start the payment. Please try again.','rate_limited':'Too many attempts. Please wait a little and try again.','sandbox_disabled':'This local payment simulator is available only for test accounts.','audit_reason_required':'Enter a short reason for this action.','invalid_referral':'This referral code is not valid for your account.','referral_already_claimed':'Your account already has a referral.','referral_window_closed':'Referral codes can be added during the first seven days.','permission_denied':'You do not have permission to perform this action.'},
-'uz':{'checkout_disabled':'To‘lov hozircha mavjud emas.','invalid_plan':'Plus yoki Premium tarifini tanlang.','manual_payment_pending':'Oldingi to‘lovingiz tekshirilmoqda. Natijani kuting yoki avval uni bekor qiling.','manual_payment_closed':'Bu to‘lov yopilgan. Yangisini boshlang.','manual_payment_expired':'Kvitansiya yuborilmagani uchun to‘lov ikki kundan keyin bekor bo‘ldi. Yangisini boshlang.','invalid_receipt':'Kvitansiyani rasm yoki skrinshot (JPG yoki PNG) yoxud PDF ko‘rinishida yuboring.','receipt_too_large':'Kvitansiya hajmi 10 MB dan kichik bo‘lishi kerak.','manual_payment_unavailable':'To‘lovni boshlab bo‘lmadi. Qayta urinib ko‘ring.','rate_limited':'Urinishlar juda ko‘p. Biroz kutib, qayta urinib ko‘ring.','sandbox_disabled':'Mahalliy to‘lov simulyatori faqat sinov hisoblari uchun mavjud.','audit_reason_required':'Amal uchun qisqa sabab kiriting.','invalid_referral':'Bu tavsiya kodi hisobingiz uchun yaroqsiz.','referral_already_claimed':'Hisobingizda tavsiya allaqachon mavjud.','referral_window_closed':'Tavsiya kodini dastlabki yetti kunda qo‘shish mumkin.','permission_denied':'Bu amalni bajarishga ruxsatingiz yo‘q.'},
-'ru':{'checkout_disabled':'Оплата сейчас недоступна.','invalid_plan':'Выберите Plus или Premium.','manual_payment_pending':'Предыдущий платёж проверяется. Дождитесь решения или сначала отмените его.','manual_payment_closed':'Этот платёж уже закрыт. Начните новый.','manual_payment_expired':'Платёж отменён: квитанция не пришла за два дня. Начните новый.','invalid_receipt':'Отправьте квитанцию фото или скриншотом (JPG или PNG) либо PDF-файлом.','receipt_too_large':'Квитанция должна быть меньше 10 МБ.','manual_payment_unavailable':'Не удалось начать оплату. Попробуйте ещё раз.','rate_limited':'Слишком много попыток. Подождите немного и повторите.','sandbox_disabled':'Локальный симулятор оплаты доступен только тестовым аккаунтам.','audit_reason_required':'Укажите краткую причину действия.','invalid_referral':'Этот реферальный код недействителен для вашего аккаунта.','referral_already_claimed':'Для аккаунта уже указан пригласивший пользователь.','referral_window_closed':'Код можно добавить в первые семь дней.','permission_denied':'У вас нет разрешения на это действие.'}}
+'en':{'checkout_unavailable':'Couldn’t open the payment page. Please try again in a minute.','checkout_disabled':'Payments aren’t available right now.','invalid_plan':'Choose Plus or Premium.','manual_payment_pending':'Your previous payment is being reviewed. Wait for it, or cancel it first.','manual_payment_closed':'This payment is already closed. Start a new one.','manual_payment_expired':'This payment expired after two days without a receipt. Start a new one.','invalid_receipt':'Send the receipt as a photo or screenshot (JPG or PNG) or a PDF.','receipt_too_large':'The receipt must be smaller than 10 MB.','manual_payment_unavailable':'Couldn’t start the payment. Please try again.','rate_limited':'Too many attempts. Please wait a little and try again.','sandbox_disabled':'This local payment simulator is available only for test accounts.','audit_reason_required':'Enter a short reason for this action.','invalid_referral':'This referral code is not valid for your account.','referral_already_claimed':'Your account already has a referral.','referral_window_closed':'Referral codes can be added during the first seven days.','permission_denied':'You do not have permission to perform this action.'},
+'uz':{'checkout_unavailable':'To‘lov sahifasini ochib bo‘lmadi. Bir daqiqadan so‘ng qayta urinib ko‘ring.','checkout_disabled':'To‘lov hozircha mavjud emas.','invalid_plan':'Plus yoki Premium tarifini tanlang.','manual_payment_pending':'Oldingi to‘lovingiz tekshirilmoqda. Natijani kuting yoki avval uni bekor qiling.','manual_payment_closed':'Bu to‘lov yopilgan. Yangisini boshlang.','manual_payment_expired':'Kvitansiya yuborilmagani uchun to‘lov ikki kundan keyin bekor bo‘ldi. Yangisini boshlang.','invalid_receipt':'Kvitansiyani rasm yoki skrinshot (JPG yoki PNG) yoxud PDF ko‘rinishida yuboring.','receipt_too_large':'Kvitansiya hajmi 10 MB dan kichik bo‘lishi kerak.','manual_payment_unavailable':'To‘lovni boshlab bo‘lmadi. Qayta urinib ko‘ring.','rate_limited':'Urinishlar juda ko‘p. Biroz kutib, qayta urinib ko‘ring.','sandbox_disabled':'Mahalliy to‘lov simulyatori faqat sinov hisoblari uchun mavjud.','audit_reason_required':'Amal uchun qisqa sabab kiriting.','invalid_referral':'Bu tavsiya kodi hisobingiz uchun yaroqsiz.','referral_already_claimed':'Hisobingizda tavsiya allaqachon mavjud.','referral_window_closed':'Tavsiya kodini dastlabki yetti kunda qo‘shish mumkin.','permission_denied':'Bu amalni bajarishga ruxsatingiz yo‘q.'},
+'ru':{'checkout_unavailable':'Не удалось открыть страницу оплаты. Попробуйте ещё раз через минуту.','checkout_disabled':'Оплата сейчас недоступна.','invalid_plan':'Выберите Plus или Premium.','manual_payment_pending':'Предыдущий платёж проверяется. Дождитесь решения или сначала отмените его.','manual_payment_closed':'Этот платёж уже закрыт. Начните новый.','manual_payment_expired':'Платёж отменён: квитанция не пришла за два дня. Начните новый.','invalid_receipt':'Отправьте квитанцию фото или скриншотом (JPG или PNG) либо PDF-файлом.','receipt_too_large':'Квитанция должна быть меньше 10 МБ.','manual_payment_unavailable':'Не удалось начать оплату. Попробуйте ещё раз.','rate_limited':'Слишком много попыток. Подождите немного и повторите.','sandbox_disabled':'Локальный симулятор оплаты доступен только тестовым аккаунтам.','audit_reason_required':'Укажите краткую причину действия.','invalid_referral':'Этот реферальный код недействителен для вашего аккаунта.','referral_already_claimed':'Для аккаунта уже указан пригласивший пользователь.','referral_window_closed':'Код можно добавить в первые семь дней.','permission_denied':'У вас нет разрешения на это действие.'}}
 
 
 def endpoint(methods=('GET',)):
@@ -110,7 +113,8 @@ def local_telegram(request):
 def manual_payments(request):
     """Card transfer: what is on sale, and this customer's latest payment."""
     if request.method=='GET':
-        return {**manual.options(),'payment':manual_payment_data(manual.latest_payment(request.account))}
+        return {**manual.options(request.account),'payment':manual_payment_data(manual.latest_payment(request.account)),
+                'checkout':checkout_data(checkout.latest(request.account),owner=True)}
     throttle(request,'manual-payments',20)
     payment,created=manual.create(request.account,body(request).get('plan'),'web')
     return JsonResponse(manual_payment_data(payment),status=201 if created else 200)
@@ -131,3 +135,74 @@ def manual_payment_receipt(request,payment_id):
     if upload.size>manual.RECEIPT_BYTES: raise DomainError('receipt_too_large',413)
     raw=upload.read(manual.RECEIPT_BYTES+1)
     return manual_payment_data(manual.attach_receipt(request.account,payment_id,raw,request.POST.get('note',''),'web'))
+
+
+@endpoint(('POST',))
+def checkouts(request):
+    """Automatic payment through inPAY: open a payment for a plan and return its page."""
+    throttle(request,'checkouts',10)
+    row,created=checkout.create(request.account,body(request).get('plan'),'web')
+    return JsonResponse(checkout_data(row,owner=True),status=201 if created else 200)
+
+@api(('GET',),auth=False)
+def checkout_detail(request,checkout_id):
+    """Where an automatic payment stands, for the page inPAY returns the customer to.
+
+    Open without signing in: a customer who paid from the bot lands here in a
+    browser that never saw them, and the id is not guessable. Asking is also
+    what makes us ask inPAY, at most every few seconds (checkout.refresh).
+    """
+    from .models import Checkout
+    throttle(request,'checkout-status',60)
+    row=Checkout.objects.filter(pk=checkout_id).exclude(status='created').first()
+    if not row: raise DomainError('not_found',404)
+    row=checkout.refresh(row)
+    return checkout_data(row,owner=bool(request.account and request.account.pk==row.account_id))
+
+@csrf_exempt
+def inpay_webhook(request):
+    """inPAY says a payment moved. That is a reason to ask inPAY, never the answer itself.
+
+    A v2 webhook is signed, and one signed with anything but the saved secret
+    is turned away. Either way nothing is granted from what is posted here: the
+    payment is looked up by its id and inPAY is asked where it stands. The
+    answer is an error, so inPAY sends the webhook again later, whenever we
+    could not ask, or inPAY says "paid" in the webhook and not yet when asked.
+    """
+    from operations.integrations import inpay_config
+    from . import inpay
+    from .models import Checkout
+    if request.method!='POST': return JsonResponse({'ok':False},status=405)
+    raw=request.body
+    if len(raw)>65536: return JsonResponse({'ok':False},status=413)
+    try: payload=json.loads(raw or b'{}')
+    except ValueError: payload=None
+    identifier=inpay.webhook_payment(payload)
+    row=Checkout.objects.filter(provider=checkout.PROVIDER,provider_id=identifier).first() if identifier else None
+    cfg=inpay_config()
+    signed=False
+    if cfg['api']=='v2' and cfg['webhook_secret']:
+        header=request.headers.get('X-Inpay-Signature','')
+        state=inpay.signature_state(cfg['webhook_secret'],header,raw)
+        if state=='invalid':
+            # Signed, about one of our payments, and not with the secret we hold: the
+            # secret was likely changed in the cabinet, and the owner should know.
+            if header and row is not None: checkout.signature_refused()
+            return JsonResponse({'ok':False},status=401)
+        signed=state=='valid'
+    if payload is None: return JsonResponse({'ok':False},status=400)
+    # About something that is not one of our payments, or one already settled: taken, so it is not sent again.
+    if row is None or row.status in checkout.FINAL: return JsonResponse({'ok':True})
+    # An unsigned call could be anyone repeating a payment's id: it asks inPAY no more often than a waiting page does.
+    question=checkout.due(row,force=signed)
+    # inPAY was asked a moment ago and this news may be newer than its answer: "again later".
+    if question is None: return JsonResponse({'ok':False},status=503)
+    try: remote=checkout.look(question)
+    except inpay.Refused as refused:
+        checkout.lookup_refused(refused)
+        return JsonResponse({'ok':False},status=503)
+    except inpay.Unavailable: return JsonResponse({'ok':False},status=503)
+    checkout.apply(row.pk,remote)
+    # inPAY's event says paid and inPAY's own answer does not, yet: be told again.
+    if inpay.webhook_claim(payload)=='paid' and remote['state']!='paid': return JsonResponse({'ok':False},status=503)
+    return JsonResponse({'ok':True})

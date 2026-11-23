@@ -13,6 +13,7 @@
   "password_required": "Enter the PDF password to continue.",
   "feature_unavailable": "This feature is not available yet.",
   "checkout_disabled": "Paid checkout is not enabled.",
+  "checkout_unavailable": "The payment page could not be opened. Please try again in a minute.",
   "csrf_failed": "Your security token expired. Refresh the page and try again.",
   "telegram_not_configured": "Telegram sign-in has not been configured for this installation.",
   "challenge_expired": "This sign-in link has expired. Start a new sign-in.",

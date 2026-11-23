@@ -5,10 +5,11 @@ from django.db import transaction
 from django.utils import timezone
 from apps.core.errors import DomainError
 from apps.core.models import Account
-from .models import Subscription,SubscriptionPeriod,Refund,CommerceAction,ReferralCode,Referral,ManualPayment
+from .models import Subscription,SubscriptionPeriod,Refund,CommerceAction,ReferralCode,Referral,ManualPayment,Checkout
 
-# One paid period: 30 days. A card transfer (apps/commerce/manual.py) is the
-# only way to pay; Telegram Stars was removed, and its rows stay as history.
+# One paid period: 30 days, bought by a card transfer (apps/commerce/manual.py)
+# or an automatic payment through inPAY (apps/commerce/checkout.py). Telegram
+# Stars was removed, and its rows stay as history.
 PERIOD=2592000
 
 
@@ -73,6 +74,7 @@ def confirm_refund(refund):
     SubscriptionPeriod.objects.filter(payment=payment,revoked_at__isnull=True).update(revoked_at=now)
     refund.status='confirmed';refund.confirmed_at=now;refund.error_code='';refund.save(update_fields=['status','confirmed_at','error_code'])
     ManualPayment.objects.filter(payment=payment).update(status='refunded')
+    Checkout.objects.filter(payment=payment).update(status='refunded')
     refresh_account_entitlement(payment.account)
     subscription=Subscription.objects.filter(account=payment.account).first()
     if subscription and not subscription.periods.filter(revoked_at__isnull=True,ends_at__gt=now).exists():
@@ -89,8 +91,9 @@ def refund_payment(payment,reason,actor=None,sandbox_account=None):
     elif not actor or not actor.is_staff or not (actor.is_superuser or actor.groups.filter(name__in=('Finance','Administrator')).exists()): raise DomainError('permission_denied',403)
     refund,created=Refund.objects.get_or_create(payment=payment,defaults={'amount_xtr':payment.amount_xtr,'reason':reason.strip(),'requested_by':actor})
     if refund.status=='confirmed': return refund
-    # A card transfer is returned by the owner from their own bank app; this
-    # records that it was, and takes the plan back. No provider is asked.
+    # A card transfer is returned by the owner from their own bank app, and an
+    # inPAY payment through the inPAY cabinet; this records that it was, and
+    # takes the plan back. No provider is asked.
     return confirm_refund(refund)
 
 

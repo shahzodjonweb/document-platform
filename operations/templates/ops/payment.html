@@ -8,7 +8,10 @@
   <dl>
     <dt>{{ f.receipt }}</dt><dd class="mono">{{ payment.id }}</dd>
     <dt>{{ f.account }}</dt><dd><a class="table-link" href="/ops/users/{{ payment.account_id }}?lang={{ lang }}">{{ payment.account.display_name|default:payment.account_id }}</a></dd>
-    <dt>{{ f.amount }}</dt><dd><span class="amount">{{ payment.amount_xtr }} {{ payment.currency }}</span></dd>
+    <dt>{{ f.amount }}</dt><dd><span class="amount">{% if payment.currency == 'UZS' %}{{ payment.amount_xtr|money }} so'm{% else %}{{ payment.amount_xtr }} {{ payment.currency }}{% endif %}</span></dd>
+    {% if checkout %}<dt>{{ f.provider }}</dt><dd>inPAY</dd>
+    <dt>{{ f.inpay_id }}</dt><dd class="mono">{{ checkout.provider_id }}</dd>
+    {% if checkout.receipt_url %}<dt>{{ f.open_receipt }}</dt><dd><a class="table-link" href="{{ checkout.receipt_url }}" rel="noopener noreferrer" target="_blank">ofd.soliq.uz</a></dd>{% endif %}{% endif %}
     <dt>{{ f.kind }}</dt><dd>{{ payment.kind }}</dd>
     <dt>{{ f.plan }}</dt><dd>{{ payment.plan|default:'—' }}</dd>
     <dt>{{ f.date }}</dt><dd>{{ payment.occurred_at|date:'d M Y · H:i' }}</dd>
@@ -18,6 +21,15 @@
 <section class="panel info-panel">
   <h2>{{ f.status }} · {{ refund.status }}</h2>
   <p>{{ refund.reason }}</p>
+</section>
+{% elif checkout and checkout.status == 'paid' %}
+<section class="panel info-panel">
+  <h2>{{ f.refund_inpay }}</h2>
+  <p>{{ f.refund_inpay_hint }}</p>
+  <form method="post">
+    {% csrf_token %}<input type="hidden" name="action" value="refund">
+    <div class="form-actions"><button class="button secondary" data-testid="inpay-refund">{{ f.refund_inpay }}</button></div>
+  </form>
 </section>
 {% endif %}
 {% endblock %}

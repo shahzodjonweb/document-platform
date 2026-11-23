@@ -1,4 +1,4 @@
-"""Bot messages about card transfers: to the customer, and to the owner.
+"""Bot messages about payments (card transfers and inPAY): to the customer, and to the owner.
 
 Durable like result delivery: a notice is claimed under a lease, sent once,
 and retried with backoff when Telegram is unavailable, so an approval is never
@@ -12,13 +12,18 @@ from django.db import transaction
 from django.utils import timezone
 
 MAX_ATTEMPTS = 5
-CUSTOMER_KINDS = ('approved', 'rejected', 'renewal_reminder')
+CUSTOMER_KINDS = ('approved', 'rejected', 'renewal_reminder', 'paid', 'paid_test')
+
+
+def subject(notice):
+    """What a notice is about: its card transfer, or its automatic payment."""
+    return notice.manual if notice.manual_id else notice.checkout
 
 
 @transaction.atomic
 def claim(notice_id):
     from apps.commerce.models import PaymentNotice
-    notice = PaymentNotice.objects.select_for_update().select_related('manual__account').filter(pk=notice_id).first()
+    notice = PaymentNotice.objects.select_for_update(of=('self',)).select_related('manual__account', 'checkout__account').filter(pk=notice_id).first()
     now = timezone.now()
     if notice is None or notice.status not in ('pending', 'retrying', 'sending'):
         return None
@@ -46,6 +51,8 @@ def compose(notice):
     from operations.integrations import manual_payment_config
     from .billing import COPY, money
     from .clock import local_time
+    if notice.checkout_id:
+        return compose_checkout(notice)
     payment = notice.manual
     account = payment.account
     if notice.kind == 'staff_new':
@@ -78,6 +85,27 @@ def compose(notice):
     return None, 'unknown_notice'
 
 
+def compose_checkout(notice):
+    """(chat_id, text) for a notice about an automatic payment, or (None, reason)."""
+    from apps.commerce.models import SubscriptionPeriod
+    from .billing import COPY
+    from .clock import local_time
+    row = notice.checkout
+    account = row.account
+    if account.telegram_user_id is None:
+        # Paid on the website by someone the bot has never met: the website shows it.
+        return None, 'telegram_link_required'
+    copy = COPY.get(account.locale, COPY['en'])
+    if notice.kind == 'paid_test':
+        return account.telegram_user_id, copy['checkout_paid_test']
+    if notice.kind in ('paid', 'renewal_reminder'):
+        period = SubscriptionPeriod.objects.filter(payment=row.payment).first() if row.payment_id else None
+        date = local_time(account, period.ends_at).strftime('%d.%m.%Y') if period else ''
+        key = 'checkout_paid' if notice.kind == 'paid' else 'manual_reminder'
+        return account.telegram_user_id, copy[key].format(plan=row.plan.title(), date=date)
+    return None, 'unknown_notice'
+
+
 async def buttons(notice):
     """A Plans button under the renewal reminder, or nothing.
 
@@ -91,7 +119,7 @@ async def buttons(notice):
     try:
         from aiogram.types import InlineKeyboardMarkup
         from .billing import button
-        plans = await button(notice.manual.account, 'plans', 'plans', {'from': 'notice'})
+        plans = await button(subject(notice).account, 'plans', 'plans', {'from': 'notice'})
         return InlineKeyboardMarkup(inline_keyboard=[[plans]])
     except Exception:
         # The reminder matters more than its button.
@@ -103,7 +131,7 @@ async def attempt(notice_id, bot):
     if not notice:
         return
     from aiogram.client.session.aiohttp import AiohttpSession
-    if notice.kind in CUSTOMER_KINDS and notice.manual.account.is_test and isinstance(getattr(bot, 'session', None), AiohttpSession):
+    if notice.kind in CUSTOMER_KINDS and subject(notice).account.is_test and isinstance(getattr(bot, 'session', None), AiohttpSession):
         return await sync_to_async(finish)(notice.id, status='blocked', error='test_account_delivery')
     chat, text = await sync_to_async(compose)(notice)
     if chat is None:

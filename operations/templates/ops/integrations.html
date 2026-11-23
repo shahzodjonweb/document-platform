@@ -243,6 +243,37 @@
   </form>
   </div>
 </details>
+<details class="panel integration-card" id="inpay-settings"{% if open_integration == 'inpay' %} open{% endif %}>
+  <summary>
+    <span class="icon-tile">{% icon 'card' 20 %}</span>
+    <span class="integration-title"><strong>{{ i.inpay }}</strong><small>{% if not inpay.configured %}{{ i.inpay_mode_none }}{% elif inpay.live %}{{ i.inpay_mode_live }}{% else %}{{ i.inpay_mode_test }}{% endif %}</small></span>
+    <span class="badge {% if inpay.ready and inpay.priced and inpay.live %}good{% elif inpay.enabled %}attention{% endif %}">{% if inpay.ready and inpay.priced and inpay.live %}{{ i.active }}{% elif inpay.enabled %}{{ i.setup_required }}{% else %}{{ i.inactive }}{% endif %}</span>
+    <span class="integration-toggle" aria-hidden="true">{% icon 'chevron-down' 18 %}</span>
+  </summary>
+  <div class="integration-body">
+    {% if inpay.enabled and not inpay.priced %}<p class="alert warning" role="status">{{ i.no_prices }} <a href="/ops/plans?lang={{ lang }}">{{ i.open_plans }}</a></p>{% endif %}
+    {% if not inpay.site %}<p class="alert warning" role="status">{{ i.inpay_no_site }}</p>{% endif %}
+    {% if inpay.configured and not inpay.live and not inpay.owner_known %}<p class="alert warning" role="status" data-testid="inpay-no-owner">{{ i.inpay_no_owner }}</p>{% endif %}
+  <p data-testid="payment-way-inpay">{{ i.payment_way }}: <strong>{% if payment_way == 'inpay' %}{{ i.way_inpay }}{% elif payment_way == 'inpay_test' %}{{ i.way_inpay_test }}{% elif payment_way == 'card' %}{{ i.way_card }}{% elif payment_way == 'card_fallback' %}{{ i.way_card_fallback }}{% else %}{{ i.way_none }}{% endif %}</strong></p>
+  <p>{{ i.inpay_mode }}: <strong data-testid="inpay-mode">{% if not inpay.configured %}{{ i.inpay_mode_none }}{% elif inpay.live %}{{ i.inpay_mode_live }}{% else %}{{ i.inpay_mode_test }}{% endif %}</strong>{% if inpay.configured %} · API {{ inpay.api }}{% endif %}</p>
+  {% if inpay.site %}<p>{{ i.inpay_site }}: <strong class="mono">{{ inpay.site }}</strong><br>{{ i.inpay_webhook_url }}: <strong class="mono">{{ inpay.webhook_url }}</strong></p>{% endif %}
+  {% if inpay.api == 'v2' %}<p>{% if inpay.signed %}{{ i.inpay_signed }}{% else %}{{ i.inpay_unsigned }}{% endif %}</p>{% endif %}
+  <form method="post" class="integration-form" autocomplete="off">
+    {% csrf_token %}<input type="hidden" name="integration" value="inpay">
+    <input type="hidden" name="enabled" value="false"><label><input type="checkbox" name="enabled" value="true" {% if inpay.enabled %}checked{% endif %}> {{ i.inpay_enabled }}</label>
+    <label>{{ i.inpay_secret_key }}<input type="password" name="secret_key" autocomplete="new-password" spellcheck="false" maxlength="220"><small>{{ i.secret_hint }}</small></label>
+    <label>{{ i.inpay_webhook_secret }}<input type="password" name="webhook_secret" autocomplete="new-password" spellcheck="false" maxlength="220"><small>{{ i.secret_hint }}</small></label>
+    {% if inpay.api == 'v2' %}<label><input type="checkbox" name="remove_secret_key" value="true"> {{ i.inpay_remove_key }}</label>{% endif %}
+    <details{% if inpay.api == 'v1' %} open{% endif %}>
+      <summary>{{ i.inpay_v1 }}</summary>
+      <label>{{ i.inpay_merchant_id }}<input name="merchant_id" inputmode="numeric" maxlength="12" autocomplete="off" value="{{ inpay.merchant_id }}"></label>
+      <label>{{ i.inpay_merchant_token }}<input type="password" name="merchant_token" autocomplete="new-password" spellcheck="false" maxlength="64"><small>{{ i.secret_hint }}</small></label>
+    </details>
+    <p>{{ i.inpay_hint }}</p>
+    <div class="integration-actions"><button class="button primary" name="action" value="save">{{ i.save }}</button>{% if inpay.configured %}<button class="button secondary" name="action" value="test" formnovalidate>{{ i.test }}</button>{% endif %}</div>
+  </form>
+  </div>
+</details>
 <details class="panel integration-card" id="manual-payment-settings"{% if open_integration == 'manual' %} open{% endif %}>
   <summary>
     <span class="icon-tile">{% icon 'card' 20 %}</span>
@@ -252,6 +283,7 @@
   </summary>
   <div class="integration-body">
     {% if manual.enabled and not manual.priced %}<p class="alert warning" role="status" data-testid="manual-no-prices">{{ i.no_prices }} <a href="/ops/plans?lang={{ lang }}">{{ i.open_plans }}</a></p>{% endif %}
+  <p data-testid="payment-way-manual">{{ i.payment_way }}: <strong>{% if payment_way == 'inpay' %}{{ i.way_inpay }}{% elif payment_way == 'inpay_test' %}{{ i.way_inpay_test }}{% elif payment_way == 'card' %}{{ i.way_card }}{% elif payment_way == 'card_fallback' %}{{ i.way_card_fallback }}{% else %}{{ i.way_none }}{% endif %}</strong></p>
   <p>{{ i.card_on_file }}: {% if manual.configured %}<strong>{{ manual.card_display }}</strong> · {{ manual.card_holder }}{% if manual.card_label %} · {{ manual.card_label }}{% endif %}{% else %}{{ i.no_card }}{% endif %}</p>
   <form method="post" class="integration-form" autocomplete="off">
     {% csrf_token %}<input type="hidden" name="integration" value="manual_payments">
