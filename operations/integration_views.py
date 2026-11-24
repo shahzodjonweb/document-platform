@@ -231,6 +231,8 @@ AUTOPAY_LABELS = {
            'autopay_audience': 'Who sees it', 'autopay_owner': 'Only me, to try it first', 'autopay_everyone': 'Every customer',
            'autopay_key_id': 'Avto PAY key ID (ap_…)', 'autopay_secret': 'Avto PAY secret', 'autopay_remove': 'Remove the saved Avto PAY key',
            'autopay_test': 'Test Avto PAY',
+           'autopay_web_enabled': 'Let website customers save a card and renew every month',
+           'autopay_web_hint': 'In the inPAY cabinet open Xizmatlar → Avto PAY → Kalitlar, create a key for the website’s kassa and paste its ID and secret here (the secret is shown once). Website customers save their card on inPAY’s own page and come back to the website; we never see the number. A card saved on the website is charged through this kassa only, and the website charges in one tap only a card saved here. There is no test mode: every charge is real money. Start with «Only me», buy a plan with «Pay and renew every month» on the website signed in as yourself, then switch to «Every customer». The billing page always offers «Remove card», as inPAY requires.',
            'autopay_hint': 'In the inPAY cabinet open Xizmatlar → Avto PAY → Kalitlar, create a key for this kassa and paste its ID and secret here (the secret is shown once). Customers save their card on inPAY’s own page; we never see the number. There is no test mode: every charge is real money. Start with «Only me», buy a plan with «Pay and renew every month» from your own Telegram, then switch to «Every customer». The bot always offers «Remove card», as inPAY requires.',
            'autopay_state_on': 'On', 'autopay_state_off': 'Off', 'autopay_for_owner': 'shown only to you', 'autopay_for_everyone': 'shown to every customer',
            'autopay_stats': '{renewing} customers renew monthly · {cards} saved cards', 'autopay_connected': 'inPAY accepted the Avto PAY key.',
@@ -241,6 +243,8 @@ AUTOPAY_LABELS = {
            'autopay_audience': 'Kim ko‘radi', 'autopay_owner': 'Faqat men, avval sinab ko‘rish uchun', 'autopay_everyone': 'Barcha mijozlar',
            'autopay_key_id': 'Avto PAY kalit ID (ap_…)', 'autopay_secret': 'Avto PAY maxfiy kaliti', 'autopay_remove': 'Saqlangan Avto PAY kalitini o‘chirish',
            'autopay_test': 'Avto PAY’ni tekshirish',
+           'autopay_web_enabled': 'Saytdagi mijozlarga kartani saqlash va har oy uzaytirishga ruxsat berish',
+           'autopay_web_hint': 'inPAY kabinetida Xizmatlar → Avto PAY → Kalitlar bo‘limini oching, sayt kassasi uchun kalit yarating va uning ID hamda maxfiy kalitini shu yerga kiriting (maxfiy kalit bir marta ko‘rsatiladi). Saytdagi mijozlar kartasini inPAY’ning o‘z sahifasida saqlaydi va saytga qaytadi; biz raqamni hech qachon ko‘rmaymiz. Saytda saqlangan karta faqat shu kassa orqali yechiladi, sayt esa bir bosishda faqat shu yerda saqlangan kartadan yechadi. Sinov rejimi yo‘q: har bir yechim haqiqiy pul. «Faqat men» bilan boshlang, saytga o‘zingiz kirib «To‘lash va har oy uzaytirish» bilan tarif sotib oling, so‘ng «Barcha mijozlar»ga o‘tkazing. To‘lovlar sahifasi inPAY talabiga ko‘ra har doim «Kartani uzish» tugmasini ko‘rsatadi.',
            'autopay_hint': 'inPAY kabinetida Xizmatlar → Avto PAY → Kalitlar bo‘limini oching, shu kassa uchun kalit yarating va uning ID hamda maxfiy kalitini shu yerga kiriting (maxfiy kalit bir marta ko‘rsatiladi). Mijozlar kartasini inPAY’ning o‘z sahifasida saqlaydi; biz raqamni hech qachon ko‘rmaymiz. Sinov rejimi yo‘q: har bir yechim haqiqiy pul. «Faqat men» bilan boshlang, o‘z Telegramingizdan «To‘lash va har oy uzaytirish» bilan tarif sotib oling, so‘ng «Barcha mijozlar»ga o‘tkazing. Bot inPAY talabiga ko‘ra har doim «Kartani uzish» tugmasini ko‘rsatadi.',
            'autopay_state_on': 'Yoqilgan', 'autopay_state_off': 'O‘chirilgan', 'autopay_for_owner': 'faqat sizga ko‘rinadi', 'autopay_for_everyone': 'barcha mijozlarga ko‘rinadi',
            'autopay_stats': '{renewing} mijoz har oy uzaytiradi · {cards} ta saqlangan karta', 'autopay_connected': 'inPAY Avto PAY kalitini qabul qildi.',
@@ -251,6 +255,8 @@ AUTOPAY_LABELS = {
            'autopay_audience': 'Кто видит', 'autopay_owner': 'Только я, чтобы сначала проверить', 'autopay_everyone': 'Все клиенты',
            'autopay_key_id': 'ID ключа Avto PAY (ap_…)', 'autopay_secret': 'Секрет Avto PAY', 'autopay_remove': 'Удалить сохранённый ключ Avto PAY',
            'autopay_test': 'Проверить Avto PAY',
+           'autopay_web_enabled': 'Разрешить клиентам на сайте сохранять карту и продлевать каждый месяц',
+           'autopay_web_hint': 'В кабинете inPAY откройте Xizmatlar → Avto PAY → Kalitlar, создайте ключ для кассы сайта и вставьте сюда его ID и секрет (секрет показывается один раз). Клиенты на сайте сохраняют карту на собственной странице inPAY и возвращаются на сайт; номер карты мы никогда не видим. Карта, сохранённая на сайте, списывается только через эту кассу, а сайт в одно нажатие списывает только с карты, сохранённой здесь. Тестового режима нет: каждое списание — реальные деньги. Начните с «Только я», купите тариф с «Оплатить и продлевать каждый месяц» на сайте под своим аккаунтом, затем переключите на «Все клиенты». Страница оплаты всегда показывает «Отвязать карту», как требует inPAY.',
            'autopay_hint': 'В кабинете inPAY откройте Xizmatlar → Avto PAY → Kalitlar, создайте ключ для этой кассы и вставьте сюда его ID и секрет (секрет показывается один раз). Клиенты сохраняют карту на собственной странице inPAY; номер карты мы никогда не видим. Тестового режима нет: каждое списание — реальные деньги. Начните с «Только я», купите тариф с «Оплатить и продлевать каждый месяц» из своего Telegram, затем переключите на «Все клиенты». Бот всегда показывает «Отвязать карту», как требует inPAY.',
            'autopay_state_on': 'Включено', 'autopay_state_off': 'Выключено', 'autopay_for_owner': 'видно только вам', 'autopay_for_everyone': 'видно всем клиентам',
            'autopay_stats': 'Продлевают каждый месяц: {renewing} · сохранённых карт: {cards}', 'autopay_connected': 'inPAY принял ключ Avto PAY.',
@@ -370,10 +376,11 @@ COMPANY_LABELS = {
 for language, labels in COMPANY_LABELS.items(): LABELS[language].update(labels)
 
 
-def _autopay_stats(labels):
+def _autopay_stats(labels, kassa):
+    """Customers renewing from cards saved through this kassa, and its saved cards."""
     from apps.commerce.models import AutoRenewal, SavedCard
-    return labels['autopay_stats'].format(renewing=AutoRenewal.objects.filter(status='on').count(),
-                                          cards=SavedCard.objects.filter(status='active').count())
+    return labels['autopay_stats'].format(renewing=AutoRenewal.objects.filter(status='on', card__kassa=kassa).count(),
+                                          cards=SavedCard.objects.filter(status='active', kassa=kassa).count())
 
 
 @require_staff()
@@ -386,9 +393,9 @@ def integrations(request):
         try:
             key=request.POST.get('integration','telegram')
             if action!='save' and key!='telegram' and not (key in ('email','pixabay','channels','object_storage','inpay','inpay_bot') and action=='test') \
-                    and not (key=='inpay_bot' and action=='test_autopay'):raise DomainError('invalid_parameters')
+                    and not (key in ('inpay','inpay_bot') and action=='test_autopay'):raise DomainError('invalid_parameters')
             if action=='save':save_config(key,request.POST);message='saved'
-            elif action=='test_autopay':test_autopay('bot');message='autopay_connected'
+            elif action=='test_autopay':test_autopay('bot' if key=='inpay_bot' else 'web');message='autopay_connected'
             elif action=='test':
                 if key=='email':test_email();message='email_connected'
                 elif key=='pixabay':test_pixabay();message='pixabay_connected'
@@ -470,8 +477,10 @@ def integrations(request):
             'signed':bool(pay['webhook_secret']),'priced':bool(card_prices()),'owner_known':bool(card['alert_telegram_id']),
             # Customers are offered one way at a time in each place; the cards say which it is now.
             'way':payment_way(kassa),'way_label':labels['payment_way_'+kassa],
-            # Avto PAY, on the bot's kassa only for now: the key's id is shown, its secret never.
-            'autopay':bot_kassa,'autopay_enabled':pay['autopay_enabled'],'autopay_configured':pay['autopay_configured'],
+            # Avto PAY, each kassa its own: the key's id is shown, its secret never.
+            'autopay':True,'autopay_enabled':pay['autopay_enabled'],'autopay_configured':pay['autopay_configured'],
             'autopay_key_id':pay['autopay_key_id'],'autopay_audience':pay['autopay_audience'],
-            'autopay_stats':_autopay_stats(labels) if bot_kassa else ''})
+            'autopay_enabled_label':labels['autopay_enabled' if bot_kassa else 'autopay_web_enabled'],
+            'autopay_hint':labels['autopay_hint' if bot_kassa else 'autopay_web_hint'],
+            'autopay_stats':_autopay_stats(labels,kassa)})
     return finish_render(request,'ops/integrations.html',data)

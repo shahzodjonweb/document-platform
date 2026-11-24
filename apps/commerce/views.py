@@ -146,24 +146,71 @@ def checkouts(request):
 
 def _renewal_data(account):
     from . import autopay
-    return autopay.status(account)
+    return autopay.status(account,'web')
 
-@endpoint(('GET','DELETE'))
+@endpoint(('GET','POST','DELETE'))
 def renewal(request):
-    """Monthly renewal from a card saved in the bot (apps/commerce/autopay.py): where it stands, and turning it off."""
+    """Monthly renewal from the customer's saved card (apps/commerce/autopay.py): where it stands, turning it on and off."""
     from . import autopay
     if request.method=='DELETE':
         throttle(request,'renewal',20)
         autopay.turn_off(request.account,'customer')
+    elif request.method=='POST':
+        throttle(request,'renewal',20)
+        autopay.turn_on(request.account)
     return _renewal_data(request.account)
 
-@endpoint(('DELETE',))
-def saved_card(request,card_id):
-    """Remove a saved card: nothing is charged to it again, and its renewal stops."""
+@endpoint(('POST',))
+def saved_cards(request):
+    """Save a card on inPAY's page, to pay for a plan now and renew it every month.
+
+    The card is saved through the website's kassa; inPAY's page sends the
+    customer back to the website's page for it, which asks how saving went.
+    """
     from . import autopay
-    throttle(request,'saved-card',20)
-    autopay.remove(request.account,card_id)
-    return _renewal_data(request.account)
+    throttle(request,'card-bind',10)
+    plan=body(request).get('plan')
+    if plan not in manual.PLANS: raise DomainError('invalid_plan')
+    card,question=autopay.begin_binding(request.account,plan,'web')
+    if question is not None:
+        answer,failure=autopay.ask_binding(question)
+        card=autopay.complete_binding(card,answer,failure)
+    return JsonResponse(autopay.card_state(card),status=201)
+
+@endpoint(('GET','DELETE'))
+def saved_card(request,card_id):
+    """A card being saved, or saved: where it stands (asking inPAY, and paying for its plan once saved), or removing it.
+
+    Removing it means nothing is charged to it again, and its renewal stops.
+    """
+    from . import autopay
+    from .models import SavedCard
+    if request.method=='DELETE':
+        throttle(request,'saved-card',20)
+        autopay.remove(request.account,card_id)
+        return _renewal_data(request.account)
+    throttle(request,'saved-card-check',40)
+    card=SavedCard.objects.filter(pk=card_id,account=request.account).first()
+    if not card: raise DomainError('not_found',404)
+    return autopay.look_again(card)
+
+@endpoint(('POST',))
+def saved_card_charge(request,card_id):
+    """Pay for a plan from a card saved on the website, in one tap; with `renew`, renewal turns on from it."""
+    from . import autopay
+    from .models import SavedCard
+    throttle(request,'card-charge',10)
+    data=body(request);plan=data.get('plan');renew=data.get('renew') is True
+    if plan not in manual.PLANS: raise DomainError('invalid_plan')
+    card=SavedCard.objects.filter(pk=card_id,account=request.account,status='active',kassa='web').first()
+    if not card: raise DomainError('card_unavailable',409)
+    row,question=autopay.begin_charge(request.account,card,plan,'first' if renew else 'one_tap',channel='web')
+    if question is not None:
+        answer,failure=autopay.ask_charge(question)
+        row=autopay.apply_charge(row.pk,answer,failure)
+        autopay.receipt(row)
+    if renew: autopay.after_first(row)
+    return autopay.charge_state(row)
 
 @api(('GET',),auth=False)
 def checkout_detail(request,checkout_id):

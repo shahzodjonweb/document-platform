@@ -22,14 +22,22 @@ from tests.test_manual_payments import customer, signed_in, staff_client
 
 pytestmark = pytest.mark.django_db
 AP_KEY, AP_SECRET = 'ap_7c41d0e9b2', 'Avto-secret_9f2c41d0e9b27a65c3'
+# The website's kassa has its own Avto to'lov key.
+WEB_AP_KEY, WEB_AP_SECRET = 'ap_2e90b7c1f4', 'Avto-secret_web_3d7a1c95e0b24f68'
+AP_KEYS = {AP_KEY: AP_SECRET, WEB_AP_KEY: WEB_AP_SECRET}
 
 
 class FakeAvto(FakeInpay):
-    """inPAY with Avto to'lov: cards saved on its page, charged by id, every request signed."""
+    """inPAY with Avto to'lov: cards saved on its page, charged by id, every request signed.
+
+    Each kassa signs with its own key, and a card belongs to the kassa whose
+    key saved it: through another kassa it is unknown (CARD_STATE), as inPAY's
+    card ids mean something to one kassa alone.
+    """
 
     def __init__(self):
         super().__init__()
-        self.cards, self.charges, self.nonces, self.signed = {}, {}, set(), []
+        self.cards, self.charges, self.nonces, self.signed, self.keys = {}, {}, set(), [], []
         self.next_card, self.next_charge = 128, 4400
         self.decline = None  # an error code for the next charges
         self.lose = 0  # how many charge answers to lose after charging
@@ -53,8 +61,9 @@ class FakeAvto(FakeInpay):
         headers, raw = headers or {}, raw or b''
         stamp, nonce = headers.get('X-Inpay-Timestamp', ''), headers.get('X-Inpay-Nonce', '')
         base = f'{method}\n{path}\n{stamp}\n{nonce}\n{hashlib.sha256(raw).hexdigest()}'
-        expected = hmac.new(AP_SECRET.encode(), base.encode(), hashlib.sha256).hexdigest()
-        if headers.get('X-Inpay-Key') != AP_KEY or headers.get('X-Inpay-Signature') != expected:
+        key = headers.get('X-Inpay-Key')
+        expected = hmac.new(AP_KEYS.get(key, '').encode(), base.encode(), hashlib.sha256).hexdigest()
+        if key not in AP_KEYS or headers.get('X-Inpay-Signature') != expected:
             return 401, {'success': False, 'error_code': 'SIGNATURE'}
         if nonce in self.nonces:
             return 401, {'success': False, 'error_code': 'NONCE'}
@@ -62,16 +71,21 @@ class FakeAvto(FakeInpay):
         self.signed.append((method, path, query))
         body = json.loads(raw) if raw else {}
         action = path.rsplit('/', 1)[1]
+        self.keys.append((action, key))
         if action == 'bind':
             card_id, self.next_card = self.next_card, self.next_card + 1
             self.cards[card_id] = {'id': card_id, 'customer_ref': body['customer_ref'], 'status': 'pending', 'masked_pan': '',
-                                   'expiry': '', 'mandate_id': '', 'consent_max': None, 'return_url': body.get('return_url')}
+                                   'expiry': '', 'mandate_id': '', 'consent_max': None, 'return_url': body.get('return_url'),
+                                   'key': key}
             return 200, {'success': True, 'data': {'card_id': card_id, 'bind_ref': 'b' * 32, 'need_code': True,
                                                    'form_url': f'https://inpay.uz/cards/bind/70518/{card_id:032d}'}}
         if action == 'list':
-            mine = [dict(card) for card in self.cards.values() if card['customer_ref'] == query['customer_ref']]
+            mine = [{name: value for name, value in card.items() if name != 'key'} for card in self.cards.values()
+                    if card['customer_ref'] == query['customer_ref'] and card['key'] == key]
             return 200, {'success': True, 'data': {'cards': mine}}
         if action == 'remove':
+            if self.cards.get(body['card_id'], {}).get('key') != key:
+                return 400, {'success': False, 'error_code': 'CARD_STATE'}
             self.cards[body['card_id']]['status'] = 'removed'
             return 200, {'success': True, 'data': {'card_id': body['card_id'], 'status': 'removed'}}
         if action == 'charge':
@@ -79,7 +93,7 @@ class FakeAvto(FakeInpay):
             if body['idem_key'] in self.charges:
                 return 200, self.charges[body['idem_key']]
             card = self.cards.get(body['card_id'])
-            if card is None or card['status'] != 'active':
+            if card is None or card['status'] != 'active' or card['key'] != key:
                 return 400, {'success': False, 'error_code': 'CARD_STATE'}
             if card['consent_max'] and body['amount'] > card['consent_max']:
                 return 400, {'success': False, 'error_code': 'CONSENT_LIMIT'}
@@ -114,9 +128,16 @@ def autopay_on(audience='everyone', card=True):
                               'autopay_secret': AP_SECRET, 'autopay_audience': audience})
 
 
-def saved_card(account, bank, plan='', consent_max=None):
+def web_autopay_on(audience='everyone'):
+    """The website's kassa with its payments and its own Avto to'lov key switched on."""
+    switch_on(kassa='web', card=True)
+    save_config('inpay', {'enabled': 'true', 'autopay_enabled': 'true', 'autopay_key_id': WEB_AP_KEY,
+                          'autopay_secret': WEB_AP_SECRET, 'autopay_audience': audience})
+
+
+def saved_card(account, bank, plan='', consent_max=None, channel='bot'):
     """A card the customer saved on inPAY's page (no plan bought with it unless `plan`)."""
-    card, request = autopay.begin_binding(account, plan)
+    card, request = autopay.begin_binding(account, plan, channel)
     answer, failure = autopay.ask_binding(request)
     card = autopay.complete_binding(card, answer, failure)
     bank.save(card.provider_card_id, consent_max=consent_max)
@@ -439,10 +460,14 @@ def test_the_website_shows_renewal_turns_it_off_and_removes_the_card(bank):
     renewal = renewing(account, bank)
     client = signed_in(account)
     shown = client.get('/api/v1/billing/renewal').json()
-    assert shown['offered'] is True and shown['card']['last4'] == '1234'
-    assert shown['renewal']['status'] == 'on' and shown['renewal']['amount'] == 20_000
+    # Saved in the bot: shown and switchable on the website, never charged from it in one tap.
+    assert shown['offered'] is False and shown['card']['last4'] == '1234' and shown['card']['here'] is False
+    assert shown['renewal']['status'] == 'on' and shown['renewal']['amount'] == 20_000 and shown['can_turn_on'] is False
     off = client.delete('/api/v1/billing/renewal').json()
-    assert off['renewal']['status'] == 'off' and off['card'] is not None
+    assert off['renewal']['status'] == 'off' and off['card'] is not None and off['can_turn_on'] is True
+    on = client.post('/api/v1/billing/renewal').json()
+    assert on['renewal']['status'] == 'on' and on['can_turn_on'] is False
+    client.delete('/api/v1/billing/renewal')
     gone = client.delete(f'/api/v1/billing/cards/{renewal.card_id}').json()
     assert gone['card'] is None and bank.cards[renewal.card.provider_card_id]['status'] == 'removed'
     # Another customer's card is not theirs to remove.
@@ -453,11 +478,134 @@ def test_the_website_shows_renewal_turns_it_off_and_removes_the_card(bank):
     assert Client().get('/api/v1/billing/renewal').status_code == 401
 
 
+def test_a_card_saved_on_the_website_pays_for_its_plan_once_and_renews_through_the_websites_kassa(bank):
+    autopay_on()
+    web_autopay_on()
+    account = customer()
+    client = signed_in(account)
+    assert client.get('/api/v1/billing/renewal').json()['offered'] is True
+    opened = client.post('/api/v1/billing/cards', {'plan': 'plus'}, content_type='application/json')
+    assert opened.status_code == 201
+    state = opened.json()
+    card = SavedCard.objects.get()
+    assert (card.kassa, state['status'], state['plan'], state['charge']) == ('web', 'binding', 'plus', None)
+    assert state['bind_url'].startswith('https://inpay.uz/') and bank.keys == [('bind', WEB_AP_KEY)]
+    # inPAY sends the customer back to the website, on the website kassa's own domain.
+    assert bank.cards[card.provider_card_id]['return_url'] == f'https://docmaster.live/en/app/card/{card.id}'
+    # Back before finishing inPAY's page: still being saved, nothing charged.
+    waiting = client.get(f'/api/v1/billing/cards/{card.id}').json()
+    assert waiting['status'] == 'binding' and waiting['charge'] is None and bank.charged() == 0
+    # Asked again a moment later, inPAY is not asked again.
+    asked = len(bank.keys)
+    client.get(f'/api/v1/billing/cards/{card.id}')
+    assert len(bank.keys) == asked
+    bank.save(card.provider_card_id)
+    SavedCard.objects.filter(pk=card.pk).update(checked_at=None)
+    done = client.get(f'/api/v1/billing/cards/{card.id}').json()
+    assert done['status'] == 'active' and done['last4'] == '1234'
+    assert done['charge']['status'] == 'paid' and done['charge']['amount'] == 20_000 and done['charge']['renews_at']
+    assert effective_plan(account) == 'plus' and ('charge', WEB_AP_KEY) in bank.keys
+    # The page asking again, or the periodic run, never charges twice.
+    again = client.get(f'/api/v1/billing/cards/{card.id}').json()
+    autopay.housekeeping()
+    assert again['charge']['id'] == done['charge']['id'] and bank.charged() == 1
+    # A receipt in Telegram, as after every charge.
+    assert PaymentNotice.objects.filter(charge_id=done['charge']['id'], kind='card_paid').exists()
+    shown = client.get('/api/v1/billing/renewal').json()
+    assert shown['card']['here'] is True and shown['renewal']['status'] == 'on'
+    # The month renews from the website's card, through the website's kassa.
+    renewal = AutoRenewal.objects.get()
+    assert renewal.card_id == card.id
+    autopay.housekeeping(renewal.renews_at - timedelta(hours=3))
+    assert bank.charged() == 2 and bank.keys[-1] == ('charge', WEB_AP_KEY)
+    # Someone else's card is not theirs to look at.
+    assert signed_in(customer(7002)).get(f'/api/v1/billing/cards/{card.id}').status_code == 404
+
+
+def test_one_tap_on_the_website_charges_only_a_card_saved_there(bank):
+    autopay_on()
+    web_autopay_on()
+    account = customer()
+    client = signed_in(account)
+    in_bot = saved_card(account, bank)
+    refused = client.post(f'/api/v1/billing/cards/{in_bot.id}/charge', {'plan': 'plus'}, content_type='application/json')
+    assert refused.status_code == 409 and refused.json()['error']['code'] == 'card_unavailable' and bank.charged() == 0
+    # Nor does the bot charge the website's card in one tap.
+    on_web = saved_card(account, bank, channel='web')
+    assert autopay.active_card(account, 'bot') is None and autopay.active_card(account, 'web') == on_web
+    with pytest.raises(DomainError):
+        autopay.begin_charge(account, on_web, 'plus', 'one_tap', channel='bot')
+    # Saving it replaced the bot's card, which inPAY is told about through the bot's kassa.
+    autopay.housekeeping()
+    in_bot.refresh_from_db()
+    assert in_bot.status == 'removed' and ('remove', AP_KEY) in bank.keys
+    paid = client.post(f'/api/v1/billing/cards/{on_web.id}/charge', {'plan': 'plus'}, content_type='application/json').json()
+    assert paid['status'] == 'paid' and paid['renews_at'] is None and paid['active_until']
+    # A second tap is the first charge.
+    twice = client.post(f'/api/v1/billing/cards/{on_web.id}/charge', {'plan': 'plus'}, content_type='application/json').json()
+    assert twice['id'] == paid['id'] and bank.charged() == 1 and not AutoRenewal.objects.exists()
+    renewed = client.post(f'/api/v1/billing/cards/{on_web.id}/charge', {'plan': 'premium', 'renew': True},
+                          content_type='application/json').json()
+    assert renewed['status'] == 'paid' and renewed['renews_at'] and AutoRenewal.objects.get().plan == 'premium'
+    # A declined charge says why, and the plan stays as it was.
+    bank.decline = 'CHARGE_FAILED'
+    CardCharge.objects.update(created_at=timezone.now() - timedelta(minutes=5))
+    failed = client.post(f'/api/v1/billing/cards/{on_web.id}/charge', {'plan': 'plus'}, content_type='application/json').json()
+    assert (failed['status'], failed['reason']) == ('failed', 'declined')
+    assert PaymentNotice.objects.filter(charge_id=failed['id'], kind='card_failed').exists()
+
+
+def test_a_card_saved_in_one_place_replaces_the_other_and_renewal_goes_on_from_it(bank):
+    autopay_on()
+    web_autopay_on()
+    account = customer()
+    renewal = renewing(account, bank)
+    old = renewal.card
+    new = saved_card(account, bank, channel='web')
+    renewal.refresh_from_db()
+    old.refresh_from_db()
+    assert renewal.status == 'on' and renewal.card_id == new.id and old.status == 'removing'
+    autopay.housekeeping(renewal.renews_at - timedelta(hours=3))
+    old.refresh_from_db()
+    assert old.status == 'removed' and bank.charged() == 2 and bank.keys[-1] == ('charge', WEB_AP_KEY)
+
+
+def test_saving_a_card_on_the_website_needs_the_websites_own_avto_pay(bank):
+    autopay_on()
+    switch_on(kassa='web', card=True)
+    client = signed_in(customer())
+    assert client.get('/api/v1/billing/renewal').json()['offered'] is False
+    refused = client.post('/api/v1/billing/cards', {'plan': 'plus'}, content_type='application/json')
+    assert refused.status_code == 409 and refused.json()['error']['code'] == 'autopay_unavailable'
+    assert client.post('/api/v1/billing/cards', {'plan': 'gold'}, content_type='application/json').status_code == 400
+    # Shown to the owner alone at first, like the bot's.
+    web_autopay_on(audience='owner')
+    assert autopay.offered(customer(OWNER), 'web') and not autopay.offered(customer(7003), 'web')
+    # Without a saved card there is nothing to renew from.
+    without = client.post('/api/v1/billing/renewal')
+    assert without.status_code == 409 and without.json()['error']['code'] == 'card_unavailable'
+    assert not bank.keys
+
+
+def test_a_website_card_inpay_could_not_open_alerts_the_owner_under_the_websites_section(bank):
+    autopay_on()
+    switch_on(kassa='web', card=True)
+    save_config('inpay', {'enabled': 'true', 'autopay_enabled': 'true', 'autopay_key_id': 'ap_00000wrong',
+                          'autopay_secret': 'Avto-secret_wrong_00000000000', 'autopay_audience': 'everyone'})
+    client = signed_in(customer())
+    failed = client.post('/api/v1/billing/cards', {'plan': 'plus'}, content_type='application/json')
+    assert failed.status_code == 503 and failed.json()['error']['code'] == 'autopay_unavailable'
+    alert = StaffAlert.objects.get()
+    assert alert.kind == 'autopay_refused_web' and 'Automatic payments on the website (inPAY)' in alert.text
+
+
 def test_the_admin_saves_the_avto_pay_key_tests_it_and_never_shows_the_secret(bank):
     switch_on(kassa='bot', card=True)
     admin, _ = staff_client('Administrator')
     page = admin.get('/ops/integrations?lang=en').content.decode()
-    assert 'data-testid="autopay-settings"' in page and page.count('data-testid="autopay-settings"') == 1
+    # One Avto PAY section on each kassa's card.
+    assert page.count('data-testid="autopay-settings"') == 2
+    assert 'Let website customers save a card' in page and 'Let bot customers save a card' in page
     refused = admin.post('/ops/integrations', {'integration': 'inpay_bot', 'action': 'save', 'enabled': 'true',
                                                'autopay_enabled': 'true', 'autopay_key_id': '', 'autopay_audience': 'owner'})
     assert refused.status_code == 200 and 'Save the Avto PAY key ID and secret' in refused.content.decode()
@@ -479,6 +627,16 @@ def test_the_admin_saves_the_avto_pay_key_tests_it_and_never_shows_the_secret(ba
     from operations.models import AuditLog
     entry = AuditLog.objects.filter(target='inpay_bot', action='integration.save').latest('created_at')
     assert entry.after['autopay'] is True and AP_SECRET not in json.dumps(entry.after)
+    # The website's kassa takes its own key, tested with it.
+    saved = admin.post('/ops/integrations', {'integration': 'inpay', 'action': 'save', 'enabled': 'false',
+                                             'autopay_enabled': 'true', 'autopay_key_id': WEB_AP_KEY,
+                                             'autopay_secret': WEB_AP_SECRET, 'autopay_audience': 'owner'})
+    assert saved.status_code == 302
+    assert inpay_config('web')['autopay_key_id'] == WEB_AP_KEY and inpay_config('bot')['autopay_key_id'] == AP_KEY
+    tested = admin.post('/ops/integrations', {'integration': 'inpay', 'action': 'test_autopay'})
+    assert tested.status_code == 302 and 'autopay_connected' in tested['Location']
+    assert bank.keys[-1] == ('list', WEB_AP_KEY)
+    assert WEB_AP_SECRET not in admin.get('/ops/integrations?lang=en').content.decode()
 
 
 def test_a_refunded_card_charge_takes_the_plan_back_and_turns_renewal_off(bank):
