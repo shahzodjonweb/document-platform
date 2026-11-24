@@ -79,6 +79,11 @@ def payment_detail(request,pk):
     if not payment:return HttpResponseBadRequest('Unknown payment')
     data=context(request,'payments');data['f']=LABELS[data['lang']]
     paid_online=Checkout.objects.filter(payment=payment).first()
+    if paid_online is None:
+        # A saved card charged through Avto PAY: shown and refunded like a payment on inPAY's page.
+        from apps.commerce.models import CardCharge
+        paid_online=CardCharge.objects.filter(payment=payment).first()
+        if paid_online is not None:paid_online.provider_id,paid_online.receipt_url=f'card {paid_online.provider_charge_id}',''
     if request.method=='POST':
         # Only an inPAY payment has anything to post: every other row here is history.
         if paid_online is None:return HttpResponseNotAllowed(['GET'])

@@ -12,18 +12,28 @@ from django.db import transaction
 from django.utils import timezone
 
 MAX_ATTEMPTS = 5
-CUSTOMER_KINDS = ('approved', 'rejected', 'renewal_reminder', 'paid', 'paid_test')
+# Saved cards and monthly renewal (apps/commerce/autopay.py).
+CARD_KINDS = ('card_paid', 'card_failed', 'renewed', 'renewal_failed')
+RENEWAL_KINDS = ('renewal_upcoming', 'renewal_stopped')
+CUSTOMER_KINDS = ('approved', 'rejected', 'renewal_reminder', 'paid', 'paid_test') + CARD_KINDS + RENEWAL_KINDS
 
 
 def subject(notice):
-    """What a notice is about: its card transfer, or its automatic payment."""
-    return notice.manual if notice.manual_id else notice.checkout
+    """What a notice is about: its card transfer, automatic payment, card charge or renewal."""
+    if notice.manual_id:
+        return notice.manual
+    if notice.charge_id:
+        return notice.charge
+    if notice.renewal_id:
+        return notice.renewal
+    return notice.checkout
 
 
 @transaction.atomic
 def claim(notice_id):
     from apps.commerce.models import PaymentNotice
-    notice = PaymentNotice.objects.select_for_update(of=('self',)).select_related('manual__account', 'checkout__account').filter(pk=notice_id).first()
+    notice = PaymentNotice.objects.select_for_update(of=('self',)).select_related(
+        'manual__account', 'checkout__account', 'charge__account', 'charge__card', 'renewal__account', 'renewal__card').filter(pk=notice_id).first()
     now = timezone.now()
     if notice is None or notice.status not in ('pending', 'retrying', 'sending'):
         return None
@@ -53,6 +63,8 @@ def compose(notice):
     from .clock import local_time
     if notice.checkout_id:
         return compose_checkout(notice)
+    if notice.charge_id or notice.renewal_id:
+        return compose_card(notice)
     payment = notice.manual
     account = payment.account
     if notice.kind == 'staff_new':
@@ -106,23 +118,80 @@ def compose_checkout(notice):
     return None, 'unknown_notice'
 
 
-async def buttons(notice):
-    """A Plans button under the renewal reminder, or nothing.
+def compose_card(notice):
+    """(chat_id, text) for a notice about a saved-card charge or a renewal, or (None, reason)."""
+    from .billing import card_copy, reason_text
+    from .clock import local_time
+    from apps.commerce import autopay
+    item = subject(notice)
+    account = item.account
+    if account.telegram_user_id is None:
+        return None, 'telegram_link_required'
+    card = item.card
+    words = lambda key: card_copy(account, key)  # noqa: E731
+    plan = item.plan.title()
+    if notice.charge_id:
+        period = autopay.period_of(item)
+        date = local_time(account, period.ends_at).strftime('%d.%m.%Y') if period else ''
+        values = {'plan': plan, 'price': _money(item.amount), 'last4': card.last4, 'date': date}
+        if notice.kind == 'card_paid':
+            text = words('card_paid').format(**values)
+            renewal = autopay.renewal(account)
+            if renewal and renewal.status == 'on' and item.purpose == 'first':
+                text += '\n' + words('card_renew_note').format(
+                    date=local_time(account, renewal.renews_at).strftime('%d.%m.%Y'), price=_money(item.amount), last4=card.last4)
+            return account.telegram_user_id, text
+        if notice.kind == 'card_failed':
+            return account.telegram_user_id, words('card_failed').format(reason=reason_text(account, item.failure), **values)
+        if notice.kind == 'renewed':
+            return account.telegram_user_id, words('renewed').format(**values)
+        if notice.kind == 'renewal_failed':
+            renewal = item.renewal
+            later = local_time(account, renewal.next_try_at).strftime('%d.%m.%Y') if renewal and renewal.next_try_at else ''
+            return account.telegram_user_id, words('renewal_failed').format(reason=reason_text(account, item.failure),
+                                                                             later=later, **values)
+        return None, 'unknown_notice'
+    price = (autopay.offers().get(item.plan) or {}).get('price')
+    values = {'plan': plan, 'price': _money(price) if price else '—', 'last4': card.last4,
+              'date': local_time(account, notice.due_for or item.renews_at).strftime('%d.%m.%Y')}
+    if notice.kind == 'renewal_upcoming':
+        if item.status != 'on':
+            return None, 'renewal_off'
+        return account.telegram_user_id, words('renewal_upcoming').format(**values)
+    if notice.kind == 'renewal_stopped':
+        return account.telegram_user_id, words('renewal_stopped').format(reason=reason_text(account, item.stopped_reason), **values)
+    return None, 'unknown_notice'
 
-    The reminder is how a card customer comes back to pay, so its way to the
-    plans says where it is: the admin counts it as a message from the bot
-    (funnel.PLAN_SOURCES). The /plans in its text stays for anyone who taps
-    that instead, and is counted as the command it sends.
+
+def _money(amount):
+    return f'{amount:,}'.replace(',', ' ')
+
+
+async def buttons(notice):
+    """The buttons under a notice that asks for something, or nothing.
+
+    The renewal reminder of a plan paid once is how a customer comes back to
+    pay, so its way to the plans says where it is: the admin counts it as a
+    message from the bot (funnel.PLAN_SOURCES). The /plans in its text stays
+    for anyone who taps that instead, and is counted as the command it sends.
+    A renewal's notices lead to the subscription, where it is turned off and
+    the card removed, and, when a charge failed, to the plans to pay by hand.
     """
-    if notice.kind != 'renewal_reminder':
+    if notice.kind not in ('renewal_reminder', 'renewal_upcoming', 'renewal_failed', 'renewal_stopped', 'card_failed'):
         return None
     try:
         from aiogram.types import InlineKeyboardMarkup
         from .billing import button
-        plans = await button(subject(notice).account, 'plans', 'plans', {'from': 'notice'})
-        return InlineKeyboardMarkup(inline_keyboard=[[plans]])
+        account = subject(notice).account
+        plans = await button(account, 'plans', 'plans', {'from': 'notice'})
+        if notice.kind == 'renewal_reminder':
+            return InlineKeyboardMarkup(inline_keyboard=[[plans]])
+        subscription = await button(account, 'subscription', 'subscription')
+        if notice.kind == 'renewal_upcoming':
+            return InlineKeyboardMarkup(inline_keyboard=[[subscription]])
+        return InlineKeyboardMarkup(inline_keyboard=[[plans, subscription]])
     except Exception:
-        # The reminder matters more than its button.
+        # The notice matters more than its buttons.
         return None
 
 

@@ -1106,6 +1106,13 @@ fieldset {
   padding: 0;
   border: 0;
 }
+/* A part of an integration card with its own switch, such as Avto PAY on the bot's inPAY card. */
+.integration-subsection {
+  display: grid;
+  gap: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--hairline);
+}
 legend {
   margin-bottom: var(--space-2);
   padding: 0;

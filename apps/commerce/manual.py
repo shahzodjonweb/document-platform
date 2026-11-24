@@ -404,7 +404,12 @@ def housekeeping(now=None):
     ending = SubscriptionPeriod.objects.filter(
         payment__provider='manual', revoked_at__isnull=True, ends_at__gt=now,
         ends_at__lte=now + timedelta(days=REMINDER_DAYS)).select_related('payment')
+    # A plan that renews by itself is announced as a renewal instead (apps/commerce/autopay.py).
+    from .autopay import renewing
+    renews = renewing()
     for period in ending:
+        if period.account_id in renews:
+            continue
         later = SubscriptionPeriod.objects.filter(account_id=period.account_id, revoked_at__isnull=True,
                                                   ends_at__gt=period.ends_at).exists()
         manual = ManualPayment.objects.filter(payment=period.payment).first()

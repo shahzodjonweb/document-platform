@@ -101,6 +101,17 @@ MESSAGES = {
         '⭐ To‘lovlar hozir mavjud emas. Joriy tarifingiz ishlashda davom etadi.',
         '⭐ Оплата сейчас недоступна. Текущий тариф продолжает работать.',
     ),
+    # Saved cards and monthly renewal (apps/commerce/autopay.py).
+    'autopay_unavailable card_unavailable': (
+        '💳 Paying with a saved card isn’t available right now. You can pay once from /plans.',
+        '💳 Saqlangan karta bilan to‘lash hozir ishlamayapti. /plans orqali bir marta to‘lashingiz mumkin.',
+        '💳 Оплата сохранённой картой сейчас недоступна. Можно оплатить один раз в /plans.',
+    ),
+    'renewal_unavailable': (
+        '🔁 Auto-renewal can be turned on while you have a paid plan. Pick a plan in /plans and choose «renew every month».',
+        '🔁 Avtomatik uzaytirishni pullik tarif davomida yoqish mumkin. /plans da tarifni tanlab, «har oy uzaytirish»ni tanlang.',
+        '🔁 Автопродление можно включить, пока действует платный тариф. Выберите тариф в /plans и «продлевать каждый месяц».',
+    ),
     'csrf_failed session_changed': (
         '🔒 Your session changed. Sign in on the web again and restart this action.',
         '🔒 Seans o‘zgargan. Veb ilovaga qayta kirib, amalni boshidan boshlang.',

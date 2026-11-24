@@ -118,6 +118,117 @@
         ],
         "type": "object"
       },
+      "AutoRenewalState": {
+        "properties": {
+          "card": {
+            "anyOf": [
+              {
+                "properties": {
+                  "consent_max": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "expiry": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  "last4": {
+                    "type": "string"
+                  },
+                  "masked": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "masked",
+                  "last4",
+                  "expiry",
+                  "consent_max"
+                ],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "offered": {
+            "description": "Whether this customer may save a card and renew monthly now (in the bot).",
+            "type": "boolean"
+          },
+          "renewal": {
+            "anyOf": [
+              {
+                "properties": {
+                  "amount": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "attempts": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "card_last4": {
+                    "type": "string"
+                  },
+                  "next_try_at": {
+                    "format": "date-time",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "plan": {
+                    "type": "string"
+                  },
+                  "renews_at": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "status": {
+                    "enum": [
+                      "on",
+                      "off",
+                      "stopped"
+                    ]
+                  },
+                  "stopped_reason": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "status",
+                  "plan",
+                  "renews_at",
+                  "amount",
+                  "attempts",
+                  "next_try_at",
+                  "stopped_reason",
+                  "card_last4"
+                ],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "offered",
+          "card",
+          "renewal"
+        ],
+        "type": "object"
+      },
       "BatchQuote": {
         "properties": {
           "affordable": {
@@ -5813,6 +5924,73 @@
         ]
       }
     },
+    "/billing/cards/{id}": {
+      "delete": {
+        "description": "Remove a saved card at inPAY: nothing is charged to it again, and its renewal stops.",
+        "operationId": "removeSavedCard",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutoRenewalState"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
     "/billing/checkout": {
       "post": {
         "description": "Open an automatic payment for a plan at inPAY and return its payment page; 200 with the one already open for the same plan and price.",
@@ -6248,6 +6426,110 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ManualPayment"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
+    "/billing/renewal": {
+      "delete": {
+        "description": "Turn monthly renewal off: the plan runs to its end and is not charged again. The card stays saved.",
+        "operationId": "turnOffRenewal",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutoRenewalState"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      },
+      "get": {
+        "description": "The card saved in the bot through inPAY Avto PAY, and its monthly renewal.",
+        "operationId": "getRenewal",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutoRenewalState"
                 }
               }
             },

@@ -75,6 +75,10 @@ def confirm_refund(refund):
     refund.status='confirmed';refund.confirmed_at=now;refund.error_code='';refund.save(update_fields=['status','confirmed_at','error_code'])
     ManualPayment.objects.filter(payment=payment).update(status='refunded')
     Checkout.objects.filter(payment=payment).update(status='refunded')
+    from .models import AutoRenewal, CardCharge
+    # A saved-card charge returned: its renewal, if one runs, is not charged again unasked.
+    if CardCharge.objects.filter(payment=payment).update(status='refunded'):
+        AutoRenewal.objects.filter(account=payment.account, status='on').update(status='off', stopped_reason='refund', next_try_at=None)
     refresh_account_entitlement(payment.account)
     subscription=Subscription.objects.filter(account=payment.account).first()
     if subscription and not subscription.periods.filter(revoked_at__isnull=True,ends_at__gt=now).exists():

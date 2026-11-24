@@ -144,6 +144,27 @@ def checkouts(request):
     row,created=checkout.create(request.account,body(request).get('plan'),'web')
     return JsonResponse(checkout_data(row,owner=True),status=201 if created else 200)
 
+def _renewal_data(account):
+    from . import autopay
+    return autopay.status(account)
+
+@endpoint(('GET','DELETE'))
+def renewal(request):
+    """Monthly renewal from a card saved in the bot (apps/commerce/autopay.py): where it stands, and turning it off."""
+    from . import autopay
+    if request.method=='DELETE':
+        throttle(request,'renewal',20)
+        autopay.turn_off(request.account,'customer')
+    return _renewal_data(request.account)
+
+@endpoint(('DELETE',))
+def saved_card(request,card_id):
+    """Remove a saved card: nothing is charged to it again, and its renewal stops."""
+    from . import autopay
+    throttle(request,'saved-card',20)
+    autopay.remove(request.account,card_id)
+    return _renewal_data(request.account)
+
 @api(('GET',),auth=False)
 def checkout_detail(request,checkout_id):
     """Where an automatic payment stands, for the page inPAY returns the customer to.
