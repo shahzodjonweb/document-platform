@@ -22,10 +22,17 @@ renewal is on, and in one tap when they pay again. What is trusted is narrow:
 - Avto to'lov has no test mode, so it starts shown to the owner alone
   (`autopay_audience`), and is offered only where inPAY is the way to pay.
 
-It is approved on the bot's kassa; the website's comes later. Asking inPAY
-is a network call: `begin_*`/`ask_*`/`apply_*` keep it apart from the
-database work, as apps/commerce/checkout.py does, so the bot makes the call
-off the thread its queries run on.
+Each kassa has its own Avto to'lov and key, as each place has its own kassa
+(apps/commerce/checkout.py): a card saved in the bot is saved through the
+bot's kassa, one saved on the website through the website's, and inPAY's id
+for it means something to that kassa alone. So a card is always charged and
+removed through the kassa that saved it, and a place charges in one tap only
+a card saved there. A customer has one card: the one saved last replaces the
+other, wherever it was saved, and renewal goes on from it.
+
+Asking inPAY is a network call: `begin_*`/`ask_*`/`apply_*` keep it apart
+from the database work, as apps/commerce/checkout.py does, so the bot makes
+the call off the thread its queries run on.
 """
 import logging
 from datetime import timedelta
@@ -42,8 +49,12 @@ from .manual import PERIOD_DAYS, PLANS, REMINDER_DAYS
 logger = logging.getLogger(__name__)
 
 PROVIDER = 'inpay'
-# Avto to'lov is approved on the bot's kassa.
-KASSA = 'bot'
+# The places a card is saved in, each through its own kassa's Avto to'lov.
+CHANNELS = ('bot', 'web')
+# Where the owner puts a kassa's Avto PAY key right, named in their alerts.
+SECTION = {'bot': 'Automatic payments in the bot (inPAY)', 'web': 'Automatic payments on the website (inPAY)'}
+# How long the website's return page waits between asking inPAY about one card.
+LOOK_SECONDS = 5
 # inPAY's page for saving a card stays open this long.
 BIND_MINUTES = 30
 # A renewal is first tried this long before the paid period ends: on its last day.
@@ -63,9 +74,9 @@ CONSENT = 'CONSENT_LIMIT'
 REASON = {'en': 'DocMaster {plan}, 30 days', 'uz': 'DocMaster {plan}, 30 kun', 'ru': 'DocMaster {plan}, 30 дней'}
 
 
-def _config():
+def _config(kassa='bot'):
     from operations.integrations import inpay_config
-    return inpay_config(KASSA)
+    return inpay_config(kassa if kassa in CHANNELS else 'bot')
 
 
 def _owner():
@@ -78,17 +89,19 @@ def offers():
     return priced()
 
 
-def offered(account):
-    """Whether this customer may save a card and renew automatically now."""
+def offered(account, channel='bot'):
+    """Whether this customer may save a card and renew automatically now, in this place."""
     from .checkout import availability
-    cfg = _config()
+    if channel not in CHANNELS:
+        return False
+    cfg = _config(channel)
     if account is None or not cfg['autopay_ready']:
         return False
     if cfg['autopay_audience'] != 'everyone':
         owner = _owner()
         if not (owner and account.telegram_user_id == owner):
             return False
-    return bool(availability(account, KASSA)['available'])
+    return bool(availability(account, channel)['available'])
 
 
 def customer_ref(account):
@@ -96,9 +109,13 @@ def customer_ref(account):
     return f'dm-{account.pk.hex}'
 
 
-def active_card(account):
+def active_card(account, channel=None):
+    """The customer's saved card, the one renewal charges; with `channel`, only one saved in that place."""
     from .models import SavedCard
-    return SavedCard.objects.filter(account=account, kassa=KASSA, status='active').order_by('-activated_at').first()
+    rows = SavedCard.objects.filter(account=account, status='active')
+    if channel:
+        rows = rows.filter(kassa=channel)
+    return rows.order_by('-activated_at').first()
 
 
 def renewal(account):
@@ -116,29 +133,38 @@ def paid_until(account, now=None):
 
 # ---- saving a card ----------------------------------------------------------------------------
 
-def _return_url(card):
-    """Back to the chat from inPAY's page: `/start card_<id>` shows how saving went (telegram/bot.py)."""
+def _return_url(card, locale='en'):
+    """Where inPAY's page sends the customer back to, in the place they started, on its kassa's own domain.
+
+    The bot's: the chat, where `/start card_<id>` shows how saving went
+    (telegram/bot.py). The website's: its page for the card, which asks the
+    same and pays for the plan (the website's /app/card/<id>).
+    """
+    if card.kassa == 'web':
+        from apps.core.links import web_origin
+        origin = web_origin()
+        return f"{origin}/{locale if locale in REASON else 'en'}/app/card/{card.id}" if origin else ''
     from operations.integrations import telegram_config
     username = str(telegram_config().get('username') or '').strip().lstrip('@')
     return f'https://t.me/{username}?start=card_{card.id.hex}' if username else ''
 
 
-def begin_binding(account, plan=''):
-    """A card to save for this customer: (card, request); `request` is None when its page is already open.
+def begin_binding(account, plan='', channel='bot'):
+    """A card to save for this customer, in this place: (card, request); `request` is None when its page is already open.
 
     `plan`, when given, is paid for and renewed every month once the card is saved.
     """
     from apps.core.customer_auth import auth_limit
     from apps.core.models import Account
     from .models import SavedCard
-    if not offered(account):
+    if not offered(account, channel):
         raise DomainError('autopay_unavailable', 409)
     if plan and (plan not in PLANS or plan not in offers()):
         raise DomainError('checkout_disabled', 409)
     now = timezone.now()
     with transaction.atomic():
         account = Account.objects.select_for_update().get(pk=account.pk)
-        open_ = (SavedCard.objects.filter(account=account, kassa=KASSA, status='binding',
+        open_ = (SavedCard.objects.filter(account=account, kassa=channel, status='binding',
                                           bind_expires_at__gt=now + timedelta(minutes=5)).exclude(bind_url='')
                  .order_by('-created_at').first())
         if open_:
@@ -147,8 +173,9 @@ def begin_binding(account, plan=''):
                 open_.save(update_fields=['intent'])
             return open_, None
         auth_limit('card-bind', str(account.pk), 8, 3600)
-        card = SavedCard.objects.create(account=account, kassa=KASSA, customer_ref=customer_ref(account), intent=plan)
-    return card, {'cfg': _config(), 'customer_ref': card.customer_ref, 'return_url': _return_url(card)}
+        card = SavedCard.objects.create(account=account, kassa=channel, customer_ref=customer_ref(account), intent=plan)
+    return card, {'cfg': _config(channel), 'customer_ref': card.customer_ref,
+                  'return_url': _return_url(card, account.locale)}
 
 
 def _failure(error):
@@ -173,9 +200,9 @@ def complete_binding(card, answer, failure):
     if not answer:
         SavedCard.objects.filter(pk=card.pk, status='binding').update(status='expired')
         if failure not in ('provider_unavailable', 'provider_rate_limited'):
-            _alert('autopay_refused', f'⚠️ inPAY could not open its page for saving a card: {failure}'
+            _alert(_kind('autopay_refused', card.kassa), f'⚠️ inPAY could not open its page for saving a card: {failure}'
                    '\nSaved cards and auto-renewal are not working. Check the Avto PAY key in Admin → Integrations → '
-                   'Automatic payments in the bot (inPAY), and Avto PAY in the inPAY cabinet.', once_an_hour=True)
+                   f'{SECTION[card.kassa]}, and Avto PAY in the inPAY cabinet.', once_an_hour=True)
         raise DomainError('autopay_unavailable', 503, retryable=True)
     with transaction.atomic():
         # inPAY may give the same id again to a page it reopens: the old row lets go of it.
@@ -194,7 +221,7 @@ def look_cards(card):
     """What to ask inPAY about the customer's cards, or None when nothing is pending."""
     if card.provider_card_id is None:
         return None
-    return {'cfg': _config(), 'customer_ref': card.customer_ref}
+    return {'cfg': _config(card.kassa), 'customer_ref': card.customer_ref}
 
 
 def ask_cards(question):
@@ -208,7 +235,7 @@ def ask_cards(question):
 @transaction.atomic
 def apply_cards(card_pk, cards, now=None):
     """Bring one saved card up to what inPAY says about it. Safe to repeat."""
-    from .models import SavedCard
+    from .models import AutoRenewal, SavedCard
     now = now or timezone.now()
     card = SavedCard.objects.select_for_update().get(pk=card_pk)
     card.checked_at = now
@@ -228,9 +255,13 @@ def apply_cards(card_pk, cards, now=None):
     if remote['state'] == 'active' and card.status == 'binding':
         card.status, card.activated_at = 'active', now
         changed += ['status', 'activated_at']
-        # One card at a time: the one saved last is the one charged.
-        SavedCard.objects.filter(account_id=card.account_id, kassa=card.kassa, status='active').exclude(pk=card.pk).update(
-            status='removing', removed_at=now, removed_by='replaced')
+        # One card at a time, wherever it was saved: the one saved last is the one charged,
+        # and a renewal running on the one it replaces goes on from it.
+        replaced = list(SavedCard.objects.filter(account_id=card.account_id, status='active').exclude(pk=card.pk)
+                        .values_list('pk', flat=True))
+        if replaced:
+            SavedCard.objects.filter(pk__in=replaced).update(status='removing', removed_at=now, removed_by='replaced')
+            AutoRenewal.objects.filter(card_id__in=replaced, status='on').update(card=card)
     elif remote['state'] == 'removed' and card.status in ('binding', 'active'):
         card.status, card.removed_at, card.removed_by = 'removed', now, 'inpay'
         changed += ['status', 'removed_at', 'removed_by']
@@ -250,12 +281,18 @@ def claim_intent(card):
 
 # ---- charging a card ----------------------------------------------------------------------------
 
-def begin_charge(account, card, plan, purpose, renewal=None, attempt=1):
-    """A charge of `plan` at today's price: (row, request); `request` is None for a double tap's row."""
+def begin_charge(account, card, plan, purpose, renewal=None, attempt=1, channel=None):
+    """A charge of `plan` at today's price: (row, request); `request` is None for a double tap's row.
+
+    `channel` is the place a customer pressed «Pay» in: it charges only a card
+    saved there, and only while saved cards are offered there.
+    """
     from apps.core.models import Account
     from .models import CardCharge, SavedCard
     if plan not in PLANS:
         raise DomainError('invalid_plan')
+    if channel and not offered(account, channel):
+        raise DomainError('autopay_unavailable', 409)
     offered_now = offers()
     if plan not in offered_now:
         raise DomainError('checkout_disabled', 409)
@@ -264,7 +301,7 @@ def begin_charge(account, card, plan, purpose, renewal=None, attempt=1):
     with transaction.atomic():
         account = Account.objects.select_for_update().get(pk=account.pk)
         card = SavedCard.objects.filter(pk=card.pk, account=account).first()
-        if card is None or card.status != 'active' or card.provider_card_id is None:
+        if card is None or card.status != 'active' or card.provider_card_id is None or (channel and card.kassa != channel):
             raise DomainError('card_unavailable', 409)
         if purpose != 'renewal':
             recent = CardCharge.objects.filter(account=account, plan=plan, purpose__in=('first', 'one_tap'),
@@ -282,7 +319,7 @@ def begin_charge(account, card, plan, purpose, renewal=None, attempt=1):
 
 def _request(row, card, account):
     reason = REASON.get(account.locale, REASON['en']).format(plan=row.plan.title())
-    return {'cfg': _config(), 'card_id': card.provider_card_id, 'amount': row.amount, 'idem_key': str(row.id),
+    return {'cfg': _config(card.kassa), 'card_id': card.provider_card_id, 'amount': row.amount, 'idem_key': str(row.id),
             'reason': reason, 'order_ref': str(row.id)}
 
 
@@ -324,7 +361,7 @@ def apply_charge(row_pk, answer, failure, now=None):
             row.status, row.failure = 'unknown', failure
             if row.tries >= MAX_TRIES:
                 row.status, row.decided_at = 'failed', now
-                _alert('autopay_unconfirmed', f'⚠️ inPAY did not answer about a card charge after {row.tries} tries.'
+                _alert(_kind('autopay_unconfirmed', row.card.kassa), f'⚠️ inPAY did not answer about a card charge after {row.tries} tries.'
                        f"\n{row.plan.title()} · {_money(row.amount)} so'm · charge {row.id}"
                        '\nNo plan was granted. Look the charge up in the inPAY cabinet (Avto PAY); if the money was '
                        'taken, give the plan on the customer\'s page, or return it in inPAY.')
@@ -339,9 +376,9 @@ def apply_charge(row_pk, answer, failure, now=None):
                 card.save(update_fields=['status', 'removed_at', 'removed_by'])
         elif not _customer_side(failure):
             # The key, a limit of the owner's at inPAY, or inPAY refusing: only the owner can put it right.
-            _alert('autopay_refused', f'⚠️ inPAY refused to charge a saved card: {failure}'
+            _alert(_kind('autopay_refused', row.card.kassa), f'⚠️ inPAY refused to charge a saved card: {failure}'
                    '\nAuto-renewal and saved-card payments are not working. Check the Avto PAY key in Admin → '
-                   'Integrations → Automatic payments in the bot (inPAY), and Avto PAY (limits) in the inPAY cabinet.',
+                   f'Integrations → {SECTION[row.card.kassa]}, and Avto PAY (limits) in the inPAY cabinet.',
                    once_an_hour=True)
         return row
     row.provider_charge_id, row.provider_ref = answer['charge_id'], answer['provider_ref']
@@ -354,7 +391,7 @@ def apply_charge(row_pk, answer, failure, now=None):
         # Money was taken for something this row does not describe: nothing is granted on a guess.
         row.status, row.failure, row.decided_at = 'review', 'amount_mismatch', now
         row.save(update_fields=['status', 'failure', 'decided_at', 'tries', 'provider_charge_id', 'provider_ref', 'mandate_id'])
-        _alert('autopay_review', '⚠️ A saved-card charge needs a look: amount_mismatch'
+        _alert(_kind('autopay_review', row.card.kassa), '⚠️ A saved-card charge needs a look: amount_mismatch'
                f"\n{row.plan.title()} · {_money(row.amount)} so'm expected, inPAY reports {_money(answer['amount'])} so'm"
                f' · inPAY charge {row.provider_charge_id}\nNo plan was granted.')
         return row
@@ -377,8 +414,10 @@ def apply_charge(row_pk, answer, failure, now=None):
     _action(row, 'card_charge.paid', {})
     from apps.core.links import admin_url
     link = admin_url(f'/ops/payments/{row.payment_id}')
-    _alert('inpay_card_paid', ('🔁 Auto-renewal charged' if row.purpose == 'renewal' else '⚡ Saved-card payment received') +
-           f"\n{row.plan.title()} · {_money(row.amount)} so'm · card {row.card.masked_pan}"
+    _alert(_kind('inpay_card_paid', row.card.kassa),
+           ('🔁 Auto-renewal charged' if row.purpose == 'renewal' else '⚡ Saved-card payment received') +
+           f"\n{row.plan.title()} · {_money(row.amount)} so'm · card {row.card.masked_pan} · "
+           + ('website' if row.card.kassa == 'web' else 'bot') +
            f"\nFrom: {account.display_name or account.telegram_user_id or account.pk}" + (f'\n{link}' if link else ''))
     return row
 
@@ -417,15 +456,23 @@ def enable(account, card, plan, renews_at):
     return renewal
 
 
-def turn_on(account):
-    """Renewal on again, for the plan the customer pays for now, from their saved card."""
+def _renewable(account, card):
+    """The plan renewal could be turned on for from `card`, and from when: (plan, until), or ('', None)."""
     from .services import effective_plan
-    card = active_card(account)
     until = paid_until(account)
     plan = effective_plan(account)
+    if until is None or plan not in PLANS or plan not in offers() or not offered(account, card.kassa):
+        return '', None
+    return plan, until
+
+
+def turn_on(account):
+    """Renewal on again, for the plan the customer pays for now, from their saved card (through its own kassa)."""
+    card = active_card(account)
     if card is None:
         raise DomainError('card_unavailable', 409)
-    if until is None or plan not in PLANS or plan not in offers():
+    plan, until = _renewable(account, card)
+    if not plan:
         raise DomainError('renewal_unavailable', 409)
     return enable(account, card, plan, until)
 
@@ -472,7 +519,7 @@ def renew(renewal, now=None):
     if until and until > renewal.renews_at + timedelta(minutes=1):
         AutoRenewal.objects.filter(pk=renewal.pk).update(renews_at=until, attempts=0, next_try_at=None, failure='')
         return 'moved'
-    if not _config()['autopay_ready']:
+    if not _config(renewal.card.kassa)['autopay_ready']:
         return 'paused'
     if renewal.card.status != 'active':
         _stop(renewal, 'card_removed')
@@ -548,7 +595,7 @@ def begin_removal(account, card_id):
             _action_card(card, 'card.removed', {'by': 'customer'})
     if card.status != 'removing' or card.provider_card_id is None:
         return card, None
-    return card, {'cfg': _config(), 'card_id': card.provider_card_id}
+    return card, {'cfg': _config(card.kassa), 'card_id': card.provider_card_id}
 
 
 def ask_removal(request):
@@ -581,16 +628,68 @@ def remove(account, card_id):
 
 # ---- what the customer sees ---------------------------------------------------------------------
 
-def status(account):
-    """The customer's saved card and renewal, as the bot and the website show them."""
+def status(account, channel='bot'):
+    """The customer's saved card and renewal, as the bot or the website (`channel`) shows them.
+
+    `offered` is whether a card can be saved here now; a card's `here` whether
+    it was saved here, so this place can charge it in one tap; `can_turn_on`
+    whether renewal, now off, can be turned on again from it.
+    """
     card, plan = active_card(account), renewal(account)
-    return {'offered': offered(account),
+    renewing = bool(plan and plan.status == 'on')
+    return {'offered': offered(account, channel),
             'card': {'id': str(card.id), 'masked': card.masked_pan, 'last4': card.last4, 'expiry': card.expiry,
-                     'consent_max': card.consent_max} if card else None,
+                     'consent_max': card.consent_max, 'here': card.kassa == channel} if card else None,
             'renewal': {'status': plan.status, 'plan': plan.plan, 'renews_at': plan.renews_at,
                         'amount': (offers().get(plan.plan) or {}).get('price'), 'attempts': plan.attempts,
                         'next_try_at': plan.next_try_at, 'stopped_reason': plan.stopped_reason,
-                        'card_last4': plan.card.last4} if plan else None}
+                        'card_last4': plan.card.last4} if plan else None,
+            'can_turn_on': bool(card and not renewing and _renewable(account, card)[0])}
+
+
+def charge_state(row):
+    """One charge of a saved card, as the website shows how paying went."""
+    if row is None:
+        return None
+    period = period_of(row) if row.status in ('paid', 'refunded') else None
+    current = renewal(row.account) if row.purpose == 'first' and row.status == 'paid' else None
+    reason = {DECLINED: 'declined', CONSENT: 'consent_limit', CARD_GONE: 'card_removed'}.get(row.failure, 'unavailable')
+    return {'id': str(row.id), 'status': 'pending' if row.status in ('created', 'unknown') else row.status,
+            'plan': row.plan, 'amount': row.amount, 'currency': row.currency, 'last4': row.card.last4,
+            'reason': reason if row.status == 'failed' else None, 'active_until': period.ends_at if period else None,
+            'renews_at': current.renews_at if current and current.status == 'on' and current.card_id == row.card_id else None}
+
+
+def card_state(card, row=None):
+    """A card the website is saving, and the first charge made once it was saved."""
+    from .models import CardCharge
+    row = row or CardCharge.objects.select_related('card', 'account').filter(card=card, purpose='first').order_by('-created_at').first()
+    return {'id': str(card.id), 'status': card.status, 'plan': card.intent or (row.plan if row else None),
+            'last4': card.last4, 'bind_url': card.bind_url if card.status == 'binding' and card.bind_url else None,
+            'charge': charge_state(row)}
+
+
+def look_again(card, now=None):
+    """The website's page for a card the customer came back from saving: ask inPAY, then pay for its plan.
+
+    inPAY is asked about one card at most every few seconds however often
+    the page asks, and the plan is paid for once, here or by the periodic run.
+    """
+    now = now or timezone.now()
+    if card.status == 'binding' and not (card.checked_at and card.checked_at > now - timedelta(seconds=LOOK_SECONDS)):
+        question = look_cards(card)
+        if question is not None:
+            cards, _ = ask_cards(question)
+            if cards is not None:
+                card = apply_cards(card.pk, cards, now)
+    row = finish_saved(card) if card.status == 'active' else None
+    return card_state(card, row)
+
+
+def receipt(row):
+    """Tell the customer in Telegram how a charge they started on the website went, as after every charge."""
+    if row.status in ('paid', 'failed'):
+        _notice_charge(row, 'card_paid' if row.status == 'paid' else 'card_failed')
 
 
 # ---- the periodic run (cleanupfiles, every five minutes) ----------------------------------------
@@ -616,7 +715,7 @@ def housekeeping(now=None):
             logger.exception('Saved card %s could not be checked', card.pk)
     for card in SavedCard.objects.filter(status='removing').order_by('removed_at')[:5]:
         try:
-            ok, _ = ask_removal({'cfg': _config(), 'card_id': card.provider_card_id} if card.provider_card_id else None)
+            ok, _ = ask_removal({'cfg': _config(card.kassa), 'card_id': card.provider_card_id} if card.provider_card_id else None)
             finish_removal(card, ok)
             done['removed'] += int(ok)
         except Exception:
@@ -643,7 +742,7 @@ def housekeeping(now=None):
     coming = AutoRenewal.objects.filter(status='on', renews_at__gt=now, renews_at__lte=now + timedelta(days=REMINDER_DAYS)).exclude(
         reminded_for=F('renews_at'))
     for renewal in coming:
-        if _config()['autopay_ready'] and renewal.card.status == 'active':
+        if _config(renewal.card.kassa)['autopay_ready'] and renewal.card.status == 'active':
             _notice_renewal(renewal, 'renewal_upcoming')
             AutoRenewal.objects.filter(pk=renewal.pk).update(reminded_for=renewal.renews_at)
             done['reminded'] += 1
@@ -689,6 +788,11 @@ def _notice_renewal(renewal, kind):
 
 def _money(amount):
     return f'{amount:,}'.replace(',', ' ')
+
+
+def _kind(kind, kassa):
+    """An alert's kind for one kassa: the website's are told apart, so one kassa's alert never quiets the other's."""
+    return kind if kassa == 'bot' else f'{kind}_web'
 
 
 def _alert(kind, text, once_an_hour=False):

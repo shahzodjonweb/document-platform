@@ -127,6 +127,25 @@ def test_a_saved_card_pays_in_two_taps_and_a_double_tap_charges_once(customer, b
     assert not AutoRenewal.objects.exists(), 'paid once: nothing renews'
 
 
+def test_a_card_saved_on_the_website_is_not_charged_in_one_tap_in_the_bot(customer, bank):
+    from tests.test_autopay import web_autopay_on
+    autopay_on()
+    web_autopay_on()
+    card, request = autopay.begin_binding(customer, '', 'web')
+    autopay.complete_binding(card, *autopay.ask_binding(request))
+    save_on_inpay(bank)
+    autopay.apply_cards(card.pk, autopay.ask_cards(autopay.look_cards(card))[0])
+    def newest(result):
+        """The bot's latest screen: the simulator answers with the whole chat, the customer's taps too."""
+        return {'messages': [message for message in result['messages'] if message['direction'] != 'inbound'][-1:]}
+
+    choice = newest(dispatch_local(customer, callback_data=token(dispatch_local(customer, text='/plans'), 'commerce_plan_choice', plan='plus')))
+    # It belongs to the website's kassa: the bot offers saving a card here, or paying once.
+    assert has(choice, 'commerce_card_bind') and not has(choice, 'commerce_card_confirm')
+    # It is still the customer's card: /subscription shows it, with «Remove card».
+    assert has(newest(dispatch_local(customer, text='/subscription')), 'commerce_card_remove') and not bank.charged()
+
+
 def test_the_subscription_shows_renewal_and_turns_it_off_and_removes_the_card(customer, bank):
     autopay_on()
     card, request = autopay.begin_binding(customer, 'plus')

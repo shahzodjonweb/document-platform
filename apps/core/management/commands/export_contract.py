@@ -54,12 +54,25 @@ def extend_schema(models, endpoint, paths):
         'ManualPaymentOptions':obj({'enabled':B,'currency':S,'period_days':I,'plans':arr(obj({'plan':{'enum':['plus','premium']},'price':I,'regular_price':I,'discount':{'anyOf':[ref('PlanDiscount'),{'type':'null'}]}},['plan','price','regular_price','discount'])),'automatic':obj({'available':{**B,'description':'Whether this customer may pay online through inPAY now.'},'provider':{'const':'inpay'},'test':{**B,'description':'The owner trying it with a test key: no money moves and no plan is granted.'}},['available']),'payment':{'anyOf':[ref('ManualPayment'),{'type':'null'}]},'checkout':{'anyOf':[ref('Checkout'),{'type':'null'}],'description':'This customer\'s automatic payment worth showing: the open one, or one decided in the last week.'}},['enabled','currency','period_days','plans','automatic','payment','checkout']),
         # An automatic payment through inPAY. `checkout_url` is given only to the signed-in customer who started it, while it can be paid.
         'Checkout':obj({'id':UUID,'plan':{'enum':['plus','premium']},'amount':I,'currency':S,'status':{'enum':['pending','paid','failed','cancelled','expired','refunded']},'test':B,'channel':{'enum':['web','bot']},'checkout_url':nullable_string,'bot_url':nullable_string,'created_at':DT,'expires_at':DT,'paid_at':{'type':['string','null'],'format':'date-time'},'starts_at':{'type':['string','null'],'format':'date-time'},'active_until':{'type':['string','null'],'format':'date-time'},'receipt_url':nullable_string},['id','plan','amount','currency','status','test','channel','checkout_url','bot_url','created_at','expires_at','paid_at','starts_at','active_until','receipt_url']),
-        'AutoRenewalState':obj({'offered':{**B,'description':'Whether this customer may save a card and renew monthly now (in the bot).'},
-                                'card':{'anyOf':[obj({'id':UUID,'masked':S,'last4':S,'expiry':S,'consent_max':{'type':['integer','null']}},['id','masked','last4','expiry','consent_max']),{'type':'null'}]},
+        'AutoRenewalState':obj({'offered':{**B,'description':'Whether this customer may save a card on the website and renew monthly now.'},
+                                'card':{'anyOf':[obj({'id':UUID,'masked':S,'last4':S,'expiry':S,'consent_max':{'type':['integer','null']},
+                                                      'here':{**B,'description':'Saved on the website: only such a card is charged in one tap here. A card saved in the bot renews, but is paid with in one tap in the bot.'}},
+                                                     ['id','masked','last4','expiry','consent_max','here']),{'type':'null'}]},
                                 'renewal':{'anyOf':[obj({'status':{'enum':['on','off','stopped']},'plan':S,'renews_at':DT,'amount':{'type':['integer','null']},'attempts':I,
                                                          'next_try_at':{'type':['string','null'],'format':'date-time'},'stopped_reason':S,'card_last4':S},
-                                                        ['status','plan','renews_at','amount','attempts','next_try_at','stopped_reason','card_last4']),{'type':'null'}]}},
-                               ['offered','card','renewal']),
+                                                        ['status','plan','renews_at','amount','attempts','next_try_at','stopped_reason','card_last4']),{'type':'null'}]},
+                                'can_turn_on':{**B,'description':'Renewal is off and can be turned on again from the saved card, for the plan paid now.'}},
+                               ['offered','card','renewal','can_turn_on']),
+        # One charge of a saved card. `pending` while inPAY's answer is awaited; `reason` says why a failed one failed.
+        'CardCharge':obj({'id':UUID,'status':{'enum':['pending','paid','failed','review','refunded']},'plan':{'enum':['plus','premium']},'amount':I,'currency':S,'last4':S,
+                          'reason':{'type':['string','null'],'enum':['declined','consent_limit','card_removed','unavailable',None]},
+                          'active_until':{'type':['string','null'],'format':'date-time'},
+                          'renews_at':{'type':['string','null'],'format':'date-time','description':'When renewal next charges this card, for a first month that turned it on.'}},
+                         ['id','status','plan','amount','currency','last4','reason','active_until','renews_at']),
+        # A card being saved on inPAY's page (`binding`, with `bind_url` while the page is open), then `active`, or `expired`/`removed`.
+        'SavedCardState':obj({'id':UUID,'status':{'enum':['binding','active','expired','removing','removed']},'plan':{'type':['string','null'],'enum':['plus','premium',None]},
+                              'last4':S,'bind_url':nullable_string,'charge':{'anyOf':[ref('CardCharge'),{'type':'null'}]}},
+                             ['id','status','plan','last4','bind_url','charge']),
         'SubscriptionState':obj({'plan':S,'subscription':{'anyOf':[ref('Subscription'),{'type':'null'}]},'sandbox':B},['plan','subscription','sandbox']),
         'BotDelivery':obj({'id':UUID,'status':S,'attempts':I},['id','status','attempts']),
         'DeckPins':obj({'design':S,'deck_seed':S,'body_size':{'type':'number'},'variants':{'type':'object','additionalProperties':S},
@@ -263,9 +276,13 @@ def extend_schema(models, endpoint, paths):
     endpoint('/channels/check','post','checkRequiredChannels',channel_state,obj({}),description="Ask Telegram again after the customer says they've joined.")
     endpoint('/billing/checkout','post','createCheckout',ref('Checkout'),obj({'plan':{'enum':['plus','premium']}},['plan']),code='201',description='Open an automatic payment for a plan at inPAY and return its payment page; 200 with the one already open for the same plan and price.')
     endpoint('/billing/checkout/{id}','get','getCheckout',ref('Checkout'),public=True,description='Where an automatic payment stands. Open without signing in, for the page inPAY returns the customer to; asking while it is pending makes the server ask inPAY, at most every few seconds.')
-    endpoint('/billing/renewal','get','getRenewal',ref('AutoRenewalState'),description='The card saved in the bot through inPAY Avto PAY, and its monthly renewal.')
+    endpoint('/billing/renewal','get','getRenewal',ref('AutoRenewalState'),description='The customer\'s card saved through inPAY Avto PAY (on the website or in the bot), and its monthly renewal.')
+    endpoint('/billing/renewal','post','turnOnRenewal',ref('AutoRenewalState'),description='Turn monthly renewal on again from the saved card, for the plan paid now, from the end of the paid time. 409 renewal_unavailable without a paid plan.')
     endpoint('/billing/renewal','delete','turnOffRenewal',ref('AutoRenewalState'),description='Turn monthly renewal off: the plan runs to its end and is not charged again. The card stays saved.')
+    endpoint('/billing/cards','post','saveCard',ref('SavedCardState'),obj({'plan':{'enum':['plus','premium']}},['plan']),code='201',description='Open inPAY\'s page for saving a card, to pay for the plan once it is saved and renew it every month. Follow `bind_url`; inPAY returns the customer to /<locale>/app/card/<id>.')
+    endpoint('/billing/cards/{id}','get','getSavedCard',ref('SavedCardState'),description='Where a card being saved stands: asks inPAY (at most every few seconds), and once the card is saved pays for its plan, once. `charge` is that first month.')
     endpoint('/billing/cards/{id}','delete','removeSavedCard',ref('AutoRenewalState'),description='Remove a saved card at inPAY: nothing is charged to it again, and its renewal stops.')
+    endpoint('/billing/cards/{id}/charge','post','chargeSavedCard',ref('CardCharge'),obj({'plan':{'enum':['plus','premium']},'renew':B},['plan']),description='Pay for a plan from a card saved on the website, in one tap. With `renew`, renewal turns on from it once paid. A second tap within two minutes returns the first charge.')
     endpoint('/billing/manual','get','getManualPayment',ref('ManualPaymentOptions'),description='The ways to pay: card transfer to the owner, reviewed by hand, and automatic payment through inPAY. The card is shown only to signed-in customers.')
     endpoint('/billing/manual','post','createManualPayment',ref('ManualPayment'),obj({'plan':{'enum':['plus','premium']}},['plan']),code='201')
     endpoint('/billing/manual/{id}','get','getManualPaymentDetail',ref('ManualPayment'))

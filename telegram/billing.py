@@ -531,7 +531,7 @@ async def show_offers(message, account, edit=False, source=None, tap=''):
     # One way to pay at a time: inPAY while it works, card transfer otherwise.
     # With saved cards on, a plan first asks: once, or every month.
     from apps.commerce import autopay
-    renewable = automatic and await sync_to_async(autopay.offered)(account)
+    renewable = automatic and await sync_to_async(autopay.offered)(account, 'bot')
     action = ('commerce_plan_choice' if renewable else 'commerce_checkout_plan') if automatic else 'commerce_manual_plan'
     for item in cards['plans']:
         rows.append([InlineKeyboardButton(
@@ -720,9 +720,10 @@ async def show_plan_choice(message, account, plan, edit=False):
     from apps.commerce import autopay
     await leave_input_prompt(account)
     price = ((await sync_to_async(autopay.offers)()).get(plan) or {}).get('price')
-    if not price or not await sync_to_async(autopay.offered)(account):
+    if not price or not await sync_to_async(autopay.offered)(account, 'bot'):
         return await show_checkout(message, account, plan, edit)
-    card = await sync_to_async(autopay.active_card)(account)
+    # Only a card saved in the bot is charged from here: the website's belongs to the website's kassa.
+    card = await sync_to_async(autopay.active_card)(account, 'bot')
     note = await sync_to_async(discount_note)(account, SimpleNamespace(plan=plan, amount=price))
     values = {'plan': plan.title(), 'price': money(price), 'icon': PLAN_ICONS.get(plan, '⭐'), 'note': note}
     body = card_copy(account, 'choice').format(**values)
@@ -751,7 +752,7 @@ async def show_card_confirm(message, account, plan, renew, edit=False):
     """One more tap before a saved card is charged: the amount, the card, and whether it renews."""
     from .bot import callback
     from apps.commerce import autopay
-    card = await sync_to_async(autopay.active_card)(account)
+    card = await sync_to_async(autopay.active_card)(account, 'bot')
     price = ((await sync_to_async(autopay.offers)()).get(plan) or {}).get('price')
     if card is None or not price:
         return await show_plan_choice(message, account, plan, edit)
@@ -771,10 +772,10 @@ async def pay_with_card(message, account, plan, renew, card_id):
     from apps.commerce import autopay
     from apps.commerce.models import SavedCard
     await leave_input_prompt(account)
-    card = await sync_to_async(lambda: SavedCard.objects.filter(pk=card_id, account=account, status='active').first())()
+    card = await sync_to_async(lambda: SavedCard.objects.filter(pk=card_id, account=account, status='active', kassa='bot').first())()
     if card is None:
         return await show_plan_choice(message, account, plan, edit=True)
-    row, request = await sync_to_async(autopay.begin_charge)(account, card, plan, 'first' if renew else 'one_tap')
+    row, request = await sync_to_async(autopay.begin_charge)(account, card, plan, 'first' if renew else 'one_tap', channel='bot')
     if request is not None:
         answer, failure = await asyncio.to_thread(autopay.ask_charge, request)
         row = await sync_to_async(autopay.apply_charge)(row.pk, answer, failure)
@@ -823,7 +824,7 @@ async def show_binding(message, account, plan, edit=False):
     from apps.commerce import autopay
     await leave_input_prompt(account)
     try:
-        card, request = await sync_to_async(autopay.begin_binding)(account, plan)
+        card, request = await sync_to_async(autopay.begin_binding)(account, plan, 'bot')
         if request is not None:
             answer, failure = await asyncio.to_thread(autopay.ask_binding, request)
             card = await sync_to_async(autopay.complete_binding)(card, answer, failure)
@@ -893,7 +894,7 @@ async def renewal_lines(account):
     from .bot import callback
     from apps.commerce import autopay
     from .clock import local_time
-    state = await sync_to_async(autopay.status)(account)
+    state = await sync_to_async(autopay.status)(account, 'bot')
     card, plan = state['card'], state['renewal']
     lines, rows = [], []
     if plan and plan['status'] == 'on' and card:
@@ -910,7 +911,7 @@ async def renewal_lines(account):
         elif plan:
             lines.append(card_copy(account, 'renew_off'))
         lines.append(card_copy(account, 'card_line').format(last4=html.escape(card['last4'])))
-        if state['offered'] and await sync_to_async(autopay.paid_until)(account):
+        if state['can_turn_on']:
             rows.append([InlineKeyboardButton(text=card_copy(account, 'renew_turn_on'),
                                               callback_data=await callback(account, 'commerce_renew_on'))])
     if card:

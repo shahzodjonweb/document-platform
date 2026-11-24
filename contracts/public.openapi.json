@@ -120,6 +120,10 @@
       },
       "AutoRenewalState": {
         "properties": {
+          "can_turn_on": {
+            "description": "Renewal is off and can be turned on again from the saved card, for the plan paid now.",
+            "type": "boolean"
+          },
           "card": {
             "anyOf": [
               {
@@ -132,6 +136,10 @@
                   },
                   "expiry": {
                     "type": "string"
+                  },
+                  "here": {
+                    "description": "Saved on the website: only such a card is charged in one tap here. A card saved in the bot renews, but is paid with in one tap in the bot.",
+                    "type": "boolean"
                   },
                   "id": {
                     "format": "uuid",
@@ -149,7 +157,8 @@
                   "masked",
                   "last4",
                   "expiry",
-                  "consent_max"
+                  "consent_max",
+                  "here"
                 ],
                 "type": "object"
               },
@@ -159,7 +168,7 @@
             ]
           },
           "offered": {
-            "description": "Whether this customer may save a card and renew monthly now (in the bot).",
+            "description": "Whether this customer may save a card on the website and renew monthly now.",
             "type": "boolean"
           },
           "renewal": {
@@ -225,7 +234,8 @@
         "required": [
           "offered",
           "card",
-          "renewal"
+          "renewal",
+          "can_turn_on"
         ],
         "type": "object"
       },
@@ -504,6 +514,79 @@
           "id",
           "status",
           "attempts"
+        ],
+        "type": "object"
+      },
+      "CardCharge": {
+        "properties": {
+          "active_until": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "amount": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "last4": {
+            "type": "string"
+          },
+          "plan": {
+            "enum": [
+              "plus",
+              "premium"
+            ]
+          },
+          "reason": {
+            "enum": [
+              "declined",
+              "consent_limit",
+              "card_removed",
+              "unavailable",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "renews_at": {
+            "description": "When renewal next charges this card, for a first month that turned it on.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "paid",
+              "failed",
+              "review",
+              "refunded"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "plan",
+          "amount",
+          "currency",
+          "last4",
+          "reason",
+          "active_until",
+          "renews_at"
         ],
         "type": "object"
       },
@@ -3271,6 +3354,62 @@
         ],
         "type": "object"
       },
+      "SavedCardState": {
+        "properties": {
+          "bind_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "charge": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CardCharge"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "last4": {
+            "type": "string"
+          },
+          "plan": {
+            "enum": [
+              "plus",
+              "premium",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "enum": [
+              "binding",
+              "active",
+              "expired",
+              "removing",
+              "removed"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "plan",
+          "last4",
+          "bind_url",
+          "charge"
+        ],
+        "type": "object"
+      },
       "SavedDefinition": {
         "properties": {
           "content": {
@@ -5924,6 +6063,85 @@
         ]
       }
     },
+    "/billing/cards": {
+      "post": {
+        "description": "Open inPAY's page for saving a card, to pay for the plan once it is saved and renew it every month. Follow `bind_url`; inPAY returns the customer to /<locale>/app/card/<id>.",
+        "operationId": "saveCard",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "plan": {
+                    "enum": [
+                      "plus",
+                      "premium"
+                    ]
+                  }
+                },
+                "required": [
+                  "plan"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedCardState"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
     "/billing/cards/{id}": {
       "delete": {
         "description": "Remove a saved card at inPAY: nothing is charged to it again, and its renewal stops.",
@@ -5953,6 +6171,154 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AutoRenewalState"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      },
+      "get": {
+        "description": "Where a card being saved stands: asks inPAY (at most every few seconds), and once the card is saved pays for its plan, once. `charge` is that first month.",
+        "operationId": "getSavedCard",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedCardState"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      }
+    },
+    "/billing/cards/{id}/charge": {
+      "post": {
+        "description": "Pay for a plan from a card saved on the website, in one tap. With `renew`, renewal turns on from it once paid. A second tap within two minutes returns the first charge.",
+        "operationId": "chargeSavedCard",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "plan": {
+                    "enum": [
+                      "plus",
+                      "premium"
+                    ]
+                  },
+                  "renew": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "plan"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardCharge"
                 }
               }
             },
@@ -6522,8 +6888,64 @@
         ]
       },
       "get": {
-        "description": "The card saved in the bot through inPAY Avto PAY, and its monthly renewal.",
+        "description": "The customer's card saved through inPAY Avto PAY (on the website or in the bot), and its monthly renewal.",
         "operationId": "getRenewal",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutoRenewalState"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Permission or CSRF validation failed"
+          },
+          "409": {
+            "description": "State conflict or quota unavailable"
+          }
+        },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ]
+      },
+      "post": {
+        "description": "Turn monthly renewal on again from the saved card, for the plan paid now, from the end of the paid time. 409 renewal_unavailable without a paid plan.",
+        "operationId": "turnOnRenewal",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRFToken",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
