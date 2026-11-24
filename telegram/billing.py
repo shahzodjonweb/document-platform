@@ -210,6 +210,190 @@ PLAN_COPY = {
 }
 PLAN_ICONS = {'free': '🆓', 'plus': '⭐', 'premium': '💎'}
 
+# Saved cards and monthly renewal (apps/commerce/autopay.py).
+CARD_COPY = {
+    'en': {
+        'choice': "<b>{icon} {plan} — {price} so'm for 30 days</b>{note}\n\nHow would you like to pay?\n\n"
+                  "💳 <b>Pay once</b> on inPAY's page with Click, Payme, Uzcard or Humo. Nothing renews.\n"
+                  "🔁 <b>Renew every month</b> from your Uzcard or Humo card: {price} so'm now and every 30 days. "
+                  "We remind you 3 days before each charge, and you can turn it off or remove the card any time in /subscription.",
+        'choice_card': "\n\nYour saved card: •••• {last4}",
+        'pay_once': "💳 Pay once — {price} so'm",
+        'pay_renew': '🔁 Pay and renew every month',
+        'pay_card': "💳 Pay {price} so'm with •••• {last4}",
+        'pay_card_renew': '🔁 Pay with •••• {last4} and renew monthly',
+        'pay_other': "🌐 Pay once on inPAY's page",
+        'confirm': "<b>Confirm payment</b>\n{plan} for 30 days: <b>{price} so'm</b> from card •••• {last4}.",
+        'confirm_renew': "\nThen {price} so'm every 30 days, until you turn it off in /subscription.",
+        'confirm_pay': "✅ Pay {price} so'm",
+        'bind': "<b>🔁 {plan} — {price} so'm every 30 days</b>\n\n"
+                "1. Tap «Save card» and enter your Uzcard or Humo card and the SMS code on inPAY's page. "
+                "There you can also set the most that may be charged at once.\n"
+                "2. Come back here: we charge {price} so'm for the first month right away, then every 30 days.\n\n"
+                "We remind you 3 days before each charge. Turn it off or remove the card any time in /subscription. "
+                "The page stays open for 30 minutes.",
+        'save_card': '💳 Save card on inPAY',
+        'saved_check': "🔄 I've saved it — continue",
+        'bind_waiting': "⏳ We don't see the saved card yet. Finish on inPAY's page, then tap «I've saved it — continue».",
+        'bind_closed': 'The page for saving your card has closed. Start again from /plans.',
+        'card_paid': '✅ Payment received! {plan} is active until {date}. Thank you!',
+        'card_renew_note': "🔁 It renews by itself on {date}: {price} so'm from card •••• {last4}. Turn it off any time in /subscription.",
+        'card_failed': "⚠️ We couldn't charge {price} so'm from card •••• {last4} for {plan}: {reason}. Nothing was charged. You can pay another way: /plans",
+        'renewed': "🔁 {plan} renewed until {date}: {price} so'm charged from card •••• {last4}. Thank you!",
+        'renewal_failed': "⚠️ We couldn't charge {price} so'm from card •••• {last4} to renew {plan}: {reason}. "
+                          "We'll try again on {later}. To keep your plan without a break, pay now: /plans",
+        'renewal_upcoming': "🔁 Your {plan} renews on {date}: {price} so'm will be charged from card •••• {last4}. "
+                            "To stop it, turn auto-renewal off in /subscription.",
+        'renewal_stopped': '⚠️ Auto-renewal of {plan} has stopped: {reason}. To keep using {plan}, pay again: /plans',
+        'renew_on': "🔁 Auto-renewal: on. Next charge {date}: {price} so'm from card •••• {last4}.",
+        'renew_retry': '⚠️ The last renewal charge did not go through. Next try: {date}.',
+        'renew_off': 'Auto-renewal: off.',
+        'renew_stopped': 'Auto-renewal stopped: {reason}.',
+        'card_line': 'Saved card: •••• {last4}',
+        'renew_turn_off': '⏸ Turn off auto-renewal',
+        'renew_turn_on': '▶️ Turn on auto-renewal',
+        'card_remove': '🗑 Remove card •••• {last4}',
+        'remove_confirm': 'Remove card •••• {last4}? Auto-renewal stops, and nothing is charged to this card again.',
+        'card_remove_yes': '🗑 Remove card',
+        'card_removed': 'Your card is removed. No automatic payments will be made from now on.',
+        'renew_turned_off': 'Auto-renewal is off. Your plan stays active until {date}, then ends. '
+                            'Your card stays saved for paying in one tap; you can remove it below.',
+        'renew_turned_on': "🔁 Auto-renewal is on. Next charge {date}: {price} so'm from card •••• {last4}.",
+        'reason_declined': 'the bank declined the charge three times',
+        'reason_card_removed': 'the card is no longer saved',
+        'reason_consent_limit': 'the price is above the limit you set for this card',
+        'reason_not_on_sale': 'this plan is no longer sold',
+        'reason_review': 'we need to check the last charge, and will message you',
+        'reason_CHARGE_FAILED': 'the bank declined it (not enough money, or the card is blocked)',
+        'reason_CONSENT_LIMIT': 'the price is above the limit you set for this card',
+        'reason_CARD_STATE': 'the card is no longer saved at inPAY',
+        'reason_other': 'the payment system did not accept it',
+    },
+    'uz': {
+        'choice': "<b>{icon} {plan} — 30 kun uchun {price} so'm</b>{note}\n\nQanday to‘laysiz?\n\n"
+                  "💳 <b>Bir martalik to‘lov</b>: inPAY sahifasida Click, Payme, Uzcard yoki Humo orqali. Hech narsa o‘zi uzaytirilmaydi.\n"
+                  "🔁 <b>Har oy avtomatik</b>: Uzcard yoki Humo kartangizdan hozir {price} so'm va keyin har 30 kunda. "
+                  "Har yechimdan 3 kun oldin eslatamiz; uni istalgan payt /subscription bo‘limida o‘chirish yoki kartani uzish mumkin.",
+        'choice_card': '\n\nSaqlangan kartangiz: •••• {last4}',
+        'pay_once': "💳 Bir marta to‘lash — {price} so'm",
+        'pay_renew': '🔁 To‘lash va har oy uzaytirish',
+        'pay_card': "💳 •••• {last4} bilan {price} so'm to‘lash",
+        'pay_card_renew': '🔁 •••• {last4} bilan to‘lash va har oy uzaytirish',
+        'pay_other': '🌐 inPAY sahifasida bir marta to‘lash',
+        'confirm': "<b>To‘lovni tasdiqlang</b>\n{plan}, 30 kun: •••• {last4} kartadan <b>{price} so'm</b>.",
+        'confirm_renew': "\nKeyin har 30 kunda {price} so'm, /subscription bo‘limida o‘chirmaguningizcha.",
+        'confirm_pay': "✅ {price} so'm to‘lash",
+        'bind': "<b>🔁 {plan} — har 30 kunda {price} so'm</b>\n\n"
+                "1. «Kartani saqlash» tugmasini bosing va inPAY sahifasida Uzcard yoki Humo kartangiz hamda SMS kodni kiriting. "
+                "U yerda bir martada yechilishi mumkin bo‘lgan eng katta summani ham belgilashingiz mumkin.\n"
+                "2. Shu yerga qayting: birinchi oy uchun {price} so'm darhol yechiladi, keyin har 30 kunda.\n\n"
+                "Har yechimdan 3 kun oldin eslatamiz. Istalgan payt /subscription bo‘limida o‘chiring yoki kartani uzing. "
+                "Sahifa 30 daqiqa ochiq turadi.",
+        'save_card': '💳 inPAY’da kartani saqlash',
+        'saved_check': '🔄 Saqladim — davom etish',
+        'bind_waiting': '⏳ Saqlangan karta hali ko‘rinmayapti. inPAY sahifasida yakunlang, so‘ng «Saqladim — davom etish»ni bosing.',
+        'bind_closed': 'Kartani saqlash sahifasi yopildi. /plans dan qaytadan boshlang.',
+        'card_paid': '✅ To‘lov qabul qilindi! {plan} tarifi {date} gacha faol. Rahmat!',
+        'card_renew_note': "🔁 U {date} kuni o‘zi uzaytiriladi: •••• {last4} kartadan {price} so'm. Istalgan payt /subscription bo‘limida o‘chiring.",
+        'card_failed': "⚠️ {plan} uchun •••• {last4} kartadan {price} so'm yecha olmadik: {reason}. Hech narsa yechilmadi. Boshqa usulda to‘lashingiz mumkin: /plans",
+        'renewed': "🔁 {plan} {date} gacha uzaytirildi: •••• {last4} kartadan {price} so'm yechildi. Rahmat!",
+        'renewal_failed': "⚠️ {plan} ni uzaytirish uchun •••• {last4} kartadan {price} so'm yecha olmadik: {reason}. "
+                          "{later} kuni yana urinib ko‘ramiz. Tarif uzilmasligi uchun hozir to‘lang: /plans",
+        'renewal_upcoming': "🔁 {plan} tarifingiz {date} kuni uzaytiriladi: •••• {last4} kartadan {price} so'm yechiladi. "
+                            "To‘xtatish uchun /subscription bo‘limida avtomatik uzaytirishni o‘chiring.",
+        'renewal_stopped': '⚠️ {plan} ning avtomatik uzaytirilishi to‘xtadi: {reason}. {plan} dan foydalanishni davom ettirish uchun qayta to‘lang: /plans',
+        'renew_on': "🔁 Avtomatik uzaytirish: yoqilgan. Keyingi yechim {date}: •••• {last4} kartadan {price} so'm.",
+        'renew_retry': '⚠️ Oxirgi uzaytirish to‘lovi o‘tmadi. Keyingi urinish: {date}.',
+        'renew_off': 'Avtomatik uzaytirish: o‘chirilgan.',
+        'renew_stopped': 'Avtomatik uzaytirish to‘xtadi: {reason}.',
+        'card_line': 'Saqlangan karta: •••• {last4}',
+        'renew_turn_off': '⏸ Avtomatik uzaytirishni o‘chirish',
+        'renew_turn_on': '▶️ Avtomatik uzaytirishni yoqish',
+        'card_remove': '🗑 •••• {last4} kartani uzish',
+        'remove_confirm': '•••• {last4} kartani uzasizmi? Avtomatik uzaytirish to‘xtaydi va bu kartadan boshqa hech narsa yechilmaydi.',
+        'card_remove_yes': '🗑 Kartani uzish',
+        'card_removed': 'Kartangiz uzildi. Bundan keyin avtomatik to‘lov amalga oshmaydi.',
+        'renew_turned_off': 'Avtomatik uzaytirish o‘chirildi. Tarifingiz {date} gacha faol, keyin tugaydi. '
+                            'Kartangiz bir bosishda to‘lash uchun saqlanib qoladi; uni pastda uzishingiz mumkin.',
+        'renew_turned_on': "🔁 Avtomatik uzaytirish yoqildi. Keyingi yechim {date}: •••• {last4} kartadan {price} so'm.",
+        'reason_declined': 'bank yechimni uch marta rad etdi',
+        'reason_card_removed': 'karta endi saqlanmagan',
+        'reason_consent_limit': 'narx bu karta uchun siz belgilagan chegaradan yuqori',
+        'reason_not_on_sale': 'bu tarif endi sotilmaydi',
+        'reason_review': 'oxirgi yechimni tekshirishimiz kerak, sizga yozamiz',
+        'reason_CHARGE_FAILED': 'bank rad etdi (mablag‘ yetarli emas yoki karta bloklangan)',
+        'reason_CONSENT_LIMIT': 'narx bu karta uchun siz belgilagan chegaradan yuqori',
+        'reason_CARD_STATE': 'karta inPAY’da endi saqlanmagan',
+        'reason_other': 'to‘lov tizimi qabul qilmadi',
+    },
+    'ru': {
+        'choice': "<b>{icon} {plan} — {price} сум за 30 дней</b>{note}\n\nКак хотите оплатить?\n\n"
+                  "💳 <b>Один раз</b> на странице inPAY через Click, Payme, Uzcard или Humo. Ничего не продлевается само.\n"
+                  "🔁 <b>Каждый месяц</b> с карты Uzcard или Humo: {price} сум сейчас и каждые 30 дней. "
+                  "Напомним за 3 дня до каждого списания; отключить или отвязать карту можно в любой момент в /subscription.",
+        'choice_card': '\n\nСохранённая карта: •••• {last4}',
+        'pay_once': '💳 Оплатить один раз — {price} сум',
+        'pay_renew': '🔁 Оплатить и продлевать каждый месяц',
+        'pay_card': '💳 Оплатить {price} сум картой •••• {last4}',
+        'pay_card_renew': '🔁 Оплатить картой •••• {last4} и продлевать',
+        'pay_other': '🌐 Оплатить один раз на странице inPAY',
+        'confirm': '<b>Подтвердите оплату</b>\n{plan} на 30 дней: <b>{price} сум</b> с карты •••• {last4}.',
+        'confirm_renew': '\nЗатем {price} сум каждые 30 дней, пока вы не отключите продление в /subscription.',
+        'confirm_pay': '✅ Оплатить {price} сум',
+        'bind': '<b>🔁 {plan} — {price} сум каждые 30 дней</b>\n\n'
+                '1. Нажмите «Сохранить карту» и введите карту Uzcard или Humo и код из SMS на странице inPAY. '
+                'Там же можно указать наибольшую сумму, которую можно списать за раз.\n'
+                '2. Вернитесь сюда: сразу спишем {price} сум за первый месяц, затем каждые 30 дней.\n\n'
+                'Напомним за 3 дня до каждого списания. Отключить продление или отвязать карту можно в любой момент в /subscription. '
+                'Страница открыта 30 минут.',
+        'save_card': '💳 Сохранить карту в inPAY',
+        'saved_check': '🔄 Сохранил — продолжить',
+        'bind_waiting': '⏳ Сохранённая карта пока не видна. Завершите на странице inPAY и нажмите «Сохранил — продолжить».',
+        'bind_closed': 'Страница сохранения карты закрылась. Начните заново в /plans.',
+        'card_paid': '✅ Оплата получена! Тариф {plan} действует до {date}. Спасибо!',
+        'card_renew_note': '🔁 Он продлится сам {date}: {price} сум с карты •••• {last4}. Отключить можно в любой момент в /subscription.',
+        'card_failed': '⚠️ Не удалось списать {price} сум с карты •••• {last4} за {plan}: {reason}. Ничего не списано. Можно оплатить другим способом: /plans',
+        'renewed': '🔁 Тариф {plan} продлён до {date}: с карты •••• {last4} списано {price} сум. Спасибо!',
+        'renewal_failed': '⚠️ Не удалось списать {price} сум с карты •••• {last4} для продления {plan}: {reason}. '
+                          'Попробуем снова {later}. Чтобы тариф не прерывался, оплатите сейчас: /plans',
+        'renewal_upcoming': '🔁 Ваш тариф {plan} продлится {date}: с карты •••• {last4} спишется {price} сум. '
+                            'Чтобы остановить, отключите автопродление в /subscription.',
+        'renewal_stopped': '⚠️ Автопродление {plan} остановлено: {reason}. Чтобы продолжить пользоваться {plan}, оплатите снова: /plans',
+        'renew_on': '🔁 Автопродление: включено. Следующее списание {date}: {price} сум с карты •••• {last4}.',
+        'renew_retry': '⚠️ Последнее списание за продление не прошло. Следующая попытка: {date}.',
+        'renew_off': 'Автопродление: выключено.',
+        'renew_stopped': 'Автопродление остановлено: {reason}.',
+        'card_line': 'Сохранённая карта: •••• {last4}',
+        'renew_turn_off': '⏸ Отключить автопродление',
+        'renew_turn_on': '▶️ Включить автопродление',
+        'card_remove': '🗑 Отвязать карту •••• {last4}',
+        'remove_confirm': 'Отвязать карту •••• {last4}? Автопродление остановится, и с этой карты больше ничего не спишется.',
+        'card_remove_yes': '🗑 Отвязать карту',
+        'card_removed': 'Карта отвязана. Автоматических списаний больше не будет.',
+        'renew_turned_off': 'Автопродление отключено. Тариф действует до {date}, затем закончится. '
+                            'Карта остаётся сохранённой для оплаты в одно касание; отвязать её можно ниже.',
+        'renew_turned_on': '🔁 Автопродление включено. Следующее списание {date}: {price} сум с карты •••• {last4}.',
+        'reason_declined': 'банк трижды отклонил списание',
+        'reason_card_removed': 'карта больше не сохранена',
+        'reason_consent_limit': 'цена выше лимита, который вы указали для этой карты',
+        'reason_not_on_sale': 'этот тариф больше не продаётся',
+        'reason_review': 'нам нужно проверить последнее списание, мы напишем вам',
+        'reason_CHARGE_FAILED': 'банк отклонил (недостаточно средств или карта заблокирована)',
+        'reason_CONSENT_LIMIT': 'цена выше лимита, который вы указали для этой карты',
+        'reason_CARD_STATE': 'карта больше не сохранена в inPAY',
+        'reason_other': 'платёжная система не приняла списание',
+    },
+}
+
+
+def card_copy(account, key):
+    return CARD_COPY.get(account.locale, CARD_COPY['en'])[key]
+
+
+def reason_text(account, code):
+    words = CARD_COPY.get(account.locale, CARD_COPY['en'])
+    return words.get(f'reason_{code}') or words['reason_other']
+
 
 def plan_name(account, plan):
     return copy(account, 'free') if plan == 'free' else plan.title()
@@ -345,7 +529,10 @@ async def show_offers(message, account, edit=False, source=None, tap=''):
     automatic = cards['automatic']['available']
     rows = []
     # One way to pay at a time: inPAY while it works, card transfer otherwise.
-    action = 'commerce_checkout_plan' if automatic else 'commerce_manual_plan'
+    # With saved cards on, a plan first asks: once, or every month.
+    from apps.commerce import autopay
+    renewable = automatic and await sync_to_async(autopay.offered)(account)
+    action = ('commerce_plan_choice' if renewable else 'commerce_checkout_plan') if automatic else 'commerce_manual_plan'
     for item in cards['plans']:
         rows.append([InlineKeyboardButton(
             text=card_label(account, item),
@@ -524,6 +711,254 @@ async def returned_from_checkout(message, account, reference):
     return await show_offers(message, account, source='payment')
 
 
+# ---- saved cards and monthly renewal (apps/commerce/autopay.py) ----------------------------------
+
+async def show_plan_choice(message, account, plan, edit=False):
+    """Once on inPAY's page, or every month from a saved card: the customer's choice for one plan."""
+    from types import SimpleNamespace
+    from .bot import callback
+    from apps.commerce import autopay
+    await leave_input_prompt(account)
+    price = ((await sync_to_async(autopay.offers)()).get(plan) or {}).get('price')
+    if not price or not await sync_to_async(autopay.offered)(account):
+        return await show_checkout(message, account, plan, edit)
+    card = await sync_to_async(autopay.active_card)(account)
+    note = await sync_to_async(discount_note)(account, SimpleNamespace(plan=plan, amount=price))
+    values = {'plan': plan.title(), 'price': money(price), 'icon': PLAN_ICONS.get(plan, '⭐'), 'note': note}
+    body = card_copy(account, 'choice').format(**values)
+    if card:
+        body += card_copy(account, 'choice_card').format(last4=html.escape(card.last4))
+        rows = [
+            [InlineKeyboardButton(text=card_copy(account, 'pay_card_renew').format(last4=card.last4),
+                                  callback_data=await callback(account, 'commerce_card_confirm', {'plan': plan, 'renew': True}))],
+            [InlineKeyboardButton(text=card_copy(account, 'pay_card').format(price=money(price), last4=card.last4),
+                                  callback_data=await callback(account, 'commerce_card_confirm', {'plan': plan, 'renew': False}))],
+            [InlineKeyboardButton(text=card_copy(account, 'pay_other'),
+                                  callback_data=await callback(account, 'commerce_checkout_plan', {'plan': plan}))],
+        ]
+    else:
+        rows = [
+            [InlineKeyboardButton(text=card_copy(account, 'pay_renew'),
+                                  callback_data=await callback(account, 'commerce_card_bind', {'plan': plan}))],
+            [InlineKeyboardButton(text=card_copy(account, 'pay_once').format(price=money(price)),
+                                  callback_data=await callback(account, 'commerce_checkout_plan', {'plan': plan}))],
+        ]
+    rows.extend(await navigation(account, 'plans', FROM_PAYMENT))
+    await show(message, body, rows, edit, 'HTML')
+
+
+async def show_card_confirm(message, account, plan, renew, edit=False):
+    """One more tap before a saved card is charged: the amount, the card, and whether it renews."""
+    from .bot import callback
+    from apps.commerce import autopay
+    card = await sync_to_async(autopay.active_card)(account)
+    price = ((await sync_to_async(autopay.offers)()).get(plan) or {}).get('price')
+    if card is None or not price:
+        return await show_plan_choice(message, account, plan, edit)
+    body = card_copy(account, 'confirm').format(plan=plan.title(), price=money(price), last4=html.escape(card.last4))
+    if renew:
+        body += card_copy(account, 'confirm_renew').format(price=money(price))
+    rows = [[InlineKeyboardButton(text=card_copy(account, 'confirm_pay').format(price=money(price)),
+                                  callback_data=await callback(account, 'commerce_card_pay',
+                                                               {'plan': plan, 'renew': bool(renew), 'card_id': str(card.id)}))],
+            [await button(account, 'back', 'commerce_plan_choice', {'plan': plan})]]
+    await show(message, body, rows, edit, 'HTML')
+
+
+async def pay_with_card(message, account, plan, renew, card_id):
+    """Charge the saved card for `plan` and say how it went; with `renew`, renewal turns on."""
+    import asyncio
+    from apps.commerce import autopay
+    from apps.commerce.models import SavedCard
+    await leave_input_prompt(account)
+    card = await sync_to_async(lambda: SavedCard.objects.filter(pk=card_id, account=account, status='active').first())()
+    if card is None:
+        return await show_plan_choice(message, account, plan, edit=True)
+    row, request = await sync_to_async(autopay.begin_charge)(account, card, plan, 'first' if renew else 'one_tap')
+    if request is not None:
+        answer, failure = await asyncio.to_thread(autopay.ask_charge, request)
+        row = await sync_to_async(autopay.apply_charge)(row.pk, answer, failure)
+    if renew:
+        await sync_to_async(autopay.after_first)(row)
+    await show_charge_result(message, account, row, edit=True)
+
+
+def _shown_in_chat(row, kind):
+    """The notice the next run would send about this charge, said here already."""
+    from apps.commerce.models import PaymentNotice
+    notice, _ = PaymentNotice.objects.get_or_create(charge=row, kind=kind)
+    PaymentNotice.objects.filter(pk=notice.pk, status__in=('pending', 'retrying')).update(status='skipped', error_code='shown_in_chat')
+
+
+def charge_result_text(account, row):
+    from apps.commerce import autopay
+    from .clock import local_time
+    if row.status == 'paid':
+        period = autopay.period_of(row)
+        text = card_copy(account, 'card_paid').format(plan=row.plan.title(), date=local_time(account, period.ends_at).strftime('%d.%m.%Y') if period else '')
+        renewal = autopay.renewal(account)
+        if row.purpose == 'first' and renewal and renewal.status == 'on':
+            text += '\n' + card_copy(account, 'card_renew_note').format(
+                date=local_time(account, renewal.renews_at).strftime('%d.%m.%Y'), price=money(row.amount), last4=row.card.last4)
+        _shown_in_chat(row, 'card_paid')
+        return text
+    if row.status == 'failed':
+        _shown_in_chat(row, 'card_failed')
+        return card_copy(account, 'card_failed').format(price=money(row.amount), last4=row.card.last4, plan=row.plan.title(),
+                                                        reason=reason_text(account, row.failure))
+    # inPAY's answer was lost: the next run asks again under the same key and messages the customer.
+    return copy(account, 'checkout_waiting')
+
+
+async def show_charge_result(message, account, row, edit=False):
+    text = await sync_to_async(charge_result_text)(account, row)
+    rows = [[await button(account, 'subscription', 'subscription'), await button(account, 'plans', 'plans', FROM_PAYMENT)],
+            *(await navigation(account))]
+    await show(message, text, rows, edit)
+
+
+async def show_binding(message, account, plan, edit=False):
+    """Open inPAY's page for saving a card, for paying for `plan` and renewing it every month."""
+    import asyncio
+    from apps.commerce import autopay
+    await leave_input_prompt(account)
+    try:
+        card, request = await sync_to_async(autopay.begin_binding)(account, plan)
+        if request is not None:
+            answer, failure = await asyncio.to_thread(autopay.ask_binding, request)
+            card = await sync_to_async(autopay.complete_binding)(card, answer, failure)
+    except DomainError as exc:
+        # Saved cards are not on, or inPAY's page could not be opened: paying once is still there.
+        if exc.code not in ('autopay_unavailable', 'checkout_disabled'):
+            raise
+        return await show_checkout(message, account, plan, edit)
+    await show_binding_card(message, account, card, edit)
+
+
+async def show_binding_card(message, account, card, edit=False):
+    from .bot import callback
+    from apps.commerce import autopay
+    plan = card.intent or 'plus'
+    price = ((await sync_to_async(autopay.offers)()).get(plan) or {}).get('price') or 0
+    body = card_copy(account, 'bind').format(plan=plan.title(), price=money(price))
+    rows = [
+        # A link, not a Mini App: the bank's SMS page works the same in any browser.
+        [InlineKeyboardButton(text=card_copy(account, 'save_card'), url=card.bind_url)],
+        [InlineKeyboardButton(text=card_copy(account, 'saved_check'),
+                              callback_data=await callback(account, 'commerce_card_check', {'card_id': str(card.id)}))],
+        *(await navigation(account, 'plans', FROM_PAYMENT)),
+    ]
+    await show(message, body, rows, edit, 'HTML')
+
+
+async def check_binding(message, account, reference, edit=False):
+    """«I've saved it»: ask inPAY whether the card is saved; then pay for the plan and turn renewal on."""
+    import asyncio
+    import uuid
+    from apps.commerce import autopay
+    from apps.commerce.models import SavedCard
+    try:
+        card_id = uuid.UUID(str(reference))
+    except ValueError:
+        card_id = None
+    card = await sync_to_async(lambda: SavedCard.objects.filter(pk=card_id, account=account).first())() if card_id else None
+    if card is None:
+        return await show_offers(message, account, source='payment')
+    if card.status == 'binding':
+        question = await sync_to_async(autopay.look_cards)(card)
+        if question is not None:
+            cards, _ = await asyncio.to_thread(autopay.ask_cards, question)
+            if cards is not None:
+                card = await sync_to_async(autopay.apply_cards)(card.pk, cards)
+    if card.status == 'binding':
+        await message.answer(card_copy(account, 'bind_waiting'))
+        return await show_binding_card(message, account, card)
+    if card.status != 'active':
+        await message.answer(card_copy(account, 'bind_closed'))
+        return await show_offers(message, account, source='payment')
+    plan = await sync_to_async(autopay.claim_intent)(card)
+    if not plan:
+        # Saved already, and its first month paid (here or by the periodic run): say where it stands.
+        return await show_subscription(message, account, edit=edit)
+    row, request = await sync_to_async(autopay.begin_charge)(account, card, plan, 'first')
+    if request is not None:
+        answer, failure = await asyncio.to_thread(autopay.ask_charge, request)
+        row = await sync_to_async(autopay.apply_charge)(row.pk, answer, failure)
+    await sync_to_async(autopay.after_first)(row)
+    await show_charge_result(message, account, row, edit=edit)
+
+
+async def renewal_lines(account):
+    """The saved card and renewal, under the plan on the subscription screen, and their buttons."""
+    from .bot import callback
+    from apps.commerce import autopay
+    from .clock import local_time
+    state = await sync_to_async(autopay.status)(account)
+    card, plan = state['card'], state['renewal']
+    lines, rows = [], []
+    if plan and plan['status'] == 'on' and card:
+        date = local_time(account, plan['renews_at']).strftime('%d.%m.%Y')
+        lines.append(card_copy(account, 'renew_on').format(date=date, price=money(plan['amount']) if plan['amount'] else '—',
+                                                           last4=html.escape(card['last4'])))
+        if plan['attempts'] and plan['next_try_at']:
+            lines.append(card_copy(account, 'renew_retry').format(date=local_time(account, plan['next_try_at']).strftime('%d.%m.%Y')))
+        rows.append([InlineKeyboardButton(text=card_copy(account, 'renew_turn_off'),
+                                          callback_data=await callback(account, 'commerce_renew_off'))])
+    elif card:
+        if plan and plan['status'] == 'stopped':
+            lines.append(card_copy(account, 'renew_stopped').format(reason=html.escape(reason_text(account, plan['stopped_reason']))))
+        elif plan:
+            lines.append(card_copy(account, 'renew_off'))
+        lines.append(card_copy(account, 'card_line').format(last4=html.escape(card['last4'])))
+        if state['offered'] and await sync_to_async(autopay.paid_until)(account):
+            rows.append([InlineKeyboardButton(text=card_copy(account, 'renew_turn_on'),
+                                              callback_data=await callback(account, 'commerce_renew_on'))])
+    if card:
+        # inPAY's contract: the customer can always take the card away from here.
+        rows.append([InlineKeyboardButton(text=card_copy(account, 'card_remove').format(last4=card['last4']),
+                                          callback_data=await callback(account, 'commerce_card_remove', {'card_id': card['id']}))])
+    return lines, rows
+
+
+async def show_card_remove(message, account, card_id, edit=False):
+    from .bot import callback
+    from apps.commerce.models import SavedCard
+    card = await sync_to_async(lambda: SavedCard.objects.filter(pk=card_id, account=account, status__in=('active', 'binding')).first())()
+    if card is None:
+        return await show_subscription(message, account, edit)
+    rows = [[InlineKeyboardButton(text=card_copy(account, 'card_remove_yes'),
+                                  callback_data=await callback(account, 'commerce_card_remove_yes', {'card_id': str(card.id)}))],
+            [await button(account, 'back', 'subscription')]]
+    await show(message, card_copy(account, 'remove_confirm').format(last4=card.last4), rows, edit)
+
+
+async def remove_card(message, account, card_id):
+    import asyncio
+    from apps.commerce import autopay
+    card, request = await sync_to_async(autopay.begin_removal)(account, card_id)
+    done, _ = await asyncio.to_thread(autopay.ask_removal, request)
+    await sync_to_async(autopay.finish_removal)(card, done)
+    rows = [[await button(account, 'subscription', 'subscription'), await button(account, 'plans', 'plans', FROM_PAYMENT)],
+            *(await navigation(account))]
+    await show(message, card_copy(account, 'card_removed'), rows, edit=True)
+
+
+async def switch_renewal(message, account, on):
+    from apps.commerce import autopay
+    from .clock import local_time
+    if on:
+        renewal = await sync_to_async(autopay.turn_on)(account)
+        price = ((await sync_to_async(autopay.offers)()).get(renewal.plan) or {}).get('price')
+        text = card_copy(account, 'renew_turned_on').format(date=local_time(account, renewal.renews_at).strftime('%d.%m.%Y'),
+                                                            price=money(price) if price else '—', last4=renewal.card.last4)
+    else:
+        await sync_to_async(autopay.turn_off)(account)
+        until = await sync_to_async(autopay.paid_until)(account)
+        text = card_copy(account, 'renew_turned_off').format(date=local_time(account, until).strftime('%d.%m.%Y') if until else '—')
+    await message.answer(text)
+    await show_subscription(message, account)
+
+
 def discount_note(account, payment):
     """The regular price struck through, with how much off until when, under the
     title of a payment screen that asks for a discounted amount; otherwise ''.
@@ -585,8 +1020,9 @@ def _invite_months_ahead(account):
 
 
 async def show_subscription(message, account, edit=False):
-    """The plan, and until when it is paid for. A card transfer covers 30 days
-    and never renews by itself, so there is no renewal to switch, only the
+    """The plan, and until when it is paid for; the saved card and its monthly
+    renewal, with the buttons to turn renewal off and to remove the card. A plan
+    paid once covers 30 days and never renews by itself: there is only the
     plans to pay again from."""
     await leave_input_prompt(account)
     data = await sync_to_async(subscription_data)(account)
@@ -609,7 +1045,10 @@ async def show_subscription(message, account, edit=False):
             lines.append(copy(account, 'expired'))
         if rewarded:
             lines.append(invite_copy(account.locale, 'from_invites'))
-    rows = [[await button(account, 'plans', 'plans', {'from': 'subscription'})], *(await navigation(account))]
+    renewal, switches = await renewal_lines(account)
+    if renewal:
+        lines += [''] + renewal
+    rows = [*switches, [await button(account, 'plans', 'plans', {'from': 'subscription'})], *(await navigation(account))]
     await show(message, '\n'.join(lines), rows, edit, 'HTML')
 
 
@@ -669,6 +1108,24 @@ def register_billing_handlers(dp):
                 await show_checkout(query.message, account, ref.payload['plan'], edit=True)
             elif ref.action == 'commerce_checkout_check':
                 await check_checkout(query.message, account, ref.payload['checkout_id'])
+            elif ref.action == 'commerce_plan_choice':
+                await show_plan_choice(query.message, account, ref.payload['plan'], edit=True)
+            elif ref.action == 'commerce_card_confirm':
+                await show_card_confirm(query.message, account, ref.payload['plan'], ref.payload.get('renew'), edit=True)
+            elif ref.action == 'commerce_card_pay':
+                await pay_with_card(query.message, account, ref.payload['plan'], ref.payload.get('renew'), ref.payload['card_id'])
+            elif ref.action == 'commerce_card_bind':
+                await show_binding(query.message, account, ref.payload['plan'], edit=True)
+            elif ref.action == 'commerce_card_check':
+                await check_binding(query.message, account, ref.payload['card_id'])
+            elif ref.action == 'commerce_renew_off':
+                await switch_renewal(query.message, account, on=False)
+            elif ref.action == 'commerce_renew_on':
+                await switch_renewal(query.message, account, on=True)
+            elif ref.action == 'commerce_card_remove':
+                await show_card_remove(query.message, account, ref.payload['card_id'], edit=True)
+            elif ref.action == 'commerce_card_remove_yes':
+                await remove_card(query.message, account, ref.payload['card_id'])
             elif ref.action == 'commerce_manual_receipt':
                 from .bot import set_prompt
                 await sync_to_async(set_prompt)(account, 'payment_receipt', {'payment_id': ref.payload['payment_id']})

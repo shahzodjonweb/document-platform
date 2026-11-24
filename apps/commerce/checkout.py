@@ -511,7 +511,12 @@ def housekeeping(now=None):
     ending = SubscriptionPeriod.objects.filter(
         payment__provider=PROVIDER, revoked_at__isnull=True, ends_at__gt=now,
         ends_at__lte=now + timedelta(days=REMINDER_DAYS)).select_related('payment')
+    # A plan that renews by itself is announced as a renewal instead (apps/commerce/autopay.py).
+    from .autopay import renewing
+    renews = renewing()
     for period in ending:
+        if period.account_id in renews:
+            continue
         later = SubscriptionPeriod.objects.filter(account_id=period.account_id, revoked_at__isnull=True,
                                                   ends_at__gt=period.ends_at).exists()
         row = Checkout.objects.filter(payment=period.payment).first()
@@ -526,9 +531,10 @@ def refund(payment, actor, reason):
     inPAY refunds nothing through its API, so this only records what the owner
     has already done in the inPAY cabinet.
     """
-    from .models import Checkout
+    from .models import CardCharge, Checkout
     from .services import refund_payment
-    row = Checkout.objects.filter(payment=payment).first()
+    # Paid on inPAY's page, or charged to a saved card (apps/commerce/autopay.py): returned the same way.
+    row = Checkout.objects.filter(payment=payment).first() or CardCharge.objects.filter(payment=payment).first()
     if not row or row.status != 'paid':
         raise DomainError('manual_payment_not_refundable', 409)
     return refund_payment(payment, reason, actor=actor)

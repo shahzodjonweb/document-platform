@@ -646,6 +646,14 @@ def cleanup_expired():
     except Exception:
         import logging
         logging.getLogger(__name__).exception('Checking inPAY payments failed; the next cleanup tries again')
+    # Saved cards and monthly renewal: cards being saved are finished, renewals
+    # due are charged, and the next ones announced. Never stops the cleanup.
+    try:
+        from apps.commerce.autopay import housekeeping as autopay_housekeeping
+        autopay_housekeeping(now)
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception('Saved cards and renewals failed; the next cleanup tries again')
     # Invitations: friends who finished a first task are counted, and the Plus
     # months they earn are given. A failure here never stops the cleanup.
     try:

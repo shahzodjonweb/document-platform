@@ -7,7 +7,7 @@ from apps.core.errors import DomainError
 from .auth import require_staff,audit,development_access
 from .views import context,finish_render
 from datetime import datetime
-from .integrations import inpay_config,test_inpay,telegram_config,ai_config,google_config,email_config,antibot_config,pixabay_config,manual_payment_config,channel_gate_config,test_channels,CARD_LABELS,save_config,test_telegram,test_email,test_pixabay,control_runner,runner_status,object_storage_config,test_object_storage
+from .integrations import inpay_config,test_inpay,test_autopay,telegram_config,ai_config,google_config,email_config,antibot_config,pixabay_config,manual_payment_config,channel_gate_config,test_channels,CARD_LABELS,save_config,test_telegram,test_email,test_pixabay,control_runner,runner_status,object_storage_config,test_object_storage
 from .models import IntegrationConfig
 from apps.studio.tuning import EFFORTS,TIERS
 
@@ -225,6 +225,40 @@ INPAY_KASSA_LABELS = {
            'payment_way_web': 'Клиенты на сайте платят', 'payment_way_bot': 'Клиенты в боте платят'},
 }
 for language, labels in INPAY_KASSA_LABELS.items(): LABELS[language].update(labels)
+# Saved cards and monthly renewal through inPAY's Avto PAY (apps/commerce/autopay.py).
+AUTOPAY_LABELS = {
+    'en': {'autopay': 'Saved cards and monthly renewal (Avto PAY)', 'autopay_enabled': 'Let bot customers save a card and renew every month',
+           'autopay_audience': 'Who sees it', 'autopay_owner': 'Only me, to try it first', 'autopay_everyone': 'Every customer',
+           'autopay_key_id': 'Avto PAY key ID (ap_…)', 'autopay_secret': 'Avto PAY secret', 'autopay_remove': 'Remove the saved Avto PAY key',
+           'autopay_test': 'Test Avto PAY',
+           'autopay_hint': 'In the inPAY cabinet open Xizmatlar → Avto PAY → Kalitlar, create a key for this kassa and paste its ID and secret here (the secret is shown once). Customers save their card on inPAY’s own page; we never see the number. There is no test mode: every charge is real money. Start with «Only me», buy a plan with «Pay and renew every month» from your own Telegram, then switch to «Every customer». The bot always offers «Remove card», as inPAY requires.',
+           'autopay_state_on': 'On', 'autopay_state_off': 'Off', 'autopay_for_owner': 'shown only to you', 'autopay_for_everyone': 'shown to every customer',
+           'autopay_stats': '{renewing} customers renew monthly · {cards} saved cards', 'autopay_connected': 'inPAY accepted the Avto PAY key.',
+           'invalid_autopay_key': 'Check the Avto PAY key ID (it starts with ap_) and its secret.',
+           'autopay_not_configured': 'Save the Avto PAY key ID and secret before switching it on.',
+           'autopay_connection_failed': 'inPAY did not accept the Avto PAY key. Check the key ID and secret, and that Avto PAY is approved for this kassa.'},
+    'uz': {'autopay': 'Saqlangan kartalar va oylik uzaytirish (Avto PAY)', 'autopay_enabled': 'Botdagi mijozlarga kartani saqlash va har oy uzaytirishga ruxsat berish',
+           'autopay_audience': 'Kim ko‘radi', 'autopay_owner': 'Faqat men, avval sinab ko‘rish uchun', 'autopay_everyone': 'Barcha mijozlar',
+           'autopay_key_id': 'Avto PAY kalit ID (ap_…)', 'autopay_secret': 'Avto PAY maxfiy kaliti', 'autopay_remove': 'Saqlangan Avto PAY kalitini o‘chirish',
+           'autopay_test': 'Avto PAY’ni tekshirish',
+           'autopay_hint': 'inPAY kabinetida Xizmatlar → Avto PAY → Kalitlar bo‘limini oching, shu kassa uchun kalit yarating va uning ID hamda maxfiy kalitini shu yerga kiriting (maxfiy kalit bir marta ko‘rsatiladi). Mijozlar kartasini inPAY’ning o‘z sahifasida saqlaydi; biz raqamni hech qachon ko‘rmaymiz. Sinov rejimi yo‘q: har bir yechim haqiqiy pul. «Faqat men» bilan boshlang, o‘z Telegramingizdan «To‘lash va har oy uzaytirish» bilan tarif sotib oling, so‘ng «Barcha mijozlar»ga o‘tkazing. Bot inPAY talabiga ko‘ra har doim «Kartani uzish» tugmasini ko‘rsatadi.',
+           'autopay_state_on': 'Yoqilgan', 'autopay_state_off': 'O‘chirilgan', 'autopay_for_owner': 'faqat sizga ko‘rinadi', 'autopay_for_everyone': 'barcha mijozlarga ko‘rinadi',
+           'autopay_stats': '{renewing} mijoz har oy uzaytiradi · {cards} ta saqlangan karta', 'autopay_connected': 'inPAY Avto PAY kalitini qabul qildi.',
+           'invalid_autopay_key': 'Avto PAY kalit ID (ap_ bilan boshlanadi) va maxfiy kalitini tekshiring.',
+           'autopay_not_configured': 'Yoqishdan oldin Avto PAY kalit ID va maxfiy kalitini saqlang.',
+           'autopay_connection_failed': 'inPAY Avto PAY kalitini qabul qilmadi. Kalit ID, maxfiy kalit va Avto PAY shu kassa uchun tasdiqlanganini tekshiring.'},
+    'ru': {'autopay': 'Сохранённые карты и ежемесячное продление (Avto PAY)', 'autopay_enabled': 'Разрешить клиентам в боте сохранять карту и продлевать каждый месяц',
+           'autopay_audience': 'Кто видит', 'autopay_owner': 'Только я, чтобы сначала проверить', 'autopay_everyone': 'Все клиенты',
+           'autopay_key_id': 'ID ключа Avto PAY (ap_…)', 'autopay_secret': 'Секрет Avto PAY', 'autopay_remove': 'Удалить сохранённый ключ Avto PAY',
+           'autopay_test': 'Проверить Avto PAY',
+           'autopay_hint': 'В кабинете inPAY откройте Xizmatlar → Avto PAY → Kalitlar, создайте ключ для этой кассы и вставьте сюда его ID и секрет (секрет показывается один раз). Клиенты сохраняют карту на собственной странице inPAY; номер карты мы никогда не видим. Тестового режима нет: каждое списание — реальные деньги. Начните с «Только я», купите тариф с «Оплатить и продлевать каждый месяц» из своего Telegram, затем переключите на «Все клиенты». Бот всегда показывает «Отвязать карту», как требует inPAY.',
+           'autopay_state_on': 'Включено', 'autopay_state_off': 'Выключено', 'autopay_for_owner': 'видно только вам', 'autopay_for_everyone': 'видно всем клиентам',
+           'autopay_stats': 'Продлевают каждый месяц: {renewing} · сохранённых карт: {cards}', 'autopay_connected': 'inPAY принял ключ Avto PAY.',
+           'invalid_autopay_key': 'Проверьте ID ключа Avto PAY (начинается с ap_) и его секрет.',
+           'autopay_not_configured': 'Сохраните ID ключа и секрет Avto PAY, прежде чем включать.',
+           'autopay_connection_failed': 'inPAY не принял ключ Avto PAY. Проверьте ID ключа, секрет и что Avto PAY одобрен для этой кассы.'},
+}
+for language, labels in AUTOPAY_LABELS.items(): LABELS[language].update(labels)
 CHANNEL_SECTION_LABELS = {
     'en': {'bot_not_configured': 'Set the Telegram bot token above first.', 'channels': 'Required Telegram channels', 'channels_enabled': 'Free and Plus customers must join these channels to use the services',
            'channels_list': 'Channels, one per line',
@@ -336,8 +370,14 @@ COMPANY_LABELS = {
 for language, labels in COMPANY_LABELS.items(): LABELS[language].update(labels)
 
 
+def _autopay_stats(labels):
+    from apps.commerce.models import AutoRenewal, SavedCard
+    return labels['autopay_stats'].format(renewing=AutoRenewal.objects.filter(status='on').count(),
+                                          cards=SavedCard.objects.filter(status='active').count())
+
+
 @require_staff()
-@sensitive_post_parameters('token','api_key','client_secret','password','secret_key','pixabay_key','access_key','webhook_secret','merchant_token')
+@sensitive_post_parameters('token','api_key','client_secret','password','secret_key','pixabay_key','access_key','webhook_secret','merchant_token','autopay_secret')
 @require_http_methods(['GET','POST'])
 def integrations(request):
     data=context(request,'integrations');labels=LABELS[data['lang']];data['i']=labels;data['title']=labels['integrations']
@@ -345,8 +385,10 @@ def integrations(request):
         action=request.POST.get('action','save')
         try:
             key=request.POST.get('integration','telegram')
-            if action!='save' and key!='telegram' and not (key in ('email','pixabay','channels','object_storage','inpay','inpay_bot') and action=='test'):raise DomainError('invalid_parameters')
+            if action!='save' and key!='telegram' and not (key in ('email','pixabay','channels','object_storage','inpay','inpay_bot') and action=='test') \
+                    and not (key=='inpay_bot' and action=='test_autopay'):raise DomainError('invalid_parameters')
             if action=='save':save_config(key,request.POST);message='saved'
+            elif action=='test_autopay':test_autopay('bot');message='autopay_connected'
             elif action=='test':
                 if key=='email':test_email();message='email_connected'
                 elif key=='pixabay':test_pixabay();message='pixabay_connected'
@@ -365,6 +407,8 @@ def integrations(request):
             # Which kind of key takes customers' money, and whether it is switched on; never any part of the key.
             if key in ('inpay','inpay_bot'):
                 pay=inpay_config('bot' if key=='inpay_bot' else 'web');after.update(api=pay['api'],live=pay['live'],enabled=pay['enabled'])
+                # Who may have their card charged without a code, and whether it is on; never the key.
+                after.update(autopay=pay['autopay_enabled'],autopay_audience=pay['autopay_audience'],autopay_key=bool(pay['autopay_configured']))
             audit(request.ops_user,'integration.'+action,key,after=after)
             return redirect('/ops/integrations?lang='+data['lang']+'&notice='+message)
         except DomainError as e:
@@ -425,5 +469,9 @@ def integrations(request):
             'missing':labels['inpay_no_bot'] if bot_kassa and not username else labels['inpay_no_site'] if not bot_kassa and not site else '',
             'signed':bool(pay['webhook_secret']),'priced':bool(card_prices()),'owner_known':bool(card['alert_telegram_id']),
             # Customers are offered one way at a time in each place; the cards say which it is now.
-            'way':payment_way(kassa),'way_label':labels['payment_way_'+kassa]})
+            'way':payment_way(kassa),'way_label':labels['payment_way_'+kassa],
+            # Avto PAY, on the bot's kassa only for now: the key's id is shown, its secret never.
+            'autopay':bot_kassa,'autopay_enabled':pay['autopay_enabled'],'autopay_configured':pay['autopay_configured'],
+            'autopay_key_id':pay['autopay_key_id'],'autopay_audience':pay['autopay_audience'],
+            'autopay_stats':_autopay_stats(labels) if bot_kassa else ''})
     return finish_render(request,'ops/integrations.html',data)

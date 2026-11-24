@@ -63,7 +63,11 @@ REUSABLE={'home','menu','account','plans','subscription','language','help','rece
           'prompt','attach','preview','done','retry','cancel','new','tool','start_tool','ai_tool','ai_examples',
           'ai_revise','ai_count','ai_retarget','support','contacts','job','download','channels_check',
           'commerce_manual_plan','commerce_manual_receipt','commerce_checkout_plan',
-          'commerce_checkout_check','cv_mode','cv_wait_check','invite'}
+          'commerce_checkout_check','cv_mode','cv_wait_check','invite',
+          # Saved cards: screens and harmless switches only. Charging, turning
+          # renewal on and removing a card stay 30-minute buttons.
+          'commerce_plan_choice','commerce_card_confirm','commerce_card_bind','commerce_card_check',
+          'commerce_renew_off','commerce_card_remove'}
 def usable(ref,now=None):
     """Whether a stored button may still be acted on."""
     return bool(ref) and (ref.expires_at>(now or timezone.now()) or ref.action in REUSABLE)
@@ -2706,6 +2710,12 @@ def build_dispatcher():
             from .billing import returned_from_checkout
             account=await account_for(message.from_user)
             try: return await returned_from_checkout(message,account,parts[1][4:])
+            except DomainError as exc: return await safe_error(message,account,exc)
+        if len(parts)>1 and parts[1].startswith('card_'):
+            # Back from inPAY's page for saving a card (apps/commerce/autopay.py).
+            from .billing import check_binding
+            account=await account_for(message.from_user)
+            try: return await check_binding(message,account,parts[1][5:])
             except DomainError as exc: return await safe_error(message,account,exc)
         pending={'referral_code':parts[1][4:]} if len(parts)>1 and parts[1].startswith('ref_') else {}
         await on_ready(message,message.from_user,await sync_to_async(chosen_locale)(message.from_user.id),pending)

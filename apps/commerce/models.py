@@ -317,16 +317,127 @@ class Checkout(models.Model):
         constraints=[models.UniqueConstraint(fields=['provider','provider_id'],condition=~models.Q(provider_id=''),name='one_checkout_per_provider_id')]
 
 
+class SavedCard(models.Model):
+    """A customer's card saved at inPAY (Avto to'lov) for paying again without a code.
+
+    The card number never reaches us: the customer types it on inPAY's page
+    and inPAY keeps it. We hold inPAY's card id, the masked number to show,
+    and the mandate inPAY gives as proof of the customer's consent. Only an
+    `active` card is ever charged (apps/commerce/autopay.py).
+    """
+    id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
+    account=models.ForeignKey('core.Account',on_delete=models.PROTECT,related_name='saved_cards')
+    # Which kassa's Avto to'lov holds it: a card saved through one cannot be charged through another.
+    kassa=models.CharField(max_length=8,default='bot')
+    customer_ref=models.CharField(max_length=64)
+    provider_card_id=models.BigIntegerField(null=True)
+    # binding (inPAY's page is open) → active | expired (never finished); removed;
+    # removing: taken away here, still to be told to inPAY.
+    status=models.CharField(max_length=12,default='binding')
+    masked_pan=models.CharField(max_length=32,blank=True)
+    expiry=models.CharField(max_length=8,blank=True)
+    mandate_id=models.CharField(max_length=64,blank=True)
+    # The most the customer agreed to be charged at once, as they set it on inPAY's page.
+    consent_max=models.PositiveIntegerField(null=True)
+    bind_url=models.TextField(blank=True)
+    bind_expires_at=models.DateTimeField(null=True)
+    # The plan to pay for, and renew every month, once the card is saved.
+    intent=models.CharField(max_length=12,blank=True)
+    removed_by=models.CharField(max_length=16,blank=True)
+    created_at=models.DateTimeField(default=timezone.now)
+    activated_at=models.DateTimeField(null=True)
+    removed_at=models.DateTimeField(null=True)
+    last_used_at=models.DateTimeField(null=True)
+    checked_at=models.DateTimeField(null=True)
+    class Meta:
+        indexes=[models.Index(fields=['status','created_at'],name='saved_card_queue'),
+                 models.Index(fields=['account','status'],name='saved_card_account')]
+        constraints=[models.UniqueConstraint(fields=['kassa','provider_card_id'],condition=models.Q(provider_card_id__isnull=False),
+                                             name='one_saved_card_per_provider_card')]
+
+    @property
+    def last4(self):
+        digits=''.join(c for c in self.masked_pan if c.isdigit())
+        return digits[-4:] if len(digits)>=4 else ''
+
+
+class AutoRenewal(models.Model):
+    """A customer's plan renewing every month from their saved card.
+
+    `renews_at` is when the paid period ends and the next charge is due. A
+    charge that fails is tried again a day and three days later (`next_try_at`,
+    `attempts`), then renewal stops and the plan ends as any other would.
+    """
+    account=models.OneToOneField('core.Account',on_delete=models.CASCADE,related_name='auto_renewal')
+    card=models.ForeignKey(SavedCard,on_delete=models.PROTECT,related_name='renewals')
+    plan=models.CharField(max_length=12)
+    # on → off (the customer or the owner turned it off) | stopped (it could not go on, `stopped_reason`)
+    status=models.CharField(max_length=12,default='on')
+    renews_at=models.DateTimeField()
+    attempts=models.PositiveSmallIntegerField(default=0)
+    next_try_at=models.DateTimeField(null=True)
+    failure=models.CharField(max_length=64,blank=True)
+    stopped_reason=models.CharField(max_length=32,blank=True)
+    # The renews_at the customer was last reminded of, so each renewal is announced once.
+    reminded_for=models.DateTimeField(null=True)
+    created_at=models.DateTimeField(default=timezone.now)
+    updated_at=models.DateTimeField(auto_now=True)
+    class Meta:
+        indexes=[models.Index(fields=['status','renews_at'],name='auto_renewal_due')]
+
+
+class CardCharge(models.Model):
+    """One charge of a saved card: the first month, a renewal, or a one-tap payment.
+
+    Its id is the idempotency key inPAY is given, so a charge whose answer was
+    lost is asked again under the same key and never taken twice. A plan is
+    granted only from inPAY's answer that the charge succeeded, for exactly
+    this amount, through the same Invoice, Payment and SubscriptionPeriod as
+    every paid plan, tagged `inpay`.
+    """
+    id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
+    account=models.ForeignKey('core.Account',on_delete=models.PROTECT,related_name='card_charges')
+    card=models.ForeignKey(SavedCard,on_delete=models.PROTECT,related_name='charges')
+    renewal=models.ForeignKey(AutoRenewal,null=True,on_delete=models.SET_NULL,related_name='charges')
+    plan=models.CharField(max_length=12)
+    amount=models.PositiveIntegerField()
+    regular_amount=models.PositiveIntegerField(null=True)
+    currency=models.CharField(max_length=3,default='UZS')
+    # first (with turning renewal on) | renewal | one_tap
+    purpose=models.CharField(max_length=12)
+    # created (inPAY not answered yet) → paid | failed; unknown: asked, answer lost, asked again
+    # with the same key; review: inPAY took an amount this row does not describe; refunded.
+    status=models.CharField(max_length=12,default='created')
+    failure=models.CharField(max_length=64,blank=True)
+    provider_charge_id=models.CharField(max_length=64,blank=True)
+    provider_ref=models.CharField(max_length=64,blank=True)
+    mandate_id=models.CharField(max_length=64,blank=True)
+    # Which try of a renewal this is (1–3), and how many times inPAY was asked under its key.
+    attempt=models.PositiveSmallIntegerField(default=1)
+    tries=models.PositiveSmallIntegerField(default=0)
+    payment=models.OneToOneField(Payment,null=True,on_delete=models.PROTECT,related_name='card_charge')
+    created_at=models.DateTimeField(default=timezone.now)
+    decided_at=models.DateTimeField(null=True)
+    class Meta:
+        indexes=[models.Index(fields=['status','created_at'],name='card_charge_queue'),
+                 models.Index(fields=['account','created_at'],name='card_charge_account')]
+
+
 class PaymentNotice(models.Model):
     """A bot message about a payment: to the customer, or to the owner.
 
-    About a card transfer (`manual`) or an automatic payment (`checkout`),
-    never both. Durable like BotDelivery, so a Telegram hiccup is retried
-    rather than lost, and one row per kind so nothing is ever sent twice.
+    About one thing only: a card transfer (`manual`), an automatic payment
+    (`checkout`), a saved-card charge (`charge`), or a renewal still to come
+    (`renewal`, with `due_for`, the renewal it announces). Durable like
+    BotDelivery, so a Telegram hiccup is retried rather than lost, and one row
+    per kind so nothing is ever sent twice.
     """
     id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
     manual=models.ForeignKey(ManualPayment,null=True,on_delete=models.CASCADE,related_name='notices')
     checkout=models.ForeignKey(Checkout,null=True,on_delete=models.CASCADE,related_name='notices')
+    charge=models.ForeignKey(CardCharge,null=True,on_delete=models.CASCADE,related_name='notices')
+    renewal=models.ForeignKey(AutoRenewal,null=True,on_delete=models.CASCADE,related_name='notices')
+    due_for=models.DateTimeField(null=True)
     kind=models.CharField(max_length=24)
     status=models.CharField(max_length=16,default='pending')
     attempts=models.PositiveIntegerField(default=0)
@@ -338,5 +449,7 @@ class PaymentNotice(models.Model):
     delivered_at=models.DateTimeField(null=True)
     class Meta:
         constraints=[models.UniqueConstraint(fields=['manual','kind'],name='one_payment_notice'),
-                     models.UniqueConstraint(fields=['checkout','kind'],name='one_checkout_notice')]
+                     models.UniqueConstraint(fields=['checkout','kind'],name='one_checkout_notice'),
+                     models.UniqueConstraint(fields=['charge','kind'],name='one_card_charge_notice'),
+                     models.UniqueConstraint(fields=['renewal','kind','due_for'],name='one_renewal_notice')]
         indexes=[models.Index(fields=['status','next_attempt_at'],name='payment_notice_due')]

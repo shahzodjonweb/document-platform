@@ -66,10 +66,14 @@ class Refused(Exception):
         super().__init__(self.code)
 
 
-def _call(method, path, *, headers=None, body=None, query=None):
-    """One request to inPAY: (HTTP status, parsed JSON). Network trouble is Unavailable."""
+def _call(method, path, *, headers=None, body=None, query=None, raw=None):
+    """One request to inPAY: (HTTP status, parsed JSON). Network trouble is Unavailable.
+
+    `raw` is a body already serialized, sent byte for byte: a signed request
+    must send exactly what it signed.
+    """
     url = BASE + path + ('?' + urllib.parse.urlencode(query) if query else '')
-    data = json.dumps(body).encode() if body is not None else None
+    data = raw if raw is not None else json.dumps(body).encode() if body is not None else None
     request = urllib.request.Request(url, data=data, method=method, headers={
         'Accept': 'application/json', **({'Content-Type': 'application/json'} if data is not None else {}),
         **(headers or {})})
@@ -332,6 +336,85 @@ def check(cfg):
         _bearer(cfg, fresh=True)
         return {'live': True}
     raise Refused('not_configured')
+
+
+# ---- Avto to'lov: cards saved on inPAY's page, charged without a code -----------------------
+#
+# A separate product with its own key (`ap_…` and a secret, created in the
+# cabinet under Avto PAY once inPAY has approved it for the kassa). Every
+# request is signed: HMAC-SHA256 of "METHOD\nPATH\nTIMESTAMP\nNONCE\nsha256(body)"
+# with the secret, the query string left out. The card number never reaches
+# us: the customer types it on inPAY's page (`form_url`), and we keep inPAY's
+# card id. There is no test mode: every charge moves real money.
+
+_CARD_STATES = {'active': 'active', 'removed': 'removed', 'blocked': 'removed', 'cancelled': 'removed',
+                'canceled': 'removed', 'revoked': 'removed', 'deleted': 'removed'}
+
+
+def _cards(cfg, method, action, body=None, query=None, kind='open'):
+    """One signed Avto to'lov request: the answer's `data`, or Refused / Unavailable."""
+    import secrets as _secrets
+    if not cfg.get('autopay_key_id') or not cfg.get('autopay_secret'):
+        raise Refused('autopay_not_configured')
+    path = f'/api/v1/cards/{action}'
+    raw = json.dumps(body, ensure_ascii=False, separators=(',', ':')).encode() if body is not None else b''
+    stamp, nonce = str(int(time.time())), _secrets.token_hex(12)
+    base = f'{method}\n{path}\n{stamp}\n{nonce}\n{hashlib.sha256(raw).hexdigest()}'
+    signature = hmac.new(cfg['autopay_secret'].encode(), base.encode(), hashlib.sha256).hexdigest()
+    headers = {'X-Inpay-Key': cfg['autopay_key_id'], 'X-Inpay-Timestamp': stamp, 'X-Inpay-Nonce': nonce,
+               'X-Inpay-Signature': signature}
+    # One budget with the classic API: inPAY counts requests per address, whatever the key.
+    _spend(kind)
+    parsed = _answer(*_call(method, path, headers=headers, query=query, raw=raw if body is not None else None))
+    data = parsed.get('data')
+    return data if isinstance(data, dict) else {}
+
+
+def bind_card(cfg, *, customer_ref, return_url=''):
+    """Begin saving a card: {'card_id', 'url'}, the page where the customer types it (valid 30 minutes)."""
+    data = _cards(cfg, 'POST', 'bind', {'customer_ref': customer_ref, **({'return_url': return_url} if return_url else {})})
+    card_id, url = data.get('card_id'), _secure_page(data.get('form_url'))
+    if type(card_id) is not int or card_id <= 0 or not url:
+        raise Unavailable()
+    return {'card_id': card_id, 'url': url}
+
+
+def list_cards(cfg, *, customer_ref):
+    """The customer's cards as inPAY holds them: [{'card_id', 'state', 'masked', 'expiry', 'mandate', 'consent_max'}]."""
+    data = _cards(cfg, 'GET', 'list', query={'customer_ref': customer_ref}, kind='status')
+    cards = []
+    for card in data.get('cards') or []:
+        if not isinstance(card, dict) or type(card.get('id')) is not int:
+            continue
+        status = str(card.get('status') or '').lower()
+        consent = card.get('consent_max')
+        cards.append({'card_id': card['id'], 'state': _CARD_STATES.get(status, 'pending'),
+                      'masked': str(card.get('masked_pan') or '')[:32], 'expiry': str(card.get('expiry') or '')[:8],
+                      'mandate': str(card.get('mandate_id') or '')[:64],
+                      'consent_max': consent if type(consent) is int and consent > 0 else None})
+    return cards
+
+
+def charge_card(cfg, *, card_id, amount, idem_key, reason, order_ref):
+    """Charge a saved card: {'charge_id', 'state': 'paid' | 'pending', 'amount', 'mandate', 'provider_ref'}.
+
+    `idem_key` makes a repeat safe: the same key returns the first answer, so
+    a request whose answer was lost is sent again with it, never a new one.
+    A refusal (no money, a cancelled card, a limit) is Refused with inPAY's code.
+    """
+    data = _cards(cfg, 'POST', 'charge', {'card_id': card_id, 'amount': amount, 'idem_key': idem_key,
+                                           'reason': reason, 'order_ref': order_ref})
+    charge_id = data.get('charge_id')
+    if charge_id is None or not str(charge_id).strip():
+        raise Unavailable()
+    return {'charge_id': str(charge_id)[:64], 'state': 'paid' if str(data.get('status') or '').lower() == 'success' else 'pending',
+            'amount': _whole(data.get('amount')), 'mandate': str(data.get('mandate_id') or '')[:64],
+            'provider_ref': str(data.get('provider_ref') or '')[:64]}
+
+
+def remove_card(cfg, *, card_id):
+    """Take a saved card away at inPAY: nothing can be charged to it afterwards."""
+    _cards(cfg, 'POST', 'remove', {'card_id': card_id})
 
 
 def webhook_secret(cfg):

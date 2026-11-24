@@ -339,6 +339,9 @@ _INPAY_KEY = re.compile(r'sk_(live|test)_[A-Za-z0-9_-]{8,200}')
 _INPAY_WEBHOOK_SECRET = re.compile(r'whsec_[A-Za-z0-9_-]{8,200}')
 _INPAY_MERCHANT_ID = re.compile(r'[0-9]{1,12}')
 _INPAY_MERCHANT_TOKEN = re.compile(r'[A-Za-z0-9]{16,64}')
+# Avto to'lov's own key: an id the cabinet names `ap_…`, and its secret, shown once.
+_AUTOPAY_KEY = re.compile(r'ap_[A-Za-z0-9_-]{4,120}')
+_AUTOPAY_SECRET = re.compile(r'[A-Za-z0-9_.:+/=-]{16,256}')
 
 
 # One inPAY kassa per place customers pay, each with its own keys and signing
@@ -361,10 +364,28 @@ def inpay_config(kassa='web'):
     merchant_id, token = str(cfg.get('merchant_id') or ''), str(secret.get('merchant_token') or '')
     api = 'v2' if key else 'v1' if merchant_id and token else ''
     enabled = bool(cfg.get('enabled', False))
+    # Avto to'lov (saved cards, monthly renewal): its own key, approved by inPAY
+    # per kassa. It has no test mode, so it starts shown to the owner alone.
+    autopay_key, autopay_secret = str(cfg.get('autopay_key_id') or ''), str(secret.get('autopay_secret') or '')
+    autopay_configured = bool(autopay_key and autopay_secret)
+    autopay_enabled = bool(cfg.get('autopay_enabled', False))
     return {'enabled': enabled, 'api': api, 'configured': bool(api), 'ready': enabled and bool(api),
             'live': bool(api) and not key.startswith('sk_test_'), 'kassa': kassa if kassa in INPAY_KASSAS else 'web',
             'secret_key': key, 'webhook_secret': str(secret.get('webhook_secret') or ''),
-            'merchant_id': merchant_id, 'merchant_token': token}
+            'merchant_id': merchant_id, 'merchant_token': token,
+            'autopay_key_id': autopay_key, 'autopay_secret': autopay_secret, 'autopay_configured': autopay_configured,
+            'autopay_enabled': autopay_enabled, 'autopay_ready': autopay_enabled and autopay_configured,
+            'autopay_audience': 'everyone' if cfg.get('autopay_audience') == 'everyone' else 'owner'}
+
+
+def test_autopay(kassa='bot'):
+    """One harmless signed call with the saved Avto to'lov key, so the owner knows it works before anyone saves a card."""
+    from apps.commerce import inpay
+    cfg = inpay_config(kassa)
+    if not cfg['autopay_configured']: raise DomainError('autopay_not_configured', 409)
+    try: inpay.list_cards(cfg, customer_ref='docmaster-connection-check')
+    except Exception: raise DomainError('autopay_connection_failed', 409) from None
+    return cfg
 
 
 def test_inpay(kassa='web'):
@@ -676,6 +697,24 @@ def save_config(key, values):
         if enabled and not (secrets.get('secret_key') or (merchant_id and secrets.get('merchant_token'))):
             raise DomainError('inpay_not_configured')
         cfg.update(enabled=enabled)
+        # Avto to'lov, on the cards that show it: left as it is by a form without it.
+        if 'autopay_enabled' in values:
+            key_id = str(values.get('autopay_key_id', cfg.get('autopay_key_id', '')) or '').strip()
+            if key_id and not _AUTOPAY_KEY.fullmatch(key_id): raise DomainError('invalid_autopay_key')
+            cfg['autopay_key_id'] = key_id
+            autopay_secret = str(values.get('autopay_secret', '') or '').strip()
+            if autopay_secret:
+                if not _AUTOPAY_SECRET.fullmatch(autopay_secret): raise DomainError('invalid_autopay_key')
+                secrets['autopay_secret'] = autopay_secret
+            if _boolean(values.get('remove_autopay', False)) or not key_id:
+                secrets.pop('autopay_secret', None)
+                if _boolean(values.get('remove_autopay', False)): cfg['autopay_key_id'] = ''
+            autopay = _boolean(values.get('autopay_enabled', False))
+            if autopay and not (cfg.get('autopay_key_id') and secrets.get('autopay_secret')):
+                raise DomainError('autopay_not_configured')
+            audience = str(values.get('autopay_audience', cfg.get('autopay_audience', 'owner')) or 'owner')
+            if audience not in ('owner', 'everyone'): raise DomainError('invalid_parameters')
+            cfg.update(autopay_enabled=autopay, autopay_audience=audience)
     elif key == 'contacts':
         cfg.update({kind: _contact_username(values.get(kind, '')) for kind in CONTACT_KINDS})
         cfg['company'] = _company(values, cfg.get('company') if isinstance(cfg.get('company'), dict) else {})
