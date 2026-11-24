@@ -13,7 +13,7 @@ from apps.core.identity import resolve_account
 from apps.core.models import BotCallback, BotConversation
 from telegram.billing import COPY, PLAN_COPY
 from telegram.local import dispatch_local
-from tests.test_inpay_checkout import OWNER, TEST, FakeInpay, switch_on
+from tests.test_inpay_checkout import BOT_TEST, OWNER, FakeInpay, switch_on
 
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.usefixtures('bot_verification_disabled')]
 
@@ -67,7 +67,7 @@ def run_notices(bot):
 
 
 def test_with_only_inpay_a_plan_leads_straight_to_its_payment_page(customer, bank):
-    switch_on()
+    switch_on(kassa='bot')
     plans = dispatch_local(customer, text='/plans')
     assert "💳 Plus · 20 000 so'm / 30 days" in [button['label'] for button in buttons(plans)]
     last = plans['messages'][-1]['text']
@@ -85,7 +85,7 @@ def test_with_only_inpay_a_plan_leads_straight_to_its_payment_page(customer, ban
 
 
 def test_with_both_set_up_inpay_is_the_way_and_card_transfer_is_not_offered(customer, bank):
-    switch_on(card=True)
+    switch_on(kassa='bot', card=True)
     plans = dispatch_local(customer, text='/plans')
     last = plans['messages'][-1]['text']
     assert PLAN_COPY['en']['how_auto'].split('\n')[2] in last
@@ -102,7 +102,7 @@ def test_a_card_transfer_button_from_before_inpay_leads_to_inpay(customer, bank)
     configure_card()
     before = dispatch_local(customer, text='/plans')
     old = token(before, 'commerce_manual_plan', plan='plus')
-    switch_on(card=True)
+    switch_on(kassa='bot', card=True)
     shown = dispatch_local(customer, callback_data=old)
     assert any(button['url'] and button['url'].startswith('https://inpay.uz/checkout/') for button in buttons(shown))
     assert Checkout.objects.get().plan == 'plus' and not ManualPayment.objects.exists()
@@ -116,14 +116,14 @@ def test_a_card_transfer_begun_before_inpay_is_finished_in_the_chat(customer, ba
     begun = dispatch_local(customer, callback_data=old)
     reference = ManualPayment.objects.get().reference
     assert any(reference in text for text in texts(begun))
-    switch_on(card=True)
+    switch_on(kassa='bot', card=True)
     again = dispatch_local(customer, callback_data=old)
     assert any(reference in text for text in texts(again)) and not Checkout.objects.exists()
     assert token(again, 'commerce_manual_receipt', payment_id=str(ManualPayment.objects.get().id))
 
 
 def test_when_inpay_cannot_open_the_payment_the_customer_pays_by_card_transfer(customer, bank):
-    switch_on(card=True)
+    switch_on(kassa='bot', card=True)
     plans = dispatch_local(customer, text='/plans')
     bank.down = True
     failed = dispatch_local(customer, callback_data=token(plans, 'commerce_checkout_plan', plan='plus'))
@@ -149,7 +149,7 @@ def test_when_inpay_cannot_open_the_payment_the_customer_pays_by_card_transfer(c
 
 
 def test_checking_says_it_is_still_waiting_then_that_it_is_paid_once(customer, bank):
-    switch_on()
+    switch_on(kassa='bot')
     shown = dispatch_local(customer, callback_data=token(dispatch_local(customer, text='/plans'), 'commerce_checkout_plan', plan='plus'))
     row = Checkout.objects.get()
     check = token(shown, 'commerce_checkout_check', checkout_id=str(row.id))
@@ -171,8 +171,44 @@ def test_checking_says_it_is_still_waiting_then_that_it_is_paid_once(customer, b
     assert bot.send_message.await_count == 0
 
 
+def test_coming_back_from_inpays_page_says_the_plan_is_on(customer, bank):
+    """inPAY's return link opens the chat with /start pay_<id>: the payment is looked up at once."""
+    switch_on(kassa='bot')
+    dispatch_local(customer, callback_data=token(dispatch_local(customer, text='/plans'), 'commerce_checkout_plan', plan='plus'))
+    row = Checkout.objects.get()
+    assert bank.payments[row.provider_id]['return_url'].endswith(f'?start=pay_{row.id.hex}')
+    bank.pay(row.provider_id)
+    Checkout.objects.filter(pk=row.pk).update(checked_at=None)
+    back = dispatch_local(customer, text=f'/start pay_{row.id.hex}')
+    assert any(text.startswith('✅ Payment received! Plus is active until ') for text in texts(back))
+    assert effective_plan(customer) == 'plus'
+    assert PaymentNotice.objects.get(checkout=row, kind='paid').status == 'skipped', 'said in the chat already'
+
+
+def test_coming_back_before_the_money_arrives_shows_the_payment_again(customer, bank):
+    switch_on(kassa='bot')
+    dispatch_local(customer, callback_data=token(dispatch_local(customer, text='/plans'), 'commerce_checkout_plan', plan='plus'))
+    row = Checkout.objects.get()
+    Checkout.objects.filter(pk=row.pk).update(checked_at=None)
+    back = dispatch_local(customer, text=f'/start pay_{row.id.hex}')
+    assert COPY['en']['checkout_waiting'] in texts(back)
+    assert any(button['url'] == row.checkout_url for button in buttons(back))
+    assert token(back, 'commerce_checkout_check', checkout_id=str(row.id))
+    assert effective_plan(customer) == 'free'
+
+
+def test_a_return_link_that_is_not_the_customers_payment_leads_to_the_plans(customer, bank):
+    switch_on(kassa='bot')
+    other = chat(982003)
+    row, _ = checkout.create(other, 'plus', 'bot')
+    for link in (f'/start pay_{row.id.hex}', '/start pay_not-a-payment'):
+        back = dispatch_local(customer, text=link)
+        assert "💳 Plus · 20 000 so'm / 30 days" in [button['label'] for button in buttons(back)]
+    assert not bank.count('GET', '/api/v2/payments/'), 'someone else’s payment is not looked up'
+
+
 def test_a_payment_learned_of_by_webhook_is_announced_in_the_chat_once(customer, bank, settings):
-    switch_on()
+    switch_on(kassa='bot')
     row, _ = checkout.create(customer, 'premium', 'bot')
     bank.pay(row.provider_id)
     checkout.refresh(row, force=True)
@@ -200,7 +236,7 @@ def test_someone_who_paid_on_the_website_and_never_met_the_bot_is_not_messaged(b
 
 
 def test_the_reminder_before_an_inpay_plan_ends_leads_back_to_the_plans(customer, bank):
-    switch_on()
+    switch_on(kassa='bot')
     row, _ = checkout.create(customer, 'plus', 'bot')
     bank.pay(row.provider_id)
     checkout.refresh(row, force=True)
@@ -217,7 +253,7 @@ def test_the_reminder_before_an_inpay_plan_ends_leads_back_to_the_plans(customer
 def test_a_test_key_shows_online_payment_to_the_owner_alone(settings, bank):
     settings.DEBUG = True
     settings.COMMERCE_SANDBOX_ENABLED = True
-    switch_on(key=TEST, signing='')
+    switch_on(kassa='bot', key=BOT_TEST, signing='')
     stranger, owner = chat(982002), chat(OWNER)
     assert not any("so'm" in button['label'] for button in buttons(dispatch_local(stranger, text='/plans')))
     plans = dispatch_local(owner, text='/plans')
@@ -232,7 +268,7 @@ def test_a_test_key_shows_online_payment_to_the_owner_alone(settings, bank):
 
 
 def test_inpay_not_answering_leaves_the_customer_with_a_way_on(customer, bank):
-    switch_on()
+    switch_on(kassa='bot')
     plans = dispatch_local(customer, text='/plans')
     bank.down = True
     before = len(plans['messages'])
@@ -248,7 +284,7 @@ def test_inpay_not_answering_leaves_the_customer_with_a_way_on(customer, bank):
 def test_the_screens_speak_the_customers_language(settings, bank, locale):
     settings.DEBUG = True
     settings.COMMERCE_SANDBOX_ENABLED = True
-    switch_on(card=True)
+    switch_on(kassa='bot', card=True)
     account = chat(982010, locale)
     plans = dispatch_local(account, text='/plans')
     assert PLAN_COPY[locale]['how_auto'].split('\n')[2] in plans['messages'][-1]['text']
@@ -264,7 +300,7 @@ def test_the_screens_speak_the_customers_language(settings, bank, locale):
 
 def test_checking_a_failed_payment_soon_after_does_not_say_nothing_was_charged(customer, bank):
     """The customer may have paid on the same page since we last asked: "not received yet", not "failed"."""
-    switch_on()
+    switch_on(kassa='bot')
     shown = dispatch_local(customer, callback_data=token(dispatch_local(customer, text='/plans'), 'commerce_checkout_plan', plan='plus'))
     row = Checkout.objects.get()
     bank.payments[row.provider_id]['status'] = 'failed'

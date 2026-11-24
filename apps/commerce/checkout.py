@@ -19,6 +19,12 @@ what is trusted is narrow and fixed:
 Granting writes the same Invoice, Payment, Subscription and SubscriptionPeriod
 a card transfer does (apps/commerce/periods.py), tagged `inpay`.
 
+The website and the bot each have their own inPAY kassa, with its own keys,
+because inPAY approves a kassa for one website or one Telegram bot. A payment
+is opened, checked and confirmed with the kassa of the place it began in (its
+`channel`), and each place has its own way to pay: the bot can take payments
+through its kassa while the website's is still waiting for approval.
+
 Asking inPAY is a network call. `begin`/`ask`/`complete` and `due`/`look`/
 `apply` keep it apart from the database work, so the bot can make the call off
 the one thread its queries run on; `create` and `refresh` run all three.
@@ -57,9 +63,19 @@ FINAL = ('paid', 'refunded')
 DESCRIPTION = {'en': 'DocMaster {plan} — 30 days', 'uz': 'DocMaster {plan} — 30 kun', 'ru': 'DocMaster {plan} — 30 дней'}
 
 
-def _config():
+# Where in the admin each kassa is set up, for the owner's alerts.
+KASSA_SETTINGS = {'web': 'Admin → Integrations → Automatic payments on the website (inPAY)',
+                  'bot': 'Admin → Integrations → Automatic payments in the bot (inPAY)'}
+
+
+def kassa(channel):
+    """The kassa a payment begun in `channel` belongs to: 'bot' or 'web'."""
+    return 'bot' if channel == 'bot' else 'web'
+
+
+def _config(channel='web'):
     from operations.integrations import inpay_config
-    return inpay_config()
+    return inpay_config(kassa(channel))
 
 
 def _owner():
@@ -77,88 +93,108 @@ def _card_ready():
     return bool(manual_payment_config()['ready'])
 
 
-def failing(live, now=None):
-    """Whether the last payment we tried to open at inPAY, a short while ago, could not be opened.
+def failing(live, channel='web', now=None):
+    """Whether the last payment we tried to open with this kassa, a short while ago, could not be opened.
 
     inPAY refusing (a key, the kassa) or not answering both count; a row the
-    server lost before asking (`never_opened`) says nothing about inPAY.
+    server lost before asking (`never_opened`) says nothing about inPAY. Each
+    kassa is judged by its own payments: the bot's failing says nothing about
+    the website's.
     """
     from .models import Checkout
     now = now or timezone.now()
     opened = ~Q(provider_id='')
     refused = Q(status='failed', provider_id='') & ~Q(failure='never_opened')
-    last = (Checkout.objects.filter(livemode=live, created_at__gt=now - timedelta(minutes=FALLBACK_MINUTES))
+    last = (Checkout.objects.filter(channel=kassa(channel), livemode=live,
+                                    created_at__gt=now - timedelta(minutes=FALLBACK_MINUTES))
             .filter(opened | refused).order_by('-created_at').values_list('provider_id', flat=True).first())
     return last == ''
 
 
-def _standing_in(live):
-    """Whether card transfer takes inPAY's place for now: inPAY just failed, and there is a card to pay to.
+def _standing_in(live, channel='web'):
+    """Whether card transfer takes this kassa's place for now: it just failed, and there is a card to pay to.
 
     Without card transfer set up there is nothing to fall back to, and every
     customer goes on trying inPAY.
     """
-    return failing(live) and _card_ready()
+    return failing(live, channel) and _card_ready()
 
 
-def availability(account=None):
-    """Whether this customer may pay automatically right now: {'available', 'provider', 'test'}.
+def _reachable(channel):
+    """Whether inPAY has somewhere to return a customer of this kassa to.
 
-    Available, it is the only way offered: card transfer is the way to pay
-    only while automatic payment is not (apps/commerce/manual.py `options`).
+    The website's kassa returns them to the website, so it needs its address;
+    the bot's returns them to the chat, or leaves them on inPAY's own page
+    when the bot's username is not saved.
     """
     from apps.core.links import web_origin
-    cfg = _config()
-    # inPAY returns the customer to the website: without its address there is nowhere to come back to.
-    if not cfg['ready'] or not offers() or not web_origin():
+    return kassa(channel) == 'bot' or bool(web_origin())
+
+
+def availability(account=None, channel='web'):
+    """Whether this customer may pay automatically right now, where they are: {'available', 'provider', 'test'}.
+
+    Available, it is the only way offered there: card transfer is the way to
+    pay only while automatic payment is not (apps/commerce/manual.py `options`).
+    """
+    cfg = _config(channel)
+    if not cfg['ready'] or not offers() or not _reachable(channel):
         return {'available': False}
     # A test key takes no money, so a payment made with it must reach nobody
     # but the owner trying it out: the Telegram ID saved for alerts.
     owner = _owner()
     if not cfg['live'] and not (account is not None and owner and account.telegram_user_id == owner):
         return {'available': False}
-    if _standing_in(cfg['live']):
+    if _standing_in(cfg['live'], channel):
         return {'available': False}
     return {'available': True, 'provider': PROVIDER, 'test': not cfg['live']}
 
 
-def fallback():
-    """Whether card transfer stands in right now for an inPAY that is set up but could not open a payment."""
-    cfg = _config()
-    return bool(cfg['ready']) and _standing_in(cfg['live'])
+def fallback(channel='web'):
+    """Whether card transfer stands in right now for a kassa that is set up but could not open a payment."""
+    cfg = _config(channel)
+    return bool(cfg['ready']) and _standing_in(cfg['live'], channel)
 
 
-def payment_way():
-    """How customers pay right now, for the admin: inpay, inpay_test, card, card_fallback or none."""
-    from apps.core.links import web_origin
-    cfg, priced = _config(), bool(offers())
+def payment_way(channel='web'):
+    """How customers pay right now in one place, for the admin: inpay, inpay_test, card, card_fallback or none."""
+    cfg, priced = _config(channel), bool(offers())
     card = priced and _card_ready()
-    if priced and cfg['ready'] and web_origin():
-        if card and failing(cfg['live']):
+    if priced and cfg['ready'] and _reachable(channel):
+        if card and failing(cfg['live'], channel):
             return 'card_fallback'
         return 'inpay' if cfg['live'] else 'inpay_test'
     return 'card' if card else 'none'
 
 
 def on_sale():
-    """What the public site may say about paying: {'automatic', 'card'}. A test key is not on sale.
+    """What the public site may say about paying on it: {'automatic', 'card'}. A test key is not on sale.
 
     One way at a time, as customers are offered it: card transfer only while
-    automatic payment is not on sale.
+    automatic payment is not on sale. The website's kassa decides it.
     """
-    from apps.core.links import web_origin
-    priced, cfg = bool(offers()), _config()
-    automatic = bool(priced and cfg['ready'] and cfg['live'] and web_origin()) and not _standing_in(True)
+    priced, cfg = bool(offers()), _config('web')
+    automatic = bool(priced and cfg['ready'] and cfg['live'] and _reachable('web')) and not _standing_in(True, 'web')
     return {'automatic': automatic, 'card': bool(priced and _card_ready()) and not automatic}
 
 
 def _urls(row, locale):
-    """Where inPAY sends the customer back, and where it reports to.
+    """Where inPAY sends the customer back, and where it reports to, by the payment's kassa.
 
-    Both on the customer website's own domain, the one the inPAY kassa is
+    The website's: both on the website's own domain, the one that kassa is
     registered for, so inPAY accepts them with nothing to whitelist; the
     website passes /api on to the API.
+
+    The bot's is registered for the bot's t.me link: the customer is sent back
+    to the chat, where `/start pay_<id>` shows how the payment stands
+    (telegram/bot.py). No webhook address is sent, as none is on the kassa's
+    domain: inPAY reports to the one the owner saves on the kassa in its cabinet.
     """
+    if kassa(row.channel) == 'bot':
+        from operations.integrations import telegram_config
+        username = str(telegram_config().get('username') or '').strip().lstrip('@')
+        back = f'https://t.me/{username}?start=pay_{row.id.hex}' if username else ''
+        return {'return_url': back, 'webhook_url': ''}
     from apps.core.links import web_origin
     origin = web_origin()
     if not origin:
@@ -178,24 +214,26 @@ def begin(account, plan, channel='web'):
     from .models import Checkout
     if plan not in PLANS:
         raise DomainError('invalid_plan')
+    channel = kassa(channel)
     offered = offers()
-    if not availability(account)['available'] or plan not in offered:
+    if not availability(account, channel)['available'] or plan not in offered:
         raise DomainError('checkout_disabled', 409)
-    cfg = _config()
+    cfg = _config(channel)
     price, regular = offered[plan]['price'], offered[plan]['regular']
     now = timezone.now()
     with transaction.atomic():
         account = Account.objects.select_for_update().get(pk=account.pk)
+        # A page opened in the other place belongs to the other kassa: it is not reused here.
         open_ = Checkout.objects.filter(
             account=account, status='pending', plan=plan, amount=price, api=cfg['api'], livemode=cfg['live'],
-            created_at__gt=now - timedelta(minutes=REUSE_MINUTES), expires_at__gt=now,
+            channel=channel, created_at__gt=now - timedelta(minutes=REUSE_MINUTES), expires_at__gt=now,
         ).exclude(checkout_url='').order_by('-created_at').first()
         if open_:
             return open_, None
         auth_limit('checkout', str(account.pk), 12, 3600)
         row = Checkout.objects.create(
             account=account, plan=plan, amount=price, regular_amount=regular, api=cfg['api'], livemode=cfg['live'],
-            channel=channel if channel in ('web', 'bot') else 'web', expires_at=now + timedelta(hours=OPEN_HOURS))
+            channel=channel, expires_at=now + timedelta(hours=OPEN_HOURS))
     urls = _urls(row, account.locale)
     if not urls:
         return row, {'failure': 'no_web_origin'}
@@ -229,14 +267,21 @@ def complete(row, opened, failure):
         Checkout.objects.filter(pk=row.pk, status='created').update(status='failed', failure=failure[:64])
         # inPAY saying no is a setting only the owner can put right (a key, the
         # kassa, a domain); inPAY not answering passes by itself.
+        place = kassa(row.channel)
         if failure == 'provider_rate_limited':
             _alert('inpay_rate_limited', '⚠️ inPAY\'s hourly request limit is spent: customers cannot open new payments '
                    'until the hour is over. With the classic API (v1) the limit is 100 requests an hour; API v2 keys avoid it.',
                    once_an_hour=True)
         elif failure != 'provider_unavailable':
-            _alert('inpay_refused', '⚠️ inPAY could not open a payment: ' + failure.removeprefix('refused:') +
-                   '\nAutomatic payment is not working. Check Admin → Integrations → inPAY and the kassa in the inPAY cabinet.',
-                   once_an_hour=True)
+            code = failure.removeprefix('refused:')
+            where = 'in the bot' if place == 'bot' else 'on the website'
+            hint = ''
+            if 'whitelist' in code.lower() or 'domain' in code.lower():
+                hint = ('\ninPAY did not accept the address customers return to (' + ('t.me, the bot’s link' if place == 'bot'
+                        else 'the website') + '). Add that domain to the kassa’s allowed domains in the inPAY cabinet.')
+            _alert('inpay_refused' + ('_bot' if place == 'bot' else ''), f'⚠️ inPAY could not open a payment {where}: {code}'
+                   f'\nAutomatic payment {where} is not working. Check {KASSA_SETTINGS[place]} and that kassa in the inPAY cabinet.'
+                   + hint, once_an_hour=True)
         raise DomainError('checkout_unavailable', 503, retryable=True)
     Checkout.objects.filter(pk=row.pk, status='created').update(
         status='pending', provider_id=opened['id'], checkout_url=opened['url'])
@@ -282,7 +327,8 @@ def due(row, force=False, now=None):
     # One caller wins the claim, so a webhook and a waiting page do not both ask.
     if not claimed.update(checked_at=now, checks=F('checks') + 1):
         return None
-    return {'cfg': _config(), 'api': row.api, 'id': row.provider_id, 'pk': row.pk}
+    # Asked with the kassa the payment was opened with: another kassa's key cannot see it.
+    return {'cfg': _config(row.channel), 'api': row.api, 'id': row.provider_id, 'pk': row.pk}
 
 
 def look(question):
@@ -290,10 +336,12 @@ def look(question):
     return inpay.fetch(question['cfg'], question['api'], question['id'])
 
 
-def lookup_refused(refused):
+def lookup_refused(refused, channel='web'):
     """inPAY understood a question about a payment and would not answer it: only the owner can put that right."""
-    _alert('inpay_lookup_refused', f'⚠️ inPAY refused to say how a payment stands ({refused.code}).'
-           '\nPayments cannot be confirmed until this is fixed. Check the key in Admin → Integrations → inPAY '
+    place = kassa(channel)
+    _alert('inpay_lookup_refused' + ('_bot' if place == 'bot' else ''),
+           f'⚠️ inPAY refused to say how a payment {"in the bot" if place == "bot" else "on the website"} stands ({refused.code}).'
+           f'\nThose payments cannot be confirmed until this is fixed. Check the key in {KASSA_SETTINGS[place]} '
            '(press Test connection) and that the kassa is active in the inPAY cabinet.', once_an_hour=True)
 
 
@@ -391,7 +439,7 @@ def refresh(row, force=False, strict=False):
     try:
         remote = look(question)
     except inpay.Refused as refused:
-        lookup_refused(refused)
+        lookup_refused(refused, row.channel)
         if strict:
             raise
         return row
@@ -486,11 +534,13 @@ def refund(payment, actor, reason):
     return refund_payment(payment, reason, actor=actor)
 
 
-def signature_refused():
-    """A webhook arrived signed with something other than the saved secret: tell the owner, at most hourly."""
-    _alert('inpay_signature', '⚠️ An inPAY webhook did not match the saved signing secret and was turned away.'
+def signature_refused(channel='web'):
+    """A webhook arrived signed with something other than the kassa's saved secret: tell the owner, at most hourly."""
+    place = kassa(channel)
+    _alert('inpay_signature' + ('_bot' if place == 'bot' else ''),
+           '⚠️ An inPAY webhook did not match the saved signing secret and was turned away.'
            '\nPayments are still confirmed, a few minutes later, by asking inPAY directly. If the kassa\'s secret was '
-           'changed, save the new one in Admin → Integrations → inPAY (or clear it and press Test connection).',
+           f'changed, save the new one in {KASSA_SETTINGS[place]} (or clear it and press Test connection).',
            once_an_hour=True)
 
 

@@ -2701,6 +2701,12 @@ def build_dispatcher():
         if len(parts)>1 and parts[1].startswith('login_'):
             challenge=await sync_to_async(lambda:AuthChallenge.objects.select_related('link_account').filter(token_hash=hashlib.sha256(parts[1][6:].encode()).hexdigest(),expires_at__gt=timezone.now(),consumed_at__isnull=True,approved_at__isnull=True).first())()
             return await auth_prompt(message,message.from_user,challenge)
+        if len(parts)>1 and parts[1].startswith('pay_'):
+            # Back from inPAY's page: the bot kassa's return link (apps/commerce/checkout.py).
+            from .billing import returned_from_checkout
+            account=await account_for(message.from_user)
+            try: return await returned_from_checkout(message,account,parts[1][4:])
+            except DomainError as exc: return await safe_error(message,account,exc)
         pending={'referral_code':parts[1][4:]} if len(parts)>1 and parts[1].startswith('ref_') else {}
         await on_ready(message,message.from_user,await sync_to_async(chosen_locale)(message.from_user.id),pending)
 

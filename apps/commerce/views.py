@@ -163,13 +163,17 @@ def checkout_detail(request,checkout_id):
 def inpay_webhook(request):
     """inPAY says a payment moved. That is a reason to ask inPAY, never the answer itself.
 
-    A v2 webhook is signed, and one signed with anything but the saved secret
-    is turned away. Either way nothing is granted from what is posted here: the
-    payment is looked up by its id and inPAY is asked where it stands. The
-    answer is an error, so inPAY sends the webhook again later, whenever we
+    A v2 webhook is signed, and one signed with anything but its kassa's saved
+    secret is turned away. Either way nothing is granted from what is posted
+    here: the payment is looked up by its id and inPAY is asked where it stands.
+    The answer is an error, so inPAY sends the webhook again later, whenever we
     could not ask, or inPAY says "paid" in the webhook and not yet when asked.
+
+    Both kassas, the website's and the bot's, report here. A payment's own
+    kassa holds the secret it is signed with; one we do not know is checked
+    against every saved secret.
     """
-    from operations.integrations import inpay_config
+    from operations.integrations import INPAY_KASSAS, inpay_config
     from . import inpay
     from .models import Checkout
     if request.method!='POST': return JsonResponse({'ok':False},status=405)
@@ -179,15 +183,17 @@ def inpay_webhook(request):
     except ValueError: payload=None
     identifier=inpay.webhook_payment(payload)
     row=Checkout.objects.filter(provider=checkout.PROVIDER,provider_id=identifier).first() if identifier else None
-    cfg=inpay_config()
+    kassas=[checkout.kassa(row.channel)] if row is not None else list(INPAY_KASSAS)
+    held=[cfg['webhook_secret'] for cfg in map(inpay_config,kassas) if cfg['api']=='v2' and cfg['webhook_secret']]
     signed=False
-    if cfg['api']=='v2' and cfg['webhook_secret']:
+    if held:
         header=request.headers.get('X-Inpay-Signature','')
-        state=inpay.signature_state(cfg['webhook_secret'],header,raw)
+        states={inpay.signature_state(secret,header,raw) for secret in held}
+        state='valid' if 'valid' in states else 'stale' if 'stale' in states else 'invalid'
         if state=='invalid':
             # Signed, about one of our payments, and not with the secret we hold: the
             # secret was likely changed in the cabinet, and the owner should know.
-            if header and row is not None: checkout.signature_refused()
+            if header and row is not None: checkout.signature_refused(row.channel)
             return JsonResponse({'ok':False},status=401)
         signed=state=='valid'
     if payload is None: return JsonResponse({'ok':False},status=400)
@@ -199,7 +205,7 @@ def inpay_webhook(request):
     if question is None: return JsonResponse({'ok':False},status=503)
     try: remote=checkout.look(question)
     except inpay.Refused as refused:
-        checkout.lookup_refused(refused)
+        checkout.lookup_refused(refused,row.channel)
         return JsonResponse({'ok':False},status=503)
     except inpay.Unavailable: return JsonResponse({'ok':False},status=503)
     checkout.apply(row.pk,remote)

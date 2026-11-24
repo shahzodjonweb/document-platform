@@ -340,7 +340,8 @@ async def show_offers(message, account, edit=False, source=None, tap=''):
     from .bot import callback
     from apps.commerce import checkout, manual
     await leave_input_prompt(account)
-    cards = await sync_to_async(manual.options)(account)
+    # The bot's own inPAY kassa decides how customers pay here (apps/commerce/checkout.py).
+    cards = await sync_to_async(manual.options)(account, 'bot')
     automatic = cards['automatic']['available']
     rows = []
     # One way to pay at a time: inPAY while it works, card transfer otherwise.
@@ -360,7 +361,7 @@ async def show_offers(message, account, edit=False, source=None, tap=''):
         tail = words['how']
         # Automatic payment is announced until the owner sets it up; while card
         # transfer only stands in for a moment, it is not "coming soon".
-        if not await sync_to_async(checkout.fallback)():
+        if not await sync_to_async(checkout.fallback)('bot'):
             tail += '\n\n' + html.escape(copy(account, 'automatic_soon'))
     else:
         tail = html.escape(copy(account, 'unavailable'))
@@ -382,7 +383,7 @@ async def show_manual(message, account, plan, edit=False, switch=True):
         payment, _ = await sync_to_async(manual.create)(account, plan, 'bot')
     except DomainError as exc:
         # Customers pay through inPAY now: a card-transfer button from before leads there.
-        if not switch or exc.code != 'checkout_disabled' or not (await sync_to_async(manual.options)(account))['automatic']['available']:
+        if not switch or exc.code != 'checkout_disabled' or not (await sync_to_async(manual.options)(account, 'bot'))['automatic']['available']:
             raise
         return await show_checkout(message, account, plan, edit, switch=False)
     await show_manual_payment(message, account, payment, edit)
@@ -405,7 +406,7 @@ async def show_checkout(message, account, plan, edit=False, switch=True):
             opened, failure = await asyncio.to_thread(checkout.ask, request)
             row = await sync_to_async(checkout.complete)(row, opened, failure)
     except DomainError as exc:
-        if not switch or exc.code not in ('checkout_disabled', 'checkout_unavailable') or not (await sync_to_async(manual.options)(account))['enabled']:
+        if not switch or exc.code not in ('checkout_disabled', 'checkout_unavailable') or not (await sync_to_async(manual.options)(account, 'bot'))['enabled']:
             raise
         if exc.code == 'checkout_unavailable':
             # Said first, then the card screen under it as a message of its own.
@@ -450,37 +451,77 @@ def _checkout_result(account, row):
     return copy(account, 'checkout_paid').format(plan=row.plan.title(), date=date)
 
 
-async def check_checkout(message, account, checkout_id):
-    """«I've paid — check»: ask inPAY about this payment now, and say where it stands."""
+async def _inquire(row):
+    """Ask inPAY about this payment if it is time to, and act on the answer: (row, asked)."""
     import asyncio
     from apps.commerce import checkout, inpay
+    question = await sync_to_async(checkout.due)(row)
+    if question is None:
+        await sync_to_async(row.refresh_from_db)()
+        return row, False
+    try:
+        remote = await asyncio.to_thread(checkout.look, question)
+    except inpay.Refused as refused:
+        await sync_to_async(checkout.lookup_refused)(refused, row.channel)
+        remote = None
+    except inpay.Unavailable:
+        remote = None
+    if remote is None:
+        return row, False
+    return await sync_to_async(checkout.apply)(row.pk, remote), True
+
+
+def _settled(row, asked):
+    """Whether there is an outcome to tell. A failure only when inPAY has just said
+    so: the customer may have paid on the same page since we last asked."""
+    return row.status in ('paid', 'refunded') or (asked and row.status in ('failed', 'cancelled', 'expired'))
+
+
+async def _show_result(message, account, row, edit):
+    text = await sync_to_async(_checkout_result)(account, row)
+    rows = [[await button(account, 'subscription', 'subscription'), await button(account, 'plans', 'plans', FROM_PAYMENT)],
+            *(await navigation(account))]
+    return await show(message, text, rows, edit=edit)
+
+
+async def check_checkout(message, account, checkout_id):
+    """«I've paid — check»: ask inPAY about this payment now, and say where it stands."""
     from apps.commerce.models import Checkout
     row = await sync_to_async(lambda: Checkout.objects.filter(pk=checkout_id, account=account).first())()
     if row is None:
         raise DomainError('not_found', 404)
-    question = await sync_to_async(checkout.due)(row)
-    asked = False
-    if question is not None:
-        try:
-            remote = await asyncio.to_thread(checkout.look, question)
-        except inpay.Refused as refused:
-            await sync_to_async(checkout.lookup_refused)(refused)
-            remote = None
-        except inpay.Unavailable:
-            remote = None
-        if remote is not None:
-            row, asked = await sync_to_async(checkout.apply)(row.pk, remote), True
-    else:
-        await sync_to_async(row.refresh_from_db)()
-    # A failure is said only when inPAY has just said so: the customer may have
-    # paid on the same page since we last asked.
-    if row.status in ('paid', 'refunded') or (asked and row.status in ('failed', 'cancelled', 'expired')):
-        text = await sync_to_async(_checkout_result)(account, row)
-        rows = [[await button(account, 'subscription', 'subscription'), await button(account, 'plans', 'plans', FROM_PAYMENT)],
-                *(await navigation(account))]
-        return await show(message, text, rows, edit=True)
+    row, asked = await _inquire(row)
+    if _settled(row, asked):
+        return await _show_result(message, account, row, edit=True)
     # Still waiting: the Pay button above stays where it is.
     await message.answer(copy(account, 'checkout_waiting'))
+
+
+async def returned_from_checkout(message, account, reference):
+    """Back from inPAY's page: its return link opens the chat with `/start pay_<id>`.
+
+    inPAY is asked about the payment at once and the outcome is said here. A
+    payment not seen yet is shown again, with its Pay and check buttons, as
+    the money may still be on its way. A link that is not this customer's
+    payment leads to the plans.
+    """
+    import uuid
+    from apps.commerce.models import Checkout
+    try:
+        checkout_id = uuid.UUID(hex=str(reference))
+    except ValueError:
+        checkout_id = None
+    row = await sync_to_async(lambda: Checkout.objects.filter(pk=checkout_id, account=account).exclude(
+        status='created').first())() if checkout_id else None
+    if row is None:
+        return await show_offers(message, account, source='payment')
+    row, asked = await _inquire(row)
+    if _settled(row, asked):
+        return await _show_result(message, account, row, edit=False)
+    await message.answer(copy(account, 'checkout_waiting'))
+    if row.status == 'pending' and row.checkout_url:
+        return await show_checkout_row(message, account, row)
+    return await show_offers(message, account, source='payment')
 
 
 def discount_note(account, payment):
