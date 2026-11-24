@@ -199,24 +199,26 @@ def _v1(cfg, method, path, kind, **request):
 
 # ---- what the rest of the code calls ---------------------------------------------------------
 
-def open_payment(cfg, *, reference, amount, description, return_url, webhook_url):
+def open_payment(cfg, *, reference, amount, description, return_url='', webhook_url=''):
     """Open a payment of `amount` so'm; returns {'id', 'url', 'live'}.
 
     `reference` is our own id for it. v2 takes it as the Idempotency-Key, so a
     request repeated after a lost answer opens nothing twice, and carries it
-    back in every answer about the payment.
+    back in every answer about the payment. An address left empty is not sent:
+    inPAY then uses the one saved on the kassa, or its own page.
     """
+    addresses = {'return_url': return_url} if return_url else {}
     if cfg['api'] == 'v2':
         parsed = _answer(*_call('POST', '/api/v2/payments/', headers={
             'Authorization': 'Bearer ' + cfg['secret_key'], 'Idempotency-Key': reference}, body={
-            'amount': amount, 'currency': 'UZS', 'description': description, 'return_url': return_url,
-            'webhook_url': webhook_url, 'metadata': {'checkout': reference}}))
+            'amount': amount, 'currency': 'UZS', 'description': description, **addresses,
+            **({'webhook_url': webhook_url} if webhook_url else {}), 'metadata': {'checkout': reference}}))
         data = parsed.get('data') if isinstance(parsed.get('data'), dict) else {}
         identifier, url, live = data.get('id'), data.get('checkout_url'), data.get('livemode') is not False
     elif cfg['api'] == 'v1':
         parsed = _v1(cfg, 'POST', '/api/v1/create/', 'open', body={
             'merchant_id': str(cfg['merchant_id']), 'token': cfg['merchant_token'], 'amount': amount,
-            'description': description, 'callback_url': webhook_url, 'return_url': return_url})
+            'description': description, **addresses, **({'callback_url': webhook_url} if webhook_url else {})})
         identifier, url, live = parsed.get('order_id'), parsed.get('pay_url'), True
     else:
         raise Refused('not_configured')

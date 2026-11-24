@@ -341,33 +341,41 @@ _INPAY_MERCHANT_ID = re.compile(r'[0-9]{1,12}')
 _INPAY_MERCHANT_TOKEN = re.compile(r'[A-Za-z0-9]{16,64}')
 
 
-def inpay_config():
-    """Automatic payments through inPAY (apps/commerce/inpay.py). `enabled` is the switch.
+# One inPAY kassa per place customers pay, each with its own keys and signing
+# secret: inPAY approves a kassa for one website, or one Telegram bot. A
+# payment is opened and checked with the kassa of the place it began in.
+INPAY_KASSAS = {'web': 'inpay', 'bot': 'inpay_bot'}
 
-    A v2 secret key is used when one is saved; otherwise the classic merchant
-    id and token (v1). `live` is False only for a v2 test key, which moves no
+
+def inpay_config(kassa='web'):
+    """Automatic payments through one inPAY kassa (apps/commerce/inpay.py). `enabled` is the switch.
+
+    `kassa` is 'web' for the website's and 'bot' for the Telegram bot's. A v2
+    secret key is used when one is saved; otherwise the classic merchant id
+    and token (v1). `live` is False only for a v2 test key, which moves no
     money: with one, automatic payment is shown to the owner alone and grants
     nothing (apps/commerce/checkout.py).
     """
-    cfg, secret = read_config('inpay')
+    cfg, secret = read_config(INPAY_KASSAS.get(kassa, 'inpay'))
     key = str(secret.get('secret_key') or '')
     merchant_id, token = str(cfg.get('merchant_id') or ''), str(secret.get('merchant_token') or '')
     api = 'v2' if key else 'v1' if merchant_id and token else ''
     enabled = bool(cfg.get('enabled', False))
     return {'enabled': enabled, 'api': api, 'configured': bool(api), 'ready': enabled and bool(api),
-            'live': bool(api) and not key.startswith('sk_test_'),
+            'live': bool(api) and not key.startswith('sk_test_'), 'kassa': kassa if kassa in INPAY_KASSAS else 'web',
             'secret_key': key, 'webhook_secret': str(secret.get('webhook_secret') or ''),
             'merchant_id': merchant_id, 'merchant_token': token}
 
 
-def test_inpay():
-    """One harmless call with the saved credentials, so the owner knows they work before a customer pays.
+def test_inpay(kassa='web'):
+    """One harmless call with one kassa's saved credentials, so the owner knows they work before a customer pays.
 
-    With a live v2 key it also fetches the secret inPAY signs webhooks with,
-    when none is saved yet: inPAY gives that secret to a live key only.
+    With a live v2 key it also fetches the secret inPAY signs that kassa's
+    webhooks with, when none is saved yet: inPAY gives it to a live key only.
     """
     from apps.commerce import inpay
-    cfg = inpay_config()
+    key = INPAY_KASSAS.get(kassa, 'inpay')
+    cfg = inpay_config(kassa)
     if not cfg['configured']: raise DomainError('inpay_not_configured', 409)
     try: inpay.check(cfg)
     except Exception: raise DomainError('inpay_connection_failed', 409) from None
@@ -376,13 +384,13 @@ def test_inpay():
         except Exception: fetched = ''
         if fetched:
             with transaction.atomic():
-                row = IntegrationConfig.objects.select_for_update().get(pk='inpay')
+                row = IntegrationConfig.objects.select_for_update().get(pk=key)
                 secrets = json.loads(cipher().decrypt(bytes(row.encrypted_secrets))) if row.encrypted_secrets else {}
                 secrets['webhook_secret'] = fetched
                 row.encrypted_secrets = cipher().encrypt(json.dumps(secrets).encode())
                 row.save(update_fields=['encrypted_secrets'])
-    IntegrationConfig.objects.filter(pk='inpay').update(check_status='connected', checked_at=timezone.now())
-    return inpay_config()
+    IntegrationConfig.objects.filter(pk=key).update(check_status='connected', checked_at=timezone.now())
+    return inpay_config(kassa)
 
 
 _PUBLIC_CHANNEL = re.compile(r'(?:https://)?(?:t\.me|telegram\.me)/([A-Za-z][A-Za-z0-9_]{3,31})/?|@([A-Za-z][A-Za-z0-9_]{3,31})')
@@ -642,7 +650,7 @@ def save_config(key, values):
         if enabled and not (cfg.get('card_number') and cfg.get('card_holder')):
             raise DomainError('manual_payments_not_configured')
         cfg.update(enabled=enabled)
-    elif key == 'inpay':
+    elif key in INPAY_KASSAS.values():
         # A blank secret field keeps what is saved; "remove" boxes take a credential away.
         secret_key = str(values.get('secret_key', '') or '').strip()
         if secret_key:

@@ -24,6 +24,11 @@ from tests.test_manual_payments import PRICES, configure as configure_card, cust
 
 pytestmark = pytest.mark.django_db
 LIVE, TEST, SIGNING = 'sk_live_4f1c0b7e2a9d55aa', 'sk_test_4f1c0b7e2a9d55aa', 'whsec_b82e6d10c4f771ac'
+# The bot's own kassa: other keys, another signing secret, payments the website's keys cannot see.
+BOT_LIVE, BOT_TEST, BOT_SIGNING = 'sk_live_7b0d2c9e1f3a44bb', 'sk_test_7b0d2c9e1f3a44bb', 'whsec_5c1e9a7d3b2f80de'
+KASSA_OF = {LIVE: 'web', TEST: 'web', BOT_LIVE: 'bot', BOT_TEST: 'bot'}
+SIGNING_OF = {'web': SIGNING, 'bot': BOT_SIGNING}
+BOT_USERNAME = 'DocMasterTestBot'
 MERCHANT, MERCHANT_TOKEN = '1353', '6a7bf375b302cfcda6692e6f60402cb3'
 OWNER = 1234567  # the Telegram ID tests save for alerts (tests.test_manual_payments.configure)
 # The real request function: the suite replaces inpay._call with a refusal before every test (tests/conftest.py).
@@ -31,7 +36,8 @@ REAL_CALL = inpay._call
 
 
 class FakeInpay:
-    """inPAY as far as this code speaks to it: both APIs, one set of payments."""
+    """inPAY as far as this code speaks to it: both APIs, and two v2 kassas (the
+    website's and the bot's), each seeing only the payments opened with its keys."""
 
     def __init__(self):
         self.payments, self.by_key, self.calls = {}, {}, []
@@ -50,22 +56,25 @@ class FakeInpay:
         if self.down:
             raise inpay.Unavailable()
         headers, v2 = headers or {}, path.startswith('/api/v2/')
-        if v2 and headers.get('Authorization') not in (f'Bearer {LIVE}', f'Bearer {TEST}'):
+        key = str(headers.get('Authorization') or '').removeprefix('Bearer ')
+        if v2 and key not in KASSA_OF:
             return 401, {'success': False, 'error': {'code': 'invalid_api_key'}}
-        live = headers.get('Authorization') == f'Bearer {LIVE}'
+        live, kassa = key in (LIVE, BOT_LIVE), KASSA_OF.get(key)
         if path == '/api/v2/payments/' and method == 'POST':
             if self.refuse:
                 return 403, {'success': False, 'error': {'code': self.refuse}}
             identifier = self.by_key.setdefault(headers['Idempotency-Key'], secrets.token_hex(8))
+            # An address not sent is not there: inPAY uses the kassa's own.
             self.payments.setdefault(identifier, {
                 'id': identifier, 'object': 'payment', 'amount': body['amount'], 'currency': 'UZS',
                 'status': 'requires_payment_method', 'checkout_url': f'https://inpay.uz/checkout/{identifier}',
-                'return_url': body['return_url'], 'webhook_url': body['webhook_url'], 'livemode': live,
-                'metadata': body['metadata'], 'description': body['description']})
+                'return_url': body.get('return_url'), 'webhook_url': body.get('webhook_url'), 'livemode': live,
+                'metadata': body['metadata'], 'description': body['description'], 'kassa': kassa})
             return 200, {'success': True, 'data': self.payments[identifier]}
         if path.startswith('/api/v2/payments/') and method == 'GET':
             payment = self.payments.get(path.rsplit('/', 1)[1])
-            if not payment:
+            # Another kassa's payment does not exist for this key.
+            if not payment or payment.get('kassa') != kassa:
                 return 404, {'success': False, 'error': {'code': 'resource_missing'}}
             return 200, {'success': True, 'data': payment}
         if path == '/api/v2/balance/':
@@ -73,7 +82,7 @@ class FakeInpay:
         if path == '/api/v2/webhooks/secret/':
             if not live:
                 return 403, {'success': False, 'error': {'code': 'live_key_required'}}
-            return 200, {'success': True, 'data': {'object': 'webhook_secret', 'secret': SIGNING}}
+            return 200, {'success': True, 'data': {'object': 'webhook_secret', 'secret': SIGNING_OF[kassa]}}
         if path == '/api/v1/authorization/':
             if (query or {}).get('merchant_token') != MERCHANT_TOKEN:
                 return 401, {'success': False, 'error_code': 'INVALID_TOKEN'}
@@ -83,7 +92,7 @@ class FakeInpay:
                 return 401, {'success': False, 'error_code': 'INVALID_TOKEN'}
             identifier = secrets.token_hex(8)
             self.payments[identifier] = {'order_id': identifier, 'amount': body['amount'], 'status': 'pending',
-                                         'callback_url': body['callback_url'], 'return_url': body['return_url']}
+                                         'callback_url': body.get('callback_url'), 'return_url': body.get('return_url')}
             return 200, {'success': True, 'order_id': identifier, 'pay_url': f'https://inpay.uz/checkout/{identifier}'}
         if path == '/api/v1/transactions/':
             payment = self.payments.get((query or {}).get('order_id'))
@@ -101,15 +110,21 @@ def bank(monkeypatch):
     return fake
 
 
-def switch_on(key=LIVE, signing=SIGNING, prices=PRICES, card=False):
-    """inPAY switched on with a v2 key; card transfer off unless asked for. The owner's Telegram ID is saved either way."""
+def switch_on(key=None, signing=None, prices=PRICES, card=False, kassa='web'):
+    """One inPAY kassa switched on with a v2 key: the website's, or with kassa='bot' the bot's.
+
+    Card transfer is off unless asked for. The owner's Telegram ID, the website
+    and the bot's username are saved either way, as the owner saves them.
+    """
+    bot = kassa == 'bot'
+    key = key or (BOT_LIVE if bot else LIVE)
+    signing = (BOT_SIGNING if bot else SIGNING) if signing is None else signing
     configure_card(enabled=card, prices=prices)
-    # The website inPAY returns customers to, as the owner saves it with the bot's settings.
-    save_config('telegram', {'webapp_url': 'https://docmaster.live/en/app'})
+    save_config('telegram', {'webapp_url': 'https://docmaster.live/en/app', 'username': BOT_USERNAME})
     values = {'secret_key': key, 'enabled': 'true'}
     if signing:
         values['webhook_secret'] = signing
-    save_config('inpay', values)
+    save_config('inpay_bot' if bot else 'inpay', values)
 
 
 def event(identifier, kind='payment.succeeded', status='succeeded', amount=20_000):
@@ -128,9 +143,9 @@ def post_webhook(raw, **headers):
     return Client().post('/api/v1/webhooks/inpay', data=raw, content_type='application/json', **headers)
 
 
-def signed_webhook(identifier, **details):
+def signed_webhook(identifier, secret=SIGNING, **details):
     raw = event(identifier, **details)
-    return post_webhook(raw, HTTP_X_INPAY_SIGNATURE=signature(raw))
+    return post_webhook(raw, HTTP_X_INPAY_SIGNATURE=signature(raw, secret))
 
 
 # ---------------------------------------------------------------- the main path
@@ -515,15 +530,109 @@ def test_the_payment_page_is_given_only_to_the_customer_who_opened_it(bank):
 
 
 def test_a_payment_from_the_bot_points_back_to_the_bot(bank):
-    switch_on()
-    save_config('telegram', {'username': 'docmaster_bot', 'webapp_url': 'https://docmaster.live/en/app'})
+    switch_on(kassa='bot')
     row, _ = checkout.create(customer(), 'plus', 'bot')
     from django.test import Client
     shown = Client().get(f'/api/v1/billing/checkout/{row.id}').json()
-    assert shown['channel'] == 'bot' and shown['bot_url'] == 'https://t.me/docmaster_bot'
+    assert shown['channel'] == 'bot' and shown['bot_url'] == f'https://t.me/{BOT_USERNAME}'
     remote = bank.payments[row.provider_id]
-    assert remote['return_url'] == f'https://docmaster.live/en/app/pay/{row.id}'
-    assert remote['webhook_url'] == 'https://docmaster.live/api/v1/webhooks/inpay'
+    # Opened with the bot's kassa, back to the chat on that kassa's own domain (t.me),
+    # and reported to the webhook saved on that kassa: no address of ours is sent.
+    assert remote['kassa'] == 'bot'
+    assert remote['return_url'] == f'https://t.me/{BOT_USERNAME}?start=pay_{row.id.hex}'
+    assert remote['webhook_url'] is None
+
+
+# ---------------------------------------------------------------- one kassa for the bot, one for the website
+
+
+def test_the_bot_takes_payments_through_its_kassa_while_the_website_pays_by_card(bank):
+    switch_on(kassa='bot', card=True)
+    account = customer()
+    from apps.commerce import manual
+    assert manual.options(account, 'bot')['automatic'] == {'available': True, 'provider': 'inpay', 'test': False}
+    # The website's kassa is not set up: there, card transfer is the way, as before.
+    client = signed_in(account)
+    website = client.get('/api/v1/billing/manual').json()
+    assert website['automatic'] == {'available': False} and website['enabled'] is True
+    assert client.get('/api/v1/plans').json()['checkout'] == {'automatic': False, 'card': True}
+    refused = client.post('/api/v1/billing/checkout', {'plan': 'plus'}, content_type='application/json')
+    assert refused.status_code == 409 and refused.json()['error']['code'] == 'checkout_disabled'
+    assert client.post('/api/v1/billing/manual', {'plan': 'plus'}, content_type='application/json').status_code in (200, 201)
+    # In the bot a new card transfer is not offered while its kassa works.
+    with pytest.raises(DomainError) as refused_card:
+        manual.create(customer(7002), 'plus', 'bot')
+    assert refused_card.value.code == 'checkout_disabled'
+
+
+def test_a_bot_payment_is_confirmed_with_the_bot_kassa_and_its_signing_secret(bank):
+    switch_on(kassa='bot')
+    switch_on(kassa='web')
+    account = customer()
+    row, _ = checkout.create(account, 'plus', 'bot')
+    website_row, _ = checkout.create(customer(7002), 'plus', 'web')
+    assert bank.payments[row.provider_id]['kassa'] == 'bot' and bank.payments[website_row.provider_id]['kassa'] == 'web'
+    bank.pay(row.provider_id)
+    # Signed with the website's secret, it is not the bot kassa's webhook.
+    assert signed_webhook(row.provider_id).status_code == 401
+    assert effective_plan(account) == 'free'
+    assert signed_webhook(row.provider_id, secret=BOT_SIGNING).status_code == 200
+    assert effective_plan(account) == 'plus'
+    # The website's payment is still asked about with the website's key.
+    bank.pay(website_row.provider_id)
+    assert signed_webhook(website_row.provider_id).status_code == 200
+    assert Checkout.objects.get(pk=website_row.pk).status == 'paid'
+
+
+def test_a_webhook_about_a_payment_we_do_not_know_is_checked_against_both_secrets(bank):
+    switch_on(kassa='bot')
+    raw = event('pay_' + secrets.token_hex(6))
+    assert post_webhook(raw, HTTP_X_INPAY_SIGNATURE=signature(raw, BOT_SIGNING)).status_code == 200
+    assert post_webhook(raw, HTTP_X_INPAY_SIGNATURE=signature(raw, 'whsec_not_ours_at_all')).status_code == 401
+
+
+def test_each_kassa_falls_back_to_card_transfer_on_its_own(bank):
+    switch_on(kassa='bot', card=True)
+    switch_on(kassa='web', card=True)
+    bank.down = True
+    with pytest.raises(DomainError):
+        checkout.create(customer(), 'plus', 'bot')
+    bank.down = False
+    assert checkout.fallback('bot') is True and checkout.fallback('web') is False
+    assert checkout.availability(customer(7002), 'bot') == {'available': False}
+    assert checkout.availability(customer(7002), 'web')['available'] is True
+    assert StaffAlert.objects.filter(kind__startswith='inpay_refused').count() == 0, 'inPAY not answering is no setting to fix'
+
+
+def test_the_bot_kassa_refusing_tells_the_owner_where_to_look(bank):
+    switch_on(kassa='bot', card=True)
+    bank.refuse = 'domain_not_whitelisted'
+    with pytest.raises(DomainError):
+        checkout.create(customer(), 'plus', 'bot')
+    alert = StaffAlert.objects.get()
+    assert alert.kind == 'inpay_refused_bot' and 'in the bot' in alert.text
+    assert 'Automatic payments in the bot (inPAY)' in alert.text and 't.me' in alert.text
+
+
+def test_a_test_key_on_the_bot_kassa_shows_online_payment_to_the_owner_alone(bank):
+    switch_on(kassa='bot', key=BOT_TEST, signing='', card=True)
+    from apps.commerce import manual
+    assert manual.options(customer(OWNER), 'bot')['automatic'] == {'available': True, 'provider': 'inpay', 'test': True}
+    assert manual.options(customer(7002), 'bot')['automatic'] == {'available': False}
+    row, _ = checkout.create(customer(OWNER), 'plus', 'bot')
+    assert row.livemode is False and bank.payments[row.provider_id]['livemode'] is False
+
+
+def test_without_the_bots_username_a_bot_payment_stays_on_inpays_page(bank):
+    switch_on(kassa='bot')
+    from operations.models import IntegrationConfig
+    row = IntegrationConfig.objects.get(pk='telegram')
+    row.configuration = {**row.configuration, 'username': ''}
+    row.save()
+    from django.test import override_settings
+    with override_settings(TELEGRAM_BOT_USERNAME=''):
+        created, _ = checkout.create(customer(), 'plus', 'bot')
+    assert 'return_url' not in {k for k, v in bank.payments[created.provider_id].items() if v}
 
 
 def test_invalid_plans_and_get_on_the_webhook_are_refused(bank):
@@ -795,7 +904,7 @@ def open_row(account, at, bank, api='v2'):
     """A payment opened at `at`, as checkout.create leaves it, without asking inPAY."""
     identifier = secrets.token_hex(8)
     bank.payments[identifier] = {'id': identifier, 'order_id': identifier, 'amount': 20_000, 'currency': 'UZS',
-                                 'status': 'requires_payment_method', 'livemode': True, 'metadata': {}}
+                                 'status': 'requires_payment_method', 'livemode': True, 'metadata': {}, 'kassa': 'web'}
     return Checkout.objects.create(account=account, plan='plus', amount=20_000, regular_amount=20_000, api=api, livemode=True,
                                    provider_id=identifier, checkout_url=f'https://inpay.uz/checkout/{identifier}',
                                    status='pending', created_at=at, expires_at=at + timedelta(hours=24))
@@ -969,10 +1078,11 @@ def test_a_signature_header_that_is_not_ascii_is_turned_away_not_a_crash(bank, h
 # ---------------------------------------------------------------- one way at a time: inPAY, card transfer as the fallback
 
 
-def way_on_admin(client):
+def way_on_admin(client, kassa='web'):
     import re
     page = client.get('/ops/integrations?lang=en').content.decode()
-    found = re.search(r'data-testid="payment-way-manual">Customers pay by: <strong>([^<]+)</strong>', page)
+    said = 'Bot customers pay by' if kassa == 'bot' else 'Website customers pay by'
+    found = re.search(rf'data-testid="payment-way-manual-{kassa}">{said}: <strong>([^<]+)</strong>', page)
     return found.group(1)
 
 
@@ -1088,6 +1198,32 @@ def test_the_admin_says_how_customers_pay(bank):
     assert way_on_admin(admin).startswith('Card transfer. With the test key only you see')
     switch_on(card=True)
     page = admin.get('/ops/integrations?lang=en').content.decode()
-    assert page.count('Customers pay by: <strong>Automatic payment through inPAY') == 2
+    assert page.count('Website customers pay by: <strong>Automatic payment through inPAY') == 2
+    # The bot's kassa is its own: not set up, the bot goes on with card transfer.
+    assert way_on_admin(admin, 'bot').startswith('Card transfer. Automatic payment is not set up')
+    switch_on(kassa='bot', card=True)
+    assert way_on_admin(admin, 'bot').startswith('Automatic payment through inPAY')
     for lang in ('uz', 'ru'):
         assert admin.get(f'/ops/integrations?lang={lang}').status_code == 200
+
+
+def test_the_admin_sets_up_the_bot_kassa_on_its_own_card(bank):
+    admin, _ = staff_client('Administrator')
+    configure_card()
+    save_config('telegram', {'webapp_url': 'https://docmaster.live/en/app', 'username': BOT_USERNAME})
+    page = admin.get('/ops/integrations?lang=en').content.decode()
+    assert 'Automatic payments in the bot (inPAY)' in page and 'Automatic payments on the website (inPAY)' in page
+    assert page.index('data-testid="kassa-bot"') < page.index('data-testid="kassa-web"')
+    # The bot's card names the kassa's site and the webhook to save on it in the cabinet.
+    assert f'https://t.me/{BOT_USERNAME}' in page and 'https://docmaster.live/api/v1/webhooks/inpay' in page
+    saved = admin.post('/ops/integrations', {'integration': 'inpay_bot', 'action': 'save', 'secret_key': BOT_LIVE,
+                                             'enabled': 'true'})
+    assert saved.status_code == 302 and inpay_config('bot')['secret_key'] == BOT_LIVE and inpay_config('web')['configured'] is False
+    tested = admin.post('/ops/integrations', {'integration': 'inpay_bot', 'action': 'test'})
+    assert tested.status_code == 302 and 'inpay_connected' in tested['Location']
+    # A live key fetches the bot kassa's own signing secret.
+    assert inpay_config('bot')['webhook_secret'] == BOT_SIGNING and inpay_config('web')['webhook_secret'] == ''
+    page = admin.get('/ops/integrations?lang=en').content.decode()
+    assert BOT_LIVE not in page and BOT_SIGNING not in page
+    from operations.models import AuditLog
+    assert AuditLog.objects.filter(target='inpay_bot').exists()
