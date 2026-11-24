@@ -7584,3 +7584,5 @@ tests/test_kept_drafts.py::test_a_held_file_is_told_to_be_uploaded_again_whereve
 
 # After the sixth review: a page picture of a held source goes when the source's own day ends.
 tests/test_kept_drafts.py::test_a_page_picture_of_a_held_source_lasts_no_longer_than_its_day
+tests/test_inpay_checkout.py::test_a_key_inpay_does_not_take_fails_the_connection_test
+tests/test_inpay_checkout.py::test_the_admin_shows_what_inpay_answered_to_a_failed_connection_test

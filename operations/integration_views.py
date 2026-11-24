@@ -420,6 +420,8 @@ def integrations(request):
             return redirect('/ops/integrations?lang='+data['lang']+'&notice='+message)
         except DomainError as e:
             data['error']=labels.get(e.code,labels['failure']);data['error_code']=e.code
+            # What inPAY itself answered tells a wrong key from an inactive kassa or a spent limit.
+            if e.params.get('inpay'):data['error_code']+=' · inPAY: '+e.params['inpay']
             # The card the problem belongs to stays open, with what was typed.
             data['open_integration']=request.POST.get('integration','telegram')
     bot=telegram_config();ai=ai_config();google=google_config();email=email_config();antibot=antibot_config()

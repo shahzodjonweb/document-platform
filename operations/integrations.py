@@ -378,13 +378,26 @@ def inpay_config(kassa='web'):
             'autopay_audience': 'everyone' if cfg.get('autopay_audience') == 'everyone' else 'owner'}
 
 
+def _inpay_said(error):
+    """inPAY's own word for why a check failed, shown beside ours.
+
+    A wrong key (401), a kassa that is not active or limited to other IPs (403)
+    and a spent request limit (429) need different fixes; our message alone
+    cannot tell them apart. Never any part of the key: only inPAY's code.
+    """
+    from apps.commerce import inpay
+    if isinstance(error, inpay.Refused): return f'{error.code} (HTTP {error.status})'
+    if isinstance(error, inpay.Unavailable): return error.reason
+    return 'unexpected_answer'
+
+
 def test_autopay(kassa='bot'):
     """One harmless signed call with the saved Avto to'lov key, so the owner knows it works before anyone saves a card."""
     from apps.commerce import inpay
     cfg = inpay_config(kassa)
     if not cfg['autopay_configured']: raise DomainError('autopay_not_configured', 409)
     try: inpay.list_cards(cfg, customer_ref='docmaster-connection-check')
-    except Exception: raise DomainError('autopay_connection_failed', 409) from None
+    except Exception as error: raise DomainError('autopay_connection_failed', 409, {'inpay': _inpay_said(error)}) from None
     return cfg
 
 
@@ -399,7 +412,7 @@ def test_inpay(kassa='web'):
     cfg = inpay_config(kassa)
     if not cfg['configured']: raise DomainError('inpay_not_configured', 409)
     try: inpay.check(cfg)
-    except Exception: raise DomainError('inpay_connection_failed', 409) from None
+    except Exception as error: raise DomainError('inpay_connection_failed', 409, {'inpay': _inpay_said(error)}) from None
     if cfg['api'] == 'v2' and cfg['live'] and not cfg['webhook_secret']:
         try: fetched = inpay.webhook_secret(cfg)
         except Exception: fetched = ''

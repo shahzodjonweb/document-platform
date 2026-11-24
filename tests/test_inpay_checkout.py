@@ -836,7 +836,17 @@ def test_a_key_inpay_does_not_take_fails_the_connection_test(bank):
     with pytest.raises(DomainError) as refused:
         check_inpay()
     assert refused.value.code == 'inpay_connection_failed'
+    # inPAY's own answer is kept, so the owner can tell a wrong key from an inactive kassa or a spent limit.
+    assert refused.value.params == {'inpay': 'invalid_api_key (HTTP 401)'}
     assert finance  # the staff helpers above are what the admin tests sign in with
+
+
+def test_the_admin_shows_what_inpay_answered_to_a_failed_connection_test(bank):
+    save_config('inpay', {'secret_key': 'sk_live_not_the_right_one'})
+    client, _ = staff_client('Administrator')
+    page = client.post('/ops/integrations?lang=en', {'integration': 'inpay', 'action': 'test'}).content.decode()
+    assert 'inpay_connection_failed · inPAY: invalid_api_key (HTTP 401)' in page
+    assert 'sk_live_not_the_right_one' not in page
 
 
 def test_a_webhook_signed_with_another_secret_tells_the_owner_once(bank):
