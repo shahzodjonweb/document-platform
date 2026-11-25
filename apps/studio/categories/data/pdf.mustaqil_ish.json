@@ -250,8 +250,8 @@
    },
    "kind": "place",
    "need": "optional",
-   "missing": "blank",
-   "where": "Title page foot, «Samarqand – 2026»; a ruled blank captioned (shahar) when missing."
+   "missing": "omit",
+   "where": "Title page foot, «Samarqand – 2026»; when missing the foot is left out: no ruled blank and no year."
   },
   {
    "id": "year",

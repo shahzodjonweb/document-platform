@@ -194,18 +194,67 @@ def test_the_kind_and_the_checkers_word_come_from_choice_facts_never_printed_as_
     assert 'REFERAT' in pages_text(result)[0].replace(' ', '')
 
 
-def test_a_blank_title_page_draws_rules_with_captions_and_the_clock_year(tmp_path):
+def test_a_blank_title_page_draws_rules_with_captions_and_no_city_or_year_line(tmp_path):
     result = draw(tmp_path, content(), template=template_with('academic_mustaqil_ish', [0]))
     text = pages_text(result)[0]
-    for caption in ('(ta’lim muassasasining nomi)', '(fan nomi)', '(F.I.Sh.)', '(kurs, guruh)', '(shahar)'):
+    for caption in ('(ta’lim muassasasining nomi)', '(fan nomi)', '(F.I.Sh.)', '(kurs, guruh)'):
         assert caption in text, caption
     assert 'fanidan' in text and '«' not in text.split('fanidan')[0][-20:]
-    assert '– 2026' in text and '____' not in text
-    # Two rules for the institution, one for the subject, two credit groups (2 + 2 rules), one for the city.
-    assert len(rules(result)) >= 8
+    assert '____' not in text
+    # The owner's call: no «____ – 2026» under a (shahar) caption; without the city the foot is no line at all.
+    assert '(shahar)' not in text and '2026' not in text and '–' not in text
+    # Two rules for the institution, one for the subject, two credit groups (2 + 2 rules); none for the city.
+    assert len(rules(result)) >= 7
     # The topic is the paper's own title when the fact is missing: it was asked for before the paper was written.
     assert 'Maktabda raqamli' in text
     assert problems(result, content(), template=template_with('academic_mustaqil_ish', [0])) == []
+
+
+@pytest.mark.parametrize('template, entry, pages', [('academic_mustaqil_ish', 'pdf.mustaqil_ish', 8),
+                                                     ('academic_kurs_ishi', 'pdf.kurs_ishi', 12)])
+@pytest.mark.parametrize('locale', ['uz', 'ru', 'en'])
+def test_a_title_page_without_its_city_has_no_foot_rule_caption_or_clock_year(tmp_path, template, entry, pages,
+                                                                              locale):
+    given = dict(FULL)
+    given.pop('city')
+    # The model's stand-in for a missing city draws no blank either.
+    for name, page_content in (('none.pdf', content(**given)), ('stand_in.pdf', content(**given, city='________'))):
+        result = draw(tmp_path, page_content, entry=catalogue.get(entry), template=template_with(template, [0]),
+                      pages=pages, locale=locale, name=name)
+        text = pages_text(result)[0]
+        for caption in ('(shahar)', '(город)', '(city)'):
+            assert caption not in text, (name, caption)
+        # No foot line: neither «____ – 2026» nor the clock's year alone (a kurs ishi's signature dates keep theirs).
+        lines = [line.strip() for line in text.split('\n') if line.strip()]
+        assert not any(re.fullmatch(r'(?:_*\s*[–-]\s*)?2026', line) for line in lines), (name, lines)
+        assert '– 2026' not in text, name
+        assert problems(result, page_content, entry=catalogue.get(entry), template=template_with(template, [0]),
+                        pages=pages, locale=locale) == [], name
+
+
+def test_a_city_prints_with_the_clock_year_and_a_written_year_prints_without_a_city(tmp_path):
+    template = template_with('academic_mustaqil_ish', [0])
+    result = draw(tmp_path, content(**FULL), template=template)
+    assert 'Gulzorobod – 2026' in pages_text(result)[0]
+    given = dict(FULL, year='2025')
+    given.pop('city')
+    result = draw(tmp_path, content(**given), template=template, name='written.pdf')
+    text = pages_text(result)[0]
+    # A year the customer wrote is theirs and stays, alone; the clock's would not.
+    assert '2025' in text and '2026' not in text and '(shahar)' not in text
+
+
+def test_a_business_plan_cover_keeps_its_year_without_a_place():
+    # Its foot's year is the plan's own (year: fact), not the city's: it stands alone as before.
+    entry = catalogue.get('pdf.biz.biznes_reja')
+    raw = catalogue.template('business_biznes_reja')
+    placement = next(item for item in raw['flow'] if isinstance(item, dict) and item.get('block') == 'title_page')
+    ctx = Ctx(content=content(project_name='Namuna sut fermasi'), entry=entry, template=raw, locale='uz', step=0,
+              pages=12, width=400, frame_height=700, day=DAY)
+    place = Place('title_page', None, entry.part('title_page'), tuple(placement['fields']), placement['params'])
+    rows = academic._rows(ctx, place, placement['params']['rows'])
+    assert not [found for found in rows if found['role'] == 'foot']
+    assert academic._year(ctx, place, placement['params'], placement['params']['rows'], rows) == '2026'
 
 
 def test_a_fact_left_out_draws_no_row_and_a_given_ministry_prints(tmp_path):

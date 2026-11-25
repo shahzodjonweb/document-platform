@@ -243,6 +243,14 @@ def _printed(entry, field_id):
     return field is not None and field['kind'] not in UNPRINTED
 
 
+def _cityless_year(ctx, place, field_id, value):
+    """A title page's clock year that goes with its missing city (academic.foot_year): not a fact to look for."""
+    if place.block != 'title_page' or (place.params or {}).get('year') != 'clock' or ctx.given(field_id):
+        return False
+    from .blocks import academic
+    return academic.foot_year(ctx, place) != value
+
+
 def _list_length(section):
     """How many items a list block draws from a section: its items with text, else its body's lines (R1's list)."""
     items = [item for item in (section or {}).get('items') or [] if isinstance(item, dict)
@@ -316,7 +324,7 @@ def expect_for(artifact, content, *, entry, template, locale, pages, cues=frozen
             gutter = GUTTER_EMS * ctx.size
         for field_id in place.fields:
             value = ctx.fact(field_id)
-            if value is not None and _printed(entry, field_id):
+            if value is not None and _printed(entry, field_id) and not _cityless_year(ctx, place, field_id, value):
                 # A signer written "post | name" prints as two cells, so each side is read back on its own.
                 facts += [piece.strip() for line in value.split('\n') for piece in line.split('|')
                           if piece.strip()] if '|' in value else [value]
