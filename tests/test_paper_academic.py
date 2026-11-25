@@ -224,10 +224,8 @@ def test_a_title_page_without_its_city_has_no_foot_rule_caption_or_clock_year(tm
         text = pages_text(result)[0]
         for caption in ('(shahar)', '(город)', '(city)'):
             assert caption not in text, (name, caption)
-        # No foot line: neither «____ – 2026» nor the clock's year alone (a kurs ishi's signature dates keep theirs).
-        lines = [line.strip() for line in text.split('\n') if line.strip()]
-        assert not any(re.fullmatch(r'(?:_*\s*[–-]\s*)?2026', line) for line in lines), (name, lines)
-        assert '– 2026' not in text, name
+        # No foot line: neither «____ – 2026» nor the clock's year alone, and no signature date either.
+        assert '2026' not in text, (name, text)
         assert problems(result, page_content, entry=catalogue.get(entry), template=template_with(template, [0]),
                         pages=pages, locale=locale) == [], name
 
@@ -279,7 +277,18 @@ def test_a_long_topic_and_long_names_stay_on_the_sheet(tmp_path):
     assert problems(result, page_content, template=template) == []
 
 
-def test_a_kurs_ishi_title_page_has_its_lines_signatures_and_dates(tmp_path):
+@pytest.mark.parametrize('locale', ['uz', 'ru', 'en'])
+def test_a_kurs_ishi_signature_has_its_rule_and_caption_but_no_date(tmp_path, locale):
+    # The owner's call: no «___» ________ 2026-yil to fill in beside a signature.
+    result = draw(tmp_path, content(topic='Kichik korxonalarda xodimlarni rag‘batlantirish'), entry=kurs(),
+                  template=template_with('academic_kurs_ishi', [0]), pages=12, locale=locale)
+    text = pages_text(result)[0]
+    word = {'uz': '(imzo)', 'ru': '(подпись)', 'en': '(signature)'}[locale]
+    assert text.count(word) == 2
+    assert '2026' not in text and '___' not in text
+
+
+def test_a_kurs_ishi_title_page_has_its_lines_and_signatures(tmp_path):
     given = dict(topic='Kichik korxonalarda xodimlarni rag‘batlantirish', subject='Menejment',
                  university='Gulzorobod iqtisodiyot universiteti', kafedra='Korxona iqtisodiyoti',
                  direction='Menejment', course_group='3-kurs 312-guruh', student_name='Yusufbekova Gulshoda',
@@ -291,7 +300,7 @@ def test_a_kurs_ishi_title_page_has_its_lines_signatures_and_dates(tmp_path):
     assert '«Korxona iqtisodiyoti» kafedrasi' in text and 'Menejment ta’lim yo‘nalishi' in text
     assert 'KICHIK KORXONALARDA XODIMLARNI RAG‘BATLANTIRISH' in flat(text) and 'KURSISHI' in text.replace(' ', '')
     assert '3-kurs 312-guruh talabasi' in text and 'Ilmiy rahbar:' in text
-    assert text.count('(imzo)') == 2 and text.count('2026-yil') == 2
+    assert text.count('(imzo)') == 2 and '2026-yil' not in text and 'Gulzorobod – 2026' in text
     assert problems(result, page_content, entry=kurs(), template=template, pages=12) == []
 
 
