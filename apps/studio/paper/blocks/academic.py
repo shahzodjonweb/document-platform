@@ -68,8 +68,8 @@ DISPLAY, DISPLAY_FLOOR, TRACKING_PT = 2.45, 1.6, 5.0
 TOPIC_STEPS, TOPIC_LINES = (1.23, 1.12, 1.04, 1.0), 5
 # Every size and gap of a sheet that does not fit is scaled by the next of these before it is given up.
 SCALES = (1.0, 0.92, 0.85, 0.78, 0.7)
-# A date to fill in by hand under a signature, its year the clock's.
-SIGN_DATE = {'uz': '«___» ________ {year}-yil', 'ru': '«___» ________ {year} г.', 'en': '____ ________ {year}'}
+# The caption under a signature rule. No date is drawn beside it: «___» ________ 2026-yil is not wanted (the owner's
+# call, as with the city's «____ – 2026»).
 SIGN_WORD = {'uz': '(imzo)', 'ru': '(подпись)', 'en': '(signature)'}
 DASH = ' – '
 QUOTES = '«»“”„"‘’\''
@@ -545,11 +545,10 @@ def _credit_table(ctx, group, scale, label_width, value_width):
                 if piece.strip():
                     cell.append(Paragraph(ctx.text(piece.strip(), style), style))
     if any(found['sign'] for found in group):
-        # The signature and its date close the group, under the name and the sub rows.
-        date = SIGN_DATE[ctx.locale].format(year=ctx.day.year)
+        # The signature closes the group, under the name and the sub rows: a rule and its caption, no date.
         cell.append(Spacer(1, size * 0.4))
-        cell.append(Blank(rule=min(30 * MM, value_width * 0.4), suffix=ctx.plain(date), caption=SIGN_WORD[ctx.locale],
-                          font=ctx.face, size=small.fontSize, small=max(7.0, _cap_size(ctx) * scale), align='left',
+        cell.append(Blank(rule=min(30 * MM, value_width * 0.4), caption=SIGN_WORD[ctx.locale], font=ctx.face,
+                          size=small.fontSize, small=max(7.0, _cap_size(ctx) * scale), align='left',
                           room=small.fontSize * 1.6))
     rows = [[Paragraph(ctx.text(label, bold), bold) if label else '', cell]]
     table = Table(rows, colWidths=[label_width, value_width])
@@ -655,7 +654,7 @@ def title_page(ctx, place):
     credit before them and go with it when it prints nothing) | foot (the
     city); `own_title` the paper's title, a blank when it only stands in; `choice`
     a choice field whose value picks the label key from `labels`; `sign` a
-    signature rule and a date to fill in under the credit); year clock |
+    signature rule under the credit, with no date beside it); year clock |
     fact | none (at the foot after the city, the year field's value or the
     clock's; a clock year goes with a foot row's missing city). The cover
     form of the business templates is read too: label (the fixed word),
