@@ -130,8 +130,7 @@
      },
      {
       "role": "foot",
-      "fact": "city",
-      "blank_caption": "cap_city"
+      "fact": "city"
      }
     ],
     "year": "clock"
@@ -361,11 +360,6 @@
    "uz": "(lavozimi, ilmiy unvoni, F.I.Sh.)",
    "ru": "(должность, звание, Ф. И. О.)",
    "en": "(post, title, full name)"
-  },
-  "cap_city": {
-   "uz": "(shahar)",
-   "ru": "(город)",
-   "en": "(city)"
   },
   "group_normative": {
    "uz": "Normativ-huquqiy hujjatlar",

@@ -12,7 +12,9 @@ two blocks.
   large tracked capitals and the topic in the middle, who wrote it and who
   checks it in a column right of the centre, the city and the year at the
   foot. A fact the customer did not give is a ruled line with a small caption
-  saying what to write there, never a guess; the year is the clock's. It is
+  saying what to write there, never a guess; the year is the clock's. The
+  foot is the one exception: without the city it is no line at all, never
+  «____ – 2026» under a (shahar) caption (the owner's call). It is
   one flowable as tall as the frame, so what follows starts the next page and
   the page is counted, never numbered.
 - `toc` lists the headings the paper actually draws (each heading block
@@ -54,7 +56,7 @@ CREDIT = frozenset(('credit', 'credit_sub'))
 ROLE_STYLE = {'ministry': 'bold_caps', 'institution': 'bold_caps', 'kind': 'display', 'topic': 'topic',
               'title': 'topic', 'subtitle': 'italic', 'foot': 'bold'}
 # The width of a blank where a fact is missing, by role, in mm (the credit column's blanks are its width).
-BLANK_MM = {'ministry': 140, 'institution': 140, 'subject': 95, 'foot': 50, 'topic': 140, 'title': 140}
+BLANK_MM = {'ministry': 140, 'institution': 140, 'subject': 95, 'topic': 140, 'title': 140}
 BLANK_LINES = {'institution': 2}
 # A centred line is set inside this measure, so a long institution or topic wraps into a block, not a ribbon.
 MEASURE_MM = 149
@@ -338,18 +340,26 @@ def _choice_label(ctx, row):
     return key if _has_label(ctx, key) else None
 
 
-def _year(ctx, place, params):
-    """The year a title page prints at its foot: the year field's (its fact, else its clock), the clock's, or none."""
+def _year(ctx, place, params, raw=(), rows=()):
+    """The year a title page prints at its foot: the year field's (its fact, else its clock), the clock's, or none.
+
+    A clock year is the city's («Samarqand – 2026»): when the template's foot
+    names a city and it prints nothing, only a year the customer wrote is left,
+    so a paper without its city has no foot line at all. A `fact` year (a
+    business plan's year) stands alone as before.
+    """
     mode = params.get('year')
     if mode in (None, 'none'):
         return None
+    cityless = mode == 'clock' and any(isinstance(row, dict) and row.get('role') == 'foot' for row in raw) and \
+        not any(found['role'] == 'foot' for found in rows)
     for field_id in place.fields:
         field = ctx.entry.field(field_id) or {}
         if field.get('clock') == 'year' or field_id == 'year':
             value = ctx.fact(field_id)
-            if value:
+            if value and (ctx.given(field_id) or not cityless):
                 return value
-    return str(ctx.day.year) if mode == 'clock' else None
+    return str(ctx.day.year) if mode == 'clock' and not cityless else None
 
 
 def _business_rows(ctx, place, params):
@@ -417,13 +427,9 @@ def _resolved(ctx, place, row):
         return dict(found, text=ctx.label(key)) if key else None
     values = [ctx.fact(field_id) for field_id in facts]
     if role == 'foot':
+        # The foot prints only what was written: a missing city is no line, never a ruled blank to fill in by hand.
         shown = [value for value in values if value]
-        blanks = [field_id for field_id, value in zip(facts, values) if not value and ctx.blank(field_id)]
-        if not shown and not blanks:
-            return None
-        if blanks and not shown:
-            return dict(found, blank=True)
-        return dict(found, text=DASH.join(shown))
+        return dict(found, text=DASH.join(shown)) if shown else None
     field_id, value = facts[0], values[0]
     if value is None and role in ('topic', 'title'):
         # The topic is asked for before the paper is written and the paper's title is made from it.
@@ -511,12 +517,12 @@ def _line_style(ctx, kind, scale):
     return _style(ctx, base, fontSize=size, leading=size * 1.36)
 
 
-def _blank(ctx, found, scale, *, rule_mm=None, x=0.0, width=None, bold=False, align='centre'):
+def _blank(ctx, found, scale, *, rule_mm=None, x=0.0, width=None, align='centre'):
     size = ctx.size * scale
     rule = (rule_mm or BLANK_MM.get(found['role'], 95)) * MM * scale if width is None else width
     return Blank(rule=rule, prefix=ctx.plain(found['prefix']), suffix=ctx.plain(found['suffix']),
                  caption=ctx.plain(found['caption']), font=ctx.face, size=size, small=max(7.0, _cap_size(ctx) * scale),
-                 bold=bold, lines=found['lines'], align=align, x=x)
+                 lines=found['lines'], align=align, x=x)
 
 
 def _credit_table(ctx, group, scale, label_width, value_width):
@@ -604,14 +610,10 @@ def _sheet(ctx, rows, scale, height, year):
             zones['credit'].append((_credit_table(ctx, group, scale, label_width, value_width), x_label,
                                     lead * 0.6 if number else 0.0))
     foot = next((found for found in rows if found['role'] == 'foot'), None)
-    if foot is not None or year:
+    text = DASH.join(piece for piece in ((foot or {}).get('text'), year) if piece)
+    if text:
         style = _style(ctx, 'bold', fontSize=ctx.size * scale, leading=ctx.size * scale * 1.3, alignment=TA_CENTER)
-        if foot is not None and foot['blank']:
-            zones['foot'].append((_blank(ctx, dict(foot, suffix=f'– {year}' if year else ''), scale, bold=True),
-                                  0.0, 0.0))
-        else:
-            text = DASH.join(piece for piece in ((foot or {}).get('text'), year) if piece)
-            zones['foot'].append((Paragraph(ctx.text(text, style), style), 0.0, 0.0))
+        zones['foot'].append((Paragraph(ctx.text(text, style), style), 0.0, 0.0))
     return Sheet(zones, height, gap=10 * MM * scale, credit_gap=14 * MM * scale)
 
 
@@ -635,6 +637,13 @@ def _rows(ctx, place, raw):
     return rows
 
 
+def foot_year(ctx, place):
+    """The year a title page placement prints at its foot, or None; check.py expects a clock year only then."""
+    params = _params(place)
+    raw = params.get('rows') if isinstance(params.get('rows'), list) else _business_rows(ctx, place, params)
+    return _year(ctx, place, params, raw, _rows(ctx, place, raw))
+
+
 def title_page(ctx, place):
     """A whole first sheet, every line placed by its role; see the module's docstring.
 
@@ -648,14 +657,15 @@ def title_page(ctx, place):
     a choice field whose value picks the label key from `labels`; `sign` a
     signature rule and a date to fill in under the credit); year clock |
     fact | none (at the foot after the city, the year field's value or the
-    clock's). The cover form of the business templates is read too: label
-    (the fixed word), title (content_title, or a field id), labels ({field
-    id: label key}: credit rows), foot (field ids joined at the foot).
+    clock's; a clock year goes with a foot row's missing city). The cover
+    form of the business templates is read too: label (the fixed word),
+    title (content_title, or a field id), labels ({field id: label key}:
+    credit rows), foot (field ids joined at the foot).
     """
     params = _params(place)
     raw = params.get('rows') if isinstance(params.get('rows'), list) else _business_rows(ctx, place, params)
     rows = _rows(ctx, place, raw)
-    year = _year(ctx, place, params)
+    year = _year(ctx, place, params, raw, rows)
     if not rows and not year:
         return []
     height = ctx.frame_height - 1
@@ -678,10 +688,11 @@ def _title_plain(ctx, place):
     params = _params(place)
     raw = params.get('rows') if isinstance(params.get('rows'), list) else _business_rows(ctx, place, params)
     lines = []
-    for found in _rows(ctx, place, raw):
+    rows = _rows(ctx, place, raw)
+    for found in rows:
         text = found['text'] if not found['blank'] else '_' * 16
         lines.append(' '.join(piece for piece in (found['label'], text) if piece))
-    year = _year(ctx, place, params)
+    year = _year(ctx, place, params, raw, rows)
     if year:
         lines.append(year)
     style = _style(ctx, 'body', alignment=TA_CENTER)

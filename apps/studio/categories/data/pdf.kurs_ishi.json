@@ -259,8 +259,8 @@
    },
    "kind": "place",
    "need": "recommended",
-   "missing": "blank",
-   "where": "Foot of the title page, «Toshkent – 2026»; never taken from the university’s name."
+   "missing": "omit",
+   "where": "Foot of the title page, «Toshkent – 2026»; never taken from the university’s name. When missing the foot is left out: no ruled blank and no year."
   },
   {
    "id": "year",

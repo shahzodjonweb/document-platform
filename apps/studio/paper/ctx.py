@@ -235,6 +235,11 @@ class Ctx:
             return clock_value(field['clock'], self.day, self.locale)
         return None
 
+    def given(self, field_id):
+        """Whether a field holds a verified value of its own, not its clock's and not a stand-in."""
+        value = self._facts.get(field_id)
+        return bool(value) and not STAND_IN.fullmatch(value)
+
     def blank(self, field_id):
         """Whether a blank is drawn for a field: the model asked for one, or the field draws one when missing."""
         if self.fact(field_id) is not None:

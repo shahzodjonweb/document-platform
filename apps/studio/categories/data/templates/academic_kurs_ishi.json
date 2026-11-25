@@ -132,8 +132,7 @@
      },
      {
       "role": "foot",
-      "fact": "city",
-      "blank_caption": "cap_city"
+      "fact": "city"
      }
     ],
     "year": "clock"
@@ -490,11 +489,6 @@
    "uz": "(kurs, guruh)",
    "ru": "(курс, группа)",
    "en": "(year, group)"
-  },
-  "cap_city": {
-   "uz": "(shahar)",
-   "ru": "(город)",
-   "en": "(city)"
   },
   "lbl_relevance": {
    "uz": "Mavzuning dolzarbligi.",
