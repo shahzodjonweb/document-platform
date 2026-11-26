@@ -13,6 +13,7 @@ urlpatterns = [path('users/<uuid:pk>/plan',actions.set_plan),path('users/<uuid:p
     path('posts/<uuid:pk>', post_views.post_detail),
     path('posts/<uuid:pk>/send', post_views.post_send),
     path('posts/<uuid:pk>/test', post_views.post_test),
+    path('posts/<uuid:pk>/resend', post_views.post_resend),
     path('posts/<uuid:pk>/stop', post_views.post_stop),
     path('posts/<uuid:pk>/discard', post_views.post_discard),
     path('posts/<uuid:pk>/image', post_views.post_image),

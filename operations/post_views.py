@@ -97,7 +97,7 @@ def post_compose(request):
 @require_staff()
 @require_GET
 def post_detail(request, pk):
-    post = get_object_or_404(Post.objects.select_related('created_by'), pk=pk)
+    post = get_object_or_404(Post.objects.select_related('created_by', 'resent_from'), pk=pk)
     data = context(request, 'posts')
     t = data['t']
     stats = posts.stats(post)
@@ -109,6 +109,8 @@ def post_detail(request, pk):
               .order_by(when, 'created_at', 'pk'))
     pagination = Paginator(people, 50).get_page(request.GET.get('p'))
     preview = posts.preview(post) if post.status == 'draft' else None
+    # Who "Send again" would reach now: the audience as it stands today.
+    resend_reach = posts.audience(post).count() if post.status in ('sent', 'stopped') else None
     tiles = [
         {'label': t['post_reach'] if preview else t['post_audience'],
          'value': preview['count'] if preview else stats['audience'], 'note': ''},
@@ -139,6 +141,9 @@ def post_detail(request, pk):
         saved=t.get('post_saved_' + request.GET.get('saved', ''), ''),
         error=_error(t, code) if code else '',
         send_confirm=t['post_send_confirm'].format(n=preview['count']) if preview else '',
+        resend_reach=resend_reach,
+        resend_confirm=t['post_resend_confirm'].format(n=resend_reach) if resend_reach is not None else '',
+        repeats=post.repeats.order_by('-created_at')[:20] if not post.resent_from_id else [],
     )
     return finish_render(request, 'ops/post.html', data)
 
@@ -153,6 +158,19 @@ def post_send(request, pk):
     audit(request.ops_user, 'post.sent', post.pk,
           after={'audience': post.audience, 'count': post.audience_count, 'image': bool(post.image_key)})
     return _page(request, pk, saved='sent')
+
+
+@require_staff()
+@require_POST
+def post_resend(request, pk):
+    try:
+        post = posts.resend(request.ops_user, pk)
+    except DomainError as error:
+        return _failed(request, pk, error)
+    audit(request.ops_user, 'post.resent', post.pk,
+          after={'from': str(pk), 'audience': post.audience, 'count': post.audience_count,
+                 'image': bool(post.image_key)})
+    return _page(request, post.pk, saved='resent')
 
 
 @require_staff()

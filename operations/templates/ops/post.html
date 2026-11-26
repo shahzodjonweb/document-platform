@@ -8,6 +8,7 @@
     <h1 class="post-title">{{ title }}</h1>
     <div class="profile-meta">
       <span class="badge status-{{ post.status }}">{{ status_label }}</span>
+      {% if post.resent_from_id %}<span class="badge info">{{ t.post_repeat }}</span>{% endif %}
       <span>{{ audience_label }}</span>
       <span>{{ post.created_at|date:'d M Y · H:i' }}{% if post.created_by %} · {{ post.created_by.username }}{% endif %}</span>
     </div>
@@ -18,6 +19,8 @@
     <button type="button" class="button primary" data-dialog-open="send-post"{% if not preview.count %} disabled{% endif %}>{% icon 'send' 17 %}{{ t.post_send }}</button>
     {% elif post.status == 'sending' %}
     <form method="post" action="/ops/posts/{{ post.id }}/stop?lang={{ lang }}">{% csrf_token %}<button class="button danger-outline">{{ t.post_stop }}</button></form>
+    {% elif resend_reach is not None %}
+    <button type="button" class="button primary" data-dialog-open="resend-post"{% if not resend_reach %} disabled title="{{ t.post_error_audience_empty }}"{% endif %}>{% icon 'repeat' 17 %}{{ t.post_resend }}</button>
     {% endif %}
   </div>
 </div>
@@ -52,6 +55,8 @@
       <dt>{{ t.post_button_action }}</dt><dd>{{ button_action_label }}</dd>
       {% if post.started_at %}<dt>{{ t.post_started }}</dt><dd>{{ post.started_at|date:'d M Y · H:i' }}</dd>{% endif %}
       {% if post.finished_at %}<dt>{{ t.post_finished }}</dt><dd>{{ post.finished_at|date:'d M Y · H:i' }}</dd>{% endif %}
+      {% if post.resent_from %}<dt>{{ t.post_repeat_of }}</dt><dd><a class="table-link" href="/ops/posts/{{ post.resent_from_id }}?lang={{ lang }}">{{ post.resent_from.created_at|date:'d M Y · H:i' }}</a></dd>{% endif %}
+      {% if repeats %}<dt>{{ t.post_repeats }}</dt><dd>{% for repeat in repeats %}<a class="table-link" href="/ops/posts/{{ repeat.id }}?lang={{ lang }}">{{ repeat.created_at|date:'d M Y · H:i' }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}</dd>{% endif %}
     </dl>
   </section>
 
@@ -142,6 +147,26 @@
     <div class="dialog-foot">
       <button type="button" class="button secondary" data-dialog-close>{{ t.cancel }}</button>
       <button class="button primary">{% icon 'send' 16 %}{{ t.post_send }}</button>
+    </div>
+  </form>
+</dialog>
+{% endif %}
+
+{% if resend_reach %}
+<dialog class="dialog" id="resend-post" aria-labelledby="resend-post-title">
+  <form method="post" action="/ops/posts/{{ post.id }}/resend?lang={{ lang }}">
+    {% csrf_token %}
+    <div class="dialog-head">
+      <div>
+        <h2 id="resend-post-title">{{ t.post_resend }}</h2>
+        <p>{{ resend_confirm }}</p>
+      </div>
+      <button type="button" class="icon-button" data-dialog-close aria-label="{{ t.close }}">{% icon 'close' %}</button>
+    </div>
+    <div class="dialog-body"><p class="field-hint">{{ t.post_resend_note }}</p></div>
+    <div class="dialog-foot">
+      <button type="button" class="button secondary" data-dialog-close>{{ t.cancel }}</button>
+      <button class="button primary">{% icon 'repeat' 16 %}{{ t.post_resend }}</button>
     </div>
   </form>
 </dialog>

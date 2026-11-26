@@ -22,7 +22,7 @@
         {% for row in rows %}
         <tr>
           <td class="muted">{{ row.post.created_at|date:'d M Y · H:i' }}{% if row.post.created_by %}<br><small>{{ row.post.created_by.username }}</small>{% endif %}</td>
-          <td class="request-cell">{% if row.post.image_key %}<span class="tool-symbol" title="{{ t.post_image }}">{% icon 'image' 15 %}</span>{% endif %}<a class="table-link" href="/ops/posts/{{ row.post.id }}?lang={{ lang }}">{{ row.title }}</a></td>
+          <td class="request-cell">{% if row.post.image_key %}<span class="tool-symbol" title="{{ t.post_image }}">{% icon 'image' 15 %}</span>{% endif %}<a class="table-link" href="/ops/posts/{{ row.post.id }}?lang={{ lang }}">{{ row.title }}</a>{% if row.post.resent_from_id %} <span class="badge info">{{ t.post_repeat }}</span>{% endif %}</td>
           <td>{{ row.audience }}</td>
           <td><span class="badge status-{{ row.post.status }}">{{ row.status }}</span></td>
           <td>{% if row.post.status == 'draft' %}—{% else %}{{ row.post.delivered }} <small class="muted">/ {{ row.post.audience_count }}</small>{% endif %}</td>

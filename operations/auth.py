@@ -85,6 +85,7 @@ DESCRIPTIONS = {
     'support.reply': 'Replied to a support request', 'support.status_changed': 'Changed a support request status',
     'post.created': 'Wrote a post draft', 'post.sent': 'Sent a post to bot users', 'post.test': 'Sent a test of a post',
     'post.stopped': 'Stopped sending a post', 'post.discarded': 'Deleted a post draft',
+    'post.resent': 'Sent a post again to bot users',
 }
 
 
