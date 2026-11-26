@@ -53,7 +53,8 @@ def test_only_administrators_reach_posts(role):
     post = posts.create(None, text='Hello', audience_kind='everyone')
     for url in ('/ops/posts', '/ops/posts/new', f'/ops/posts/{post.pk}', f'/ops/posts/{post.pk}/image'):
         assert client.get(url).status_code == 403, url
-    for url in ('/ops/posts/new', *(f'/ops/posts/{post.pk}/{action}' for action in ('send', 'test', 'stop', 'discard'))):
+    for url in ('/ops/posts/new', *(f'/ops/posts/{post.pk}/{action}'
+                                    for action in ('send', 'test', 'stop', 'discard', 'resend'))):
         assert client.post(url, {'text': 'x', 'audience': 'everyone', 'person': '1'}).status_code == 403, url
     post.refresh_from_db()
     assert post.status == 'draft' and Post.objects.count() == 1 and not PostRecipient.objects.exists()
@@ -65,7 +66,7 @@ def test_post_actions_need_the_csrf_token_before_anything_happens():
     reader(7001, 'reader_one')
     post = posts.create(None, text='Hello', audience_kind='everyone')
     assert client.post('/ops/posts/new', {'text': 'x', 'audience': 'everyone'}).status_code == 403
-    for action in ('send', 'test', 'stop', 'discard'):
+    for action in ('send', 'test', 'stop', 'discard', 'resend'):
         assert client.post(f'/ops/posts/{post.pk}/{action}', {'person': 'reader_one'}).status_code == 403
     post.refresh_from_db()
     assert post.status == 'draft' and Post.objects.count() == 1 and not PostRecipient.objects.exists()
@@ -219,7 +220,7 @@ def test_an_action_on_a_post_that_is_gone_goes_back_to_the_list_and_says_so():
     client, _ = staff_client()
     post = posts.create(None, text='Hello', audience_kind='everyone')
     posts.discard(post.pk)
-    for action in ('send', 'test', 'stop', 'discard'):
+    for action in ('send', 'test', 'stop', 'discard', 'resend'):
         response = client.post(f'/ops/posts/{post.pk}/{action}?lang=en', {'person': 'someone_here'})
         assert response['Location'] == '/ops/posts?lang=en&error=not_found', action
     assert EN['post_error_not_found'] in client.get('/ops/posts?lang=en&error=not_found').content.decode()
@@ -254,3 +255,133 @@ def test_a_one_time_message_does_not_follow_the_owner_to_other_pages():
     links = re.findall(r'href="(/ops/[^"]*)"', page.split('<main', 1)[0])
     assert '/ops/posts?lang=en' in links and '/ops/users?lang=en' in links
     assert not [link for link in links if 'error=' in link or 'saved=' in link]
+
+
+def finished(post, *accounts):
+    """The post sent and delivered to these people."""
+    posts.start(post.pk)
+    now = timezone.now()
+    PostRecipient.objects.filter(post=post, account__in=accounts).update(status='delivered', delivered_at=now)
+    posts.settle()
+    post.refresh_from_db()
+    assert post.status == 'sent'
+    return post
+
+
+def test_a_finished_post_is_sent_again_as_a_new_post_to_the_same_audience():
+    client, staff = staff_client()
+    one, two = reader(7001, 'reader_one'), reader(7002, 'reader_two')
+    client.post('/ops/posts/new?lang=en', {'text': 'Hello again', 'audience': 'everyone', 'button_label': 'Got it',
+                                           'button_action': 'invite', 'usernames': '', 'image': picture()})
+    first = Post.objects.get()
+    Post.objects.filter(pk=first.pk).update(image_file_id='telegram-file-1')
+    finished(first, one, two)
+    page = client.get(f'/ops/posts/{first.pk}?lang=en').content.decode()
+    assert 'data-dialog-open="resend-post"' in page and EN['post_resend_confirm'].format(n=2) in page
+    assert f'action="/ops/posts/{first.pk}/resend?lang=en"' in page
+
+    response = client.post(f'/ops/posts/{first.pk}/resend?lang=en')
+    repeat = Post.objects.exclude(pk=first.pk).get()
+    assert response['Location'] == f'/ops/posts/{repeat.pk}?lang=en&saved=resent'
+    assert (repeat.text, repeat.button_label, repeat.button_action, repeat.audience, repeat.usernames) == \
+        ('Hello again', 'Got it', 'invite', 'everyone', '')
+    assert (repeat.resent_from, repeat.created_by, repeat.status, repeat.audience_count) == (first, staff, 'sending', 2)
+    assert repeat.image_key.startswith(f'posts/{repeat.pk}/') and repeat.image_key != first.image_key
+    assert storage.read_bytes(repeat.image_key) == storage.read_bytes(first.image_key), 'the same picture, not re-encoded'
+    assert repeat.image_file_id == 'telegram-file-1', 'Telegram already has the picture'
+    assert set(PostRecipient.objects.filter(post=repeat).values_list('account_id', 'status', 'is_test')) == \
+        {(one.pk, 'pending', False), (two.pk, 'pending', False)}, 'people who had it get it again'
+    assert PostRecipient.objects.filter(post=first, status='delivered').count() == 2, 'the first keeps its numbers'
+    assert AuditLog.objects.get(action='post.resent').after == \
+        {'from': str(first.pk), 'audience': 'everyone', 'count': 2, 'image': True}
+
+    page = client.get(response['Location']).content.decode()
+    assert EN['post_saved_resent'] in page and EN['post_repeat_of'] in page and EN['post_repeat'] in page
+    assert f'href="/ops/posts/{first.pk}?lang=en"' in page and 'data-dialog-open="resend-post"' not in page
+    page = client.get(f'/ops/posts/{first.pk}?lang=en').content.decode()
+    assert EN['post_repeats'] in page and f'href="/ops/posts/{repeat.pk}?lang=en"' in page
+    listing = client.get('/ops/posts?lang=en').content.decode()
+    assert listing.count(f'<span class="badge info">{EN["post_repeat"]}</span>') == 1
+
+
+def test_sending_again_twice_in_a_row_sends_one_repeat():
+    client, _ = staff_client()
+    one = reader(7001, 'reader_one')
+    first = finished(posts.create(None, text='Hello', audience_kind='everyone'), one)
+    client.post(f'/ops/posts/{first.pk}/resend?lang=en')
+    again = client.post(f'/ops/posts/{first.pk}/resend?lang=en')
+    assert again['Location'] == f'/ops/posts/{first.pk}?lang=en&error=post_resending'
+    assert EN['post_error_resending'] in client.get(again['Location']).content.decode()
+    repeat = Post.objects.get(resent_from=first)
+    # Delivered at once, but still within the minute: the second click is refused too.
+    finished_repeat = PostRecipient.objects.filter(post=repeat).update(status='delivered', delivered_at=timezone.now())
+    assert finished_repeat == 1 and posts.settle() == 1
+    assert client.post(f'/ops/posts/{repeat.pk}/resend?lang=en')['Location'].endswith('error=post_resending')
+    assert Post.objects.count() == 2 and PostRecipient.objects.count() == 2
+
+    # A minute later the repeat can be sent again; its repeat is of the first post.
+    Post.objects.filter(pk=repeat.pk).update(started_at=timezone.now() - posts.RESEND_GAP - timedelta(seconds=1))
+    response = client.post(f'/ops/posts/{repeat.pk}/resend?lang=en')
+    third = Post.objects.exclude(pk__in=(first.pk, repeat.pk)).get()
+    assert response['Location'].endswith(f'/ops/posts/{third.pk}?lang=en&saved=resent')
+    assert third.resent_from == first and third.status == 'sending'
+
+
+def test_only_a_post_that_went_out_can_be_sent_again():
+    client, _ = staff_client()
+    reader(7001, 'reader_one')
+    draft = posts.create(None, text='Draft', audience_kind='everyone')
+    going = posts.create(None, text='Going', audience_kind='everyone')
+    posts.start(going.pk)
+    for post in (draft, going):
+        response = client.post(f'/ops/posts/{post.pk}/resend?lang=en')
+        assert response['Location'] == f'/ops/posts/{post.pk}?lang=en&error=post_not_finished'
+        assert 'data-dialog-open="resend-post"' not in client.get(f'/ops/posts/{post.pk}?lang=en').content.decode()
+    assert EN['post_error_not_finished'] in client.get(response['Location']).content.decode()
+    stopped = posts.stop(going.pk)
+    assert client.post(f'/ops/posts/{stopped.pk}/resend?lang=en')['Location'].endswith('saved=resent')
+    assert Post.objects.count() == 3 and not AuditLog.objects.filter(target=str(draft.pk)).exists()
+
+
+def test_a_repeat_with_nobody_to_reach_leaves_nothing_behind():
+    client, _ = staff_client()
+    gone = reader(7001, 'reader_one')
+    client.post('/ops/posts/new?lang=en', {'text': 'Hi', 'audience': 'usernames', 'usernames': '@reader_one',
+                                           'image': picture()})
+    first = finished(Post.objects.get(), gone)
+    Account.objects.filter(pk=gone.pk).update(deletion_requested_at=timezone.now())
+    page = client.get(f'/ops/posts/{first.pk}?lang=en').content.decode()
+    assert 'data-dialog-open="resend-post" disabled' in page and 'id="resend-post"' not in page
+    stored = set(StoredObject.objects.values_list('key', flat=True))
+    folders = set(storage.storage_path('posts').iterdir())
+    response = client.post(f'/ops/posts/{first.pk}/resend?lang=en')
+    assert response['Location'] == f'/ops/posts/{first.pk}?lang=en&error=post_audience_empty'
+    assert Post.objects.count() == 1 and set(StoredObject.objects.values_list('key', flat=True)) == stored
+    assert {path for path in storage.storage_path('posts').iterdir() if any(path.iterdir())} <= folders, \
+        'the repeat’s picture is not left on the volume'
+    assert not AuditLog.objects.filter(action='post.resent').exists()
+
+
+def test_a_post_whose_picture_is_gone_says_so_instead_of_sending_without_it():
+    client, _ = staff_client()
+    one = reader(7001, 'reader_one')
+    client.post('/ops/posts/new?lang=en', {'text': 'Hi', 'audience': 'everyone', 'image': picture()})
+    first = finished(Post.objects.get(), one)
+    storage.storage_path(first.image_key).unlink()
+    response = client.post(f'/ops/posts/{first.pk}/resend?lang=en')
+    assert response['Location'] == f'/ops/posts/{first.pk}?lang=en&error=post_image_missing'
+    assert EN['post_error_image_missing'] in client.get(response['Location']).content.decode()
+    assert Post.objects.count() == 1
+
+
+@pytest.mark.parametrize('lang', ['en', 'uz', 'ru'])
+def test_send_again_reads_in_every_language(lang):
+    client, _ = staff_client()
+    one = reader(7001, 'reader_one')
+    first = finished(posts.create(None, text='Hello', audience_kind='everyone'), one)
+    t = CATALOGS[lang]
+    page = client.get(f'/ops/posts/{first.pk}?lang={lang}').content.decode()
+    assert t['post_resend'] in page and t['post_resend_confirm'].format(n=1) in page and t['post_resend_note'] in page
+    response = client.post(f'/ops/posts/{first.pk}/resend?lang={lang}')
+    page = client.get(response['Location']).content.decode()
+    assert t['post_saved_resent'] in page and t['post_repeat_of'] in page

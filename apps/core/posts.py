@@ -11,6 +11,7 @@ import os
 import re
 import secrets
 import uuid
+from datetime import timedelta
 
 from django.conf import settings
 from django.db import transaction
@@ -39,6 +40,9 @@ NAME = re.compile(r'[A-Za-z][A-Za-z0-9_]{3,31}')
 LINK = re.compile(r'(?:https?://)?(?:t\.me|telegram\.me)/', re.IGNORECASE)
 # Rows still on their way: a post is sent once none are left.
 WAITING = ('pending', 'retrying', 'sending')
+# A post is sent again only when no repeat of it is going out or went out this
+# recently: two clicks on "Send again" must not send it twice more.
+RESEND_GAP = timedelta(minutes=1)
 
 
 def telegram_length(text):
@@ -190,7 +194,12 @@ def create(actor, *, text, audience_kind, usernames='', button_label='', button_
         raise DomainError('post_people_unused')
     else:
         usernames = ''
-    data = clean_image(image) if image else None
+    return _save(clean_image(image) if image else None, created_by=actor, text=text, button_label=button_label,
+                 button_action=button_action, audience=audience_kind, usernames=usernames)
+
+
+def _save(data, **fields):
+    """A new post, its image (already clean) kept in the post's own folder."""
     from . import storage
     from .services import storage_path
     post_id, key = uuid.uuid4(), ''
@@ -200,8 +209,7 @@ def create(actor, *, text, audience_kind, usernames='', button_label='', button_
     committed = []
     try:
         with transaction.atomic():
-            post = Post.objects.create(id=post_id, created_by=actor, text=text, button_label=button_label,
-                                       button_action=button_action, audience=audience_kind, usernames=usernames, image_key=key)
+            post = Post.objects.create(id=post_id, image_key=key, **fields)
             # Before the upload's own hook, so a failing upload cannot pass for a rollback.
             transaction.on_commit(lambda: committed.append(True))
             if key:
@@ -211,6 +219,48 @@ def create(actor, *, text, audience_kind, usernames='', button_label='', button_
             storage_path(key).unlink(missing_ok=True)
         raise
     return post
+
+
+def resend(actor, post_id):
+    """A post that went out, sent again as a new post: the same text, image,
+    button and audience, to whoever that audience is now. People who had it
+    before get it again; the first post keeps its own numbers."""
+    from . import storage
+    from .services import storage_path
+    post = Post.objects.filter(pk=post_id).first()
+    if not post:
+        raise DomainError('not_found', 404)
+    data = None
+    if post.image_key:
+        try:
+            # The same bytes, not cleaned again: another JPEG pass would blur it.
+            data = storage.read_bytes(post.image_key)
+        except OSError:
+            raise DomainError('post_image_missing', 409) from None
+    copy, committed = None, []
+    try:
+        with transaction.atomic():
+            # Before the copy's upload hook, so a failing upload cannot pass for a rollback.
+            transaction.on_commit(lambda: committed.append(True))
+            # Every repeat of one post waits on the first one's lock (taken
+            # before the repeat's own), so two clicks at once go one after the other.
+            first = post.resent_from_id or post.pk
+            Post.objects.select_for_update().filter(pk=first).first()
+            post = Post.objects.select_for_update().get(pk=post_id)
+            if post.status not in ('sent', 'stopped'):
+                raise DomainError('post_not_finished', 409)
+            if Post.objects.filter(resent_from_id=first).filter(
+                    Q(status='sending') | Q(started_at__gt=timezone.now() - RESEND_GAP)).exists():
+                raise DomainError('post_resending', 409)
+            copy = _save(data, created_by=actor, text=post.text, button_label=post.button_label,
+                         button_action=post.button_action, audience=post.audience, usernames=post.usernames,
+                         image_file_id=post.image_file_id, resent_from_id=first)
+            copy = start(copy.pk)
+    except BaseException:
+        if copy and copy.image_key and not committed:
+            storage_path(copy.image_key).unlink(missing_ok=True)
+        raise
+    return copy
 
 
 def _draft(post_id):

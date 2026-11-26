@@ -395,6 +395,9 @@ class Post(models.Model):
     paused_until = models.DateTimeField(null=True, blank=True)
     started_at = models.DateTimeField(null=True, blank=True)
     finished_at = models.DateTimeField(null=True, blank=True)
+    # A post sent again is a new post with its own numbers: this is the first
+    # one it repeats (a repeat of a repeat points at that same first one).
+    resent_from = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL, related_name='repeats')
 
     class Meta:
         indexes = [models.Index(fields=['status', 'created_at'], name='post_list')]
