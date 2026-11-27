@@ -580,20 +580,23 @@ def test_a_web_app_button_is_not_offered_outside_a_private_chat(chatting):
 
 @pytest.mark.usefixtures('bot_verification_disabled', 'web_app')
 def test_with_the_switch_off_the_chat_is_exactly_as_it_was(chatting, monkeypatch):
+    """Off, no ✏️ Edit anywhere: the file screen keeps its Open app button (the app is always on at https)."""
     monkeypatch.setenv('EDITOR_FLAG_DECK_EDITOR', '1')
     calls = []
-    monkeypatch.setattr('telegram.bot.app_button', lambda *args: calls.append(args))
+    real = bot_module.app_button
+    monkeypatch.setattr('telegram.bot.app_button', lambda label, url: calls.append(label) or real(label, url))
     screen_ = outbound(dispatch_local(chatting, uploaded=pdf_upload()))[-1]
     assert screen_['text'] == '📎 notes.pdf\n' + COPY['en']['choose_pdf_action']
-    assert shown_rows(screen_)[-1] == [UX['en']['home'], COPY['en']['web_tools']] and len(screen_['buttons']) == 5
+    assert shown_rows(screen_)[-1] == [UX['en']['home'], UX['en']['app_tools']] and len(screen_['buttons']) == 5
     assert not any(label == '✏️ Edit' for row in shown_rows(screen_) for label in row)
 
     editor = outbound(dispatch_local(chatting, text='/editor'))[-1]
     asset = FileAsset.objects.filter(account=chatting).latest('created_at')
     assert editor['text'] == COPY['en']['web_hint']
+    # /editor without the editor's switch is still the old page in the browser.
     assert [[button['label'] for button in row] for row in editor['buttons']] == [[COPY['en']['open']], [UX['en']['home']]]
     assert editor['buttons'][0][0]['url'] == f'{WEB}/editor?file_id={asset.id}'
-    assert calls == [], 'a link, not a Mini App'
+    assert calls == [UX['en']['app_tools']], 'only the file screen opens the Mini App, under its Open app words'
 
 
 @pytest.mark.usefixtures('bot_verification_disabled', 'edit_buttons')

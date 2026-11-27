@@ -1,5 +1,5 @@
-"""The web app opened inside Telegram (the Mini App): the owner's switch, the chat menu button, the bot's
-Open app buttons, and the download link Telegram fetches a result with."""
+"""The web app opened inside Telegram (the Mini App): always on, the chat menu button «DOC Master mini-app»,
+the bot's Open app buttons, and the download link Telegram fetches a result with."""
 import asyncio
 from datetime import timedelta
 from types import SimpleNamespace
@@ -9,53 +9,58 @@ import pytest
 from django.core import signing
 from django.utils import timezone
 
-from apps.core.brand import PRODUCT_NAME
 from apps.core.models import Artifact
+from operations.models import IntegrationConfig
 from apps.core.services import execute_job, submit_job
 from apps.core.views import LINK_SALT
-from operations.integrations import mini_app_ready, menu_button, save_config, telegram_config
+from operations.integrations import MENU_BUTTON_TEXT, mini_app_ready, menu_button, save_config, telegram_config
 from tests.test_platform import account, login_client, quote, upload
 
 pytestmark = pytest.mark.django_db
 
 HTTPS = 'https://docmaster.example/uz/app'
+APP = {'type': 'web_app', 'text': 'DOC Master mini-app', 'web_app': {'url': HTTPS}}
 
 
-def switch(on, url=HTTPS):
-    save_config('telegram', {'token': '', 'username': 'fixture_bot', 'webapp_url': url, 'mini_app': 'true' if on else 'false'})
+def address(url=HTTPS, **extra):
+    save_config('telegram', {'token': '', 'username': 'fixture_bot', 'webapp_url': url, **extra})
 
 
-def test_the_switch_is_off_until_ticked_and_a_form_without_it_leaves_it_alone():
-    save_config('telegram', {'token': '', 'username': 'fixture_bot', 'webapp_url': HTTPS})
-    assert telegram_config()['mini_app'] is False and menu_button() == {'type': 'commands'}
-    switch(True)
-    assert telegram_config()['mini_app'] is True
-    # A script or an older page that does not send the box keeps the owner's choice.
-    save_config('telegram', {'token': '', 'username': 'fixture_bot', 'webapp_url': HTTPS})
-    assert telegram_config()['mini_app'] is True
-    switch(False)
-    assert telegram_config()['mini_app'] is False
+def test_the_app_is_always_on_and_no_switch_is_kept_or_read():
+    """Customers use the bot and the app side by side: there is nothing for the owner to turn on or off."""
+    address()
+    assert MENU_BUTTON_TEXT == 'DOC Master mini-app'
+    assert mini_app_ready() and menu_button() == APP and 'mini_app' not in telegram_config()
+    # An older page or a script that still sends the box changes nothing, and a stored switch is dropped.
+    address(mini_app='false')
+    assert menu_button() == APP
+    IntegrationConfig.objects.filter(pk='telegram').update(configuration={'username': 'fixture_bot', 'webapp_url': HTTPS,
+                                                                          'mini_app': False})
+    assert menu_button() == APP
+    address()
+    assert 'mini_app' not in IntegrationConfig.objects.get(pk='telegram').configuration
 
 
 def test_the_menu_button_opens_the_app_only_at_an_https_address(settings):
-    switch(True)
-    assert menu_button() == {'type': 'web_app', 'text': PRODUCT_NAME, 'web_app': {'url': HTTPS}}
+    address()
+    assert menu_button() == APP
     settings.DEBUG = True
-    switch(True, 'http://localhost:3000/en/app')
+    address('http://localhost:3000/en/app')
     # Telegram refuses a web_app button that is not https: the commands stay.
     assert not mini_app_ready() and menu_button() == {'type': 'commands'}
 
 
 # Async code reads the database from another thread: SQLite needs real transactions.
 @pytest.mark.django_db(transaction=True)
-def test_the_bot_sets_the_menu_button_it_is_configured_with():
+def test_the_bot_sets_the_menu_button_it_is_configured_with(settings):
     from telegram.commands import install_commands
-    switch(True)
+    address()
     bot = Mock(set_my_commands=AsyncMock(), set_chat_menu_button=AsyncMock())
     asyncio.run(install_commands(bot))
     button = bot.set_chat_menu_button.await_args.kwargs['menu_button']
-    assert button.type == 'web_app' and button.text == PRODUCT_NAME and button.web_app.url == HTTPS
-    switch(False)
+    assert button.type == 'web_app' and button.text == 'DOC Master mini-app' and button.web_app.url == HTTPS
+    settings.DEBUG = True
+    address('http://localhost:3000/en/app')
     asyncio.run(install_commands(bot))
     assert bot.set_chat_menu_button.await_args.kwargs['menu_button'].type == 'commands'
 
@@ -68,36 +73,41 @@ def test_saving_the_card_tells_telegram_only_when_the_button_changes(settings, m
     monkeypatch.setattr('operations.integration_views.apply_menu_button', lambda: calls.append(menu_button()) or True)
     client, _ = staff_client()
     form = {'integration': 'telegram', 'action': 'save', 'token': '', 'username': 'fixture_bot', 'webapp_url': HTTPS,
-            'reason': 'Open the app inside Telegram for customers'}
-    assert client.post('/ops/integrations', {**form, 'mini_app': 'true'}).status_code == 302
-    assert calls == [{'type': 'web_app', 'text': PRODUCT_NAME, 'web_app': {'url': HTTPS}}]
-    assert client.post('/ops/integrations', {**form, 'mini_app': 'true'}).status_code == 302
+            'reason': 'The address customers open the app at'}
+    assert client.post('/ops/integrations', form).status_code == 302
+    assert calls == [APP]
+    assert client.post('/ops/integrations', form).status_code == 302
     assert len(calls) == 1, 'saved again unchanged: Telegram is not asked'
-    # The page sends the hidden false before the box, and only the false when it is cleared.
-    assert client.post('/ops/integrations', {**form, 'mini_app': 'false'}).status_code == 302
-    assert calls[-1] == {'type': 'commands'}
+    moved = 'https://docmaster.example/ru/app'
+    assert client.post('/ops/integrations', {**form, 'webapp_url': moved}).status_code == 302
+    assert calls[-1] == {**APP, 'web_app': {'url': moved}}
+    # The card offers no switch any more: it says what the button does.
+    page = client.get('/ops/integrations').content.decode()
+    assert 'name="mini_app"' not in page and 'DOC Master mini-app' in page
     # Telegram out of reach: the owner is told the bot will set it when it starts.
     monkeypatch.setattr('operations.integration_views.apply_menu_button', lambda: False)
-    response = client.post('/ops/integrations', {**form, 'mini_app': 'true'})
+    response = client.post('/ops/integrations', form)
     assert response.status_code == 302 and response['Location'].endswith('notice=menu_pending')
     assert 'Telegram could not be told' in client.get(response['Location']).content.decode()
 
 
 # Async code reads the database from another thread: SQLite needs real transactions.
 @pytest.mark.django_db(transaction=True)
-def test_open_buttons_open_the_app_inside_telegram_only_when_switched_on_and_in_a_private_chat():
+def test_open_buttons_open_the_app_inside_telegram_in_a_private_chat_at_an_https_address(settings):
     from telegram.bot import open_button
     customer = SimpleNamespace(locale='ru')
     private, group = SimpleNamespace(chat_id=4242), SimpleNamespace(chat_id=-100500)
-    switch(False)
-    off = asyncio.run(open_button(private, customer))
-    assert off.web_app is None and off.url == 'https://docmaster.example/ru/app' and off.text == '🌐 Открыть сайт'
-    switch(True)
+    address()
     on = asyncio.run(open_button(private, customer, 'tools', 'web_tools'))
     assert on.url is None and on.web_app.url == 'https://docmaster.example/ru/app/tools'
     assert on.text == '📱 Больше инструментов в приложении'
     # Telegram takes web_app buttons in private chats only.
     assert asyncio.run(open_button(group, customer)).url == 'https://docmaster.example/ru/app'
+    # A local http address is no Mini App: the browser link, as before.
+    settings.DEBUG = True
+    address('http://localhost:3000/en/app')
+    local = asyncio.run(open_button(private, customer))
+    assert local.web_app is None and local.url == 'http://localhost:3000/ru/app' and local.text == '🌐 Открыть сайт'
 
 
 def result_of(owner):

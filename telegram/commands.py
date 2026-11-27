@@ -64,7 +64,7 @@ COMMANDS = {
 
 
 def chat_menu_button(config):
-    """The menu button beside the message field: the app while the Mini App is on (operations.integrations.menu_button), else the commands."""
+    """The menu button beside the message field: the app, «DOC Master mini-app» (operations.integrations.menu_button), or the commands without https."""
     from operations.integrations import menu_button
     button = menu_button(config)
     if button['type'] == 'web_app':

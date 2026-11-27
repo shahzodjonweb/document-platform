@@ -30,16 +30,13 @@ for language,labels in {
           'tuning_note':'Каждый вызов занимает около 1 с плюс 9,5 мс на выходной токен, включая рассуждения. Настройка, которую модель не принимает, отбрасывается автоматически.','parallel_parts':'Писать длинные новые документы частями параллельно (сначала план)'},
 }.items():LABELS[language].update(labels)
 
-# The Mini App switch on the bot's card (operations/integrations.py mini_app_ready).
+# The Mini App on the bot's card: always on at an HTTPS address (operations/integrations.py mini_app_ready).
 for language,labels in {
-    'en':{'mini_app':'Open the app inside Telegram (Mini App)',
-          'mini_app_note':'The chat menu button and the bot’s Open app buttons open this web application inside Telegram, signed in to the same account. Needs an HTTPS address; the menu button then replaces the command list (commands still work when typed with /).',
+    'en':{'mini_app_note':'Telegram’s menu button beside the message field, «DOC Master mini-app», and the bot’s Open app buttons always open this web application inside Telegram, signed in to the same account; the bot keeps working as before. Needs an HTTPS address. The menu button takes the place of the command list; commands still work when typed with /.',
           'menu_pending':'Saved. Telegram could not be told about the menu button just now; the bot sets it when it next starts.'},
-    'uz':{'mini_app':'Ilovani Telegram ichida ochish (Mini App)',
-          'mini_app_note':'Chatdagi menyu tugmasi va botning «Ilovani ochish» tugmalari shu veb ilovani Telegram ichida, o‘sha hisob bilan ochadi. HTTPS manzil kerak; menyu tugmasi buyruqlar ro‘yxati o‘rnini egallaydi (buyruqlar / bilan yozilganda ishlayveradi).',
+    'uz':{'mini_app_note':'Xabar maydoni yonidagi Telegram menyu tugmasi «DOC Master mini-app» va botning «Ilovani ochish» tugmalari shu veb ilovani har doim Telegram ichida, o‘sha hisob bilan ochadi; bot avvalgidek ishlayveradi. HTTPS manzil kerak. Menyu tugmasi buyruqlar ro‘yxati o‘rnini egallaydi; buyruqlar / bilan yozilganda ishlayveradi.',
           'menu_pending':'Saqlandi. Menyu tugmasi haqida Telegram’ga hozir xabar berib bo‘lmadi; bot keyingi safar ishga tushganda uni o‘rnatadi.'},
-    'ru':{'mini_app':'Открывать приложение внутри Telegram (Mini App)',
-          'mini_app_note':'Кнопка меню в чате и кнопки бота «Открыть приложение» открывают это веб-приложение внутри Telegram с тем же аккаунтом. Нужен адрес HTTPS; кнопка меню заменяет список команд (команды по-прежнему работают, если набрать /).',
+    'ru':{'mini_app_note':'Кнопка меню Telegram рядом с полем ввода, «DOC Master mini-app», и кнопки бота «Открыть приложение» всегда открывают это веб-приложение внутри Telegram с тем же аккаунтом; бот работает как прежде. Нужен адрес HTTPS. Кнопка меню заменяет список команд; команды по-прежнему работают, если набрать /.',
           'menu_pending':'Сохранено. Сообщить Telegram о кнопке меню сейчас не удалось; бот установит её при следующем запуске.'},
 }.items():LABELS[language].update(labels)
 
@@ -410,7 +407,7 @@ def integrations(request):
             if action=='save':
                 before=menu_button() if key=='telegram' else None
                 save_config(key,request.POST);message='saved'
-                # Every chat's menu button follows the Mini App switch at once, and the bot sets it again when it starts.
+                # Every chat's menu button follows a new web app address at once, and the bot sets it again when it starts.
                 if key=='telegram' and menu_button()!=before and not apply_menu_button():message='menu_pending'
             elif action=='test_autopay':test_autopay('bot' if key=='inpay_bot' else 'web');message='autopay_connected'
             elif action=='test':
@@ -449,7 +446,7 @@ def integrations(request):
     # Do not misreport it as stopped using the local development PID check.
     status=labels[runner_status()] if local_controls else labels['managed' if bot['token'] else 'waiting']
     # Never include credentials in the template context.
-    data.update(bot={'username':bot['username'],'webapp_url':bot['webapp_url'],'mini_app':bot['mini_app'],'configured':bool(bot['token']),'status':status},ai={'mode':ai['mode'],'model':ai['model'],'image_model':ai['image_model'],'configured':bool(ai['api_key']),'writing_effort':ai['writing_effort'],'photo_effort':ai['photo_effort'],'service_tier':ai['service_tier'],'parallel_parts':ai['parallel_parts']},efforts=EFFORTS,tiers=TIERS,local_controls=local_controls,notice=labels.get(request.GET.get('notice',''),''))
+    data.update(bot={'username':bot['username'],'webapp_url':bot['webapp_url'],'configured':bool(bot['token']),'status':status},ai={'mode':ai['mode'],'model':ai['model'],'image_model':ai['image_model'],'configured':bool(ai['api_key']),'writing_effort':ai['writing_effort'],'photo_effort':ai['photo_effort'],'service_tier':ai['service_tier'],'parallel_parts':ai['parallel_parts']},efforts=EFFORTS,tiers=TIERS,local_controls=local_controls,notice=labels.get(request.GET.get('notice',''),''))
     data['google'] = {key: google[key] for key in ('enabled','client_id','redirect_uri','configured','ready')}
     data['email'] = {key: email[key] for key in ('enabled','host','port','username','use_tls','use_ssl','from_email','configured','ready')}
     data['antibot'] = {key: antibot[key] for key in ('web_enabled','bot_enabled','site_key','allowed_hostnames','configured','ready')}

@@ -49,22 +49,33 @@ def telegram_config():
     return {'token':secret.get('token') or settings.TELEGRAM_BOT_TOKEN,
             'username':cfg.get('username') or settings.TELEGRAM_BOT_USERNAME,
             'webhook_secret':secret.get('webhook_secret') or settings.TELEGRAM_WEBHOOK_SECRET,
-            'webapp_url':cfg.get('webapp_url') or settings.TELEGRAM_WEBAPP_URL,
-            # The web app opened inside Telegram (a Mini App): the chat's menu button and the
-            # bot's Open app buttons. Off until the owner ticks it on the bot's card.
-            'mini_app':cfg.get('mini_app') is True}
+            'webapp_url':cfg.get('webapp_url') or settings.TELEGRAM_WEBAPP_URL}
+
+# The words on the chat's menu button, the one button always beside the message field
+# (the owner's, 2026-11-28). It opens the web app inside Telegram, signed in.
+MENU_BUTTON_TEXT = 'DOC Master mini-app'
 
 def mini_app_ready(cfg=None):
-    """Whether the bot opens the web app inside Telegram: switched on, and at an address Telegram takes (https)."""
+    """Whether the bot opens the web app inside Telegram (a Mini App): always, at an address Telegram takes (https).
+
+    There is no switch: customers use the bot and the app side by side. Telegram
+    refuses a web_app button at any other address (a local http one), and the
+    bot then keeps its browser links and its command list.
+    """
     cfg = cfg or telegram_config()
-    return cfg.get('mini_app') is True and str(cfg.get('webapp_url') or '').startswith('https://')
+    return str(cfg.get('webapp_url') or '').startswith('https://')
 
 def menu_button(cfg=None):
-    """The chat menu button as the Bot API takes it: the app while the Mini App is on, else the command list."""
+    """The chat menu button as the Bot API takes it: the app (MENU_BUTTON_TEXT), or the command list without https.
+
+    It is the one button Telegram keeps beside the message field in every
+    private chat, and the one that opens the app signed in: a reply-keyboard
+    button would open it without the customer's launch data (Telegram sends
+    none to an app opened from a keyboard). Commands still work when typed with /.
+    """
     cfg = cfg or telegram_config()
     if not mini_app_ready(cfg): return {'type':'commands'}
-    from apps.core.brand import PRODUCT_NAME
-    return {'type':'web_app','text':PRODUCT_NAME,'web_app':{'url':cfg['webapp_url']}}
+    return {'type':'web_app','text':MENU_BUTTON_TEXT,'web_app':{'url':cfg['webapp_url']}}
 
 def apply_menu_button():
     """Show the saved menu button in every chat now, not at the bot's next start. Best effort: False when Telegram
@@ -610,9 +621,9 @@ def save_config(key, values):
         except ValueError:raise DomainError('invalid_webapp_url') from None
         if not valid_host or not valid_port or any(ord(c)<33 for c in url):raise DomainError('invalid_webapp_url')
         if parsed.scheme != 'https' and not (settings.DEBUG and parsed.scheme=='http' and parsed.hostname in ('localhost','127.0.0.1')): raise DomainError('invalid_webapp_url')
-        # A form without the box (an older page, a script) leaves the switch as it was.
-        mini_app=_boolean(values.get('mini_app')) if 'mini_app' in values else cfg.get('mini_app') is True
-        cfg.update(username=username,webapp_url=url,mini_app=mini_app)
+        cfg.update(username=username,webapp_url=url)
+        # The Mini App switch is gone: it is always on (mini_app_ready). A box sent by an older page is ignored.
+        cfg.pop('mini_app',None)
     elif key == 'ai':
         mode = values.get('mode','local_fixture')
         if mode not in ('local_fixture','openai','disabled') or (mode=='local_fixture' and not settings.DEBUG): raise DomainError('invalid_parameters')

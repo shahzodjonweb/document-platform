@@ -18,7 +18,7 @@ MESSAGES = {
     'recent': ('🗂 Recent tasks', '🗂 So‘nggi vazifalar', '🗂 Последние задачи'),
     'account': ('👤 My account', '👤 Hisobim', '👤 Мой аккаунт'),
     'language_button': ('🌐 Language', '🌐 Til', '🌐 Язык'),
-    # The web app opened inside Telegram (the Mini App switch): bot.open_button.
+    # The web app opened inside Telegram (the Mini App, always on at an https address): bot.open_button.
     'open_app': ('📱 Open app', '📱 Ilovani ochish', '📱 Открыть приложение'),
     'app_tools': ('📱 More tools in the app', '📱 Ilovada ko‘proq vositalar', '📱 Больше инструментов в приложении'),
     'continue_task': ('▶️ Continue task', '▶️ Davom etish', '▶️ Продолжить'),
