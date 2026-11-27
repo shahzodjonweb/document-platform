@@ -34,8 +34,9 @@ PROMPT = {
 }
 # The caps of architecture 3.1, from SYSTEM, DECK_RULES, the layout guide with
 # photos, the design guide and the largest language block as measured, with a
-# category block at its budget.
-CAPS = {'new': 15_000, 'part': 15_000, 'plan': 15_000, 'change': 15_500, 'selected': 15_500, 'repair': 15_500,
+# category block at its budget. Measured again 2026-11-26, when SYSTEM's fact
+# sentence and the language blocks grew (the new deck stack is about 10,080).
+CAPS = {'new': 15_500, 'part': 15_500, 'plan': 15_500, 'change': 15_500, 'selected': 15_500, 'repair': 15_500,
         'redesign': 24_000}
 
 
@@ -319,7 +320,7 @@ def test_the_cache_key_carries_the_category_and_its_digest():
     del plain['options']['category']
     key = provider.request_body(CONFIG, data, SLIDES)['prompt_cache_key']
     assert key.startswith('docmaster:') and key != provider.request_body(CONFIG, plain, SLIDES)['prompt_cache_key']
-    assert prompting.VERSION == 'studio-efficient-v7'
+    assert prompting.VERSION == 'studio-efficient-v8'
 
 
 def test_an_edit_to_the_entry_moves_the_key(monkeypatch):

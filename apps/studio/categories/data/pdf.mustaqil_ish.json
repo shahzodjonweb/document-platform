@@ -11,7 +11,7 @@
   "en": "🎓 Assignment / Report"
  },
  "summary": "A print-ready student paper in the Uzbek standard form: title page (every fact the customer did not give is a ruled blank, the year from the clock), Reja with real page numbers, Kirish, two chapters of numbered sections, three from 11 pages (the teacher’s plan word for word when given), Xulosa, and references listing only what the customer supplied, a ruled form when nothing was. 8 to 20 pages, default 10, the title, plan and reference pages counted.",
- "tone": "Academic, impersonal, third person, at the textbook level of the customer’s stated education level; paragraphs of one idea each, joined by linking words.",
+ "tone": "Academic, impersonal, third person, at the textbook level of the customer’s stated education level; paragraphs of one idea each, backed by something specific and connected by their logic rather than stock linking words.",
  "topic": true,
  "title": "model",
  "length": {
@@ -358,7 +358,7 @@
    "elastic": true,
    "block": "paragraph",
    "group": "chapter",
-   "write": "The first section of this chapter: its title in heading (a short noun phrase, at most 90 characters, no number, full stop or colon), then paragraphs of 4 to 7 sentences, one idea each, joined by linking words. At most one short list in a chapter, introduced by a sentence ending in a colon. Empty when its chapter is."
+   "write": "The first section of this chapter: its title in heading (a short noun phrase, at most 90 characters, no number, full stop or colon), then paragraphs of varied length (most of 3 to 7 sentences), one idea each, backed by something specific and connected by their logic rather than stock linking words. At most one short list in a chapter, introduced by a sentence ending in a colon. Empty when its chapter is."
   },
   {
    "id": "section_b",
@@ -454,7 +454,7 @@
    "to": "model"
   },
   {
-   "text": "Well-established textbook knowledge of the topic may be used (a definition, a historical event and its year). Never from memory: a statistic, percentage, survey, experiment, law or decree name or number, quotation, book, article, publisher, page number or web address; never an idea credited to a named author the customer did not give. Write no citation marks ([1]) and no footnotes, and no phrase that points at a source («adabiyotlarda ko‘rsatilishicha»). At most one general sentence on state attention to the field, in the Kirish.",
+   "text": "Use well-established textbook knowledge of the topic throughout: definitions, historical events with their years, real places and the people the topic is about, and how processes work, which is what makes the paper specific. Never from memory: a statistic, percentage, survey, experiment, law or decree name or number, quotation, book, article, publisher, page number or web address; never an idea credited to a named author the customer did not give. Write no citation marks ([1]) and no footnotes, and no phrase that points at a source («adabiyotlarda ko‘rsatilishicha»). At most one general sentence on state attention to the field, in the Kirish.",
    "to": "model"
   },
   {

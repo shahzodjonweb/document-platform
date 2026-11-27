@@ -774,8 +774,9 @@ def test_conclusions_facts_and_slide_sizes_are_told_one_way_everywhere():
     assert ('may end with a short conclusion that says what follows from the sections before (implications, an '
             'answer to the brief, a recommendation) without retelling them') in SYSTEM
     assert 'only an agenda or a conclusion may refer back to other sections' in SYSTEM
-    assert ('State only facts you are sure of; well-established facts and dates are fine. Never guess, estimate or '
-            'round a number, and never invent statistics, quotations, studies or references.') in SYSTEM
+    assert ('State a fact only when you are sure of it, and a figure only at the precision you are sure of') in SYSTEM
+    assert ('Never invent a statistic, survey, study, quotation or reference, and never attribute a figure or a claim '
+            'to a source you were not given.') in SYSTEM
     for photos in (False, True):
         guide = layouts.reference(photos)
         assert ('A stats, big_number or chart slide needs figures from the description or the sources; a timeline '
@@ -859,7 +860,8 @@ def test_a_detailed_report_with_tables_is_asked_for_full_pages_and_offered_the_t
     body = provider.request_body(CONFIG, with_tables, DOCUMENT)
     guidance = sent(body)['writing_guidance']
     assert 'Write 10 sections' in guidance
-    assert f'{max(4, round(words / 95))} paragraphs of 5 to 6 sentences' in guidance
+    paragraphs = max(4, round(words / 95))
+    assert f'{paragraphs} or {paragraphs + 1} paragraphs of varied length' in guidance
     assert f'about {words} words' in guidance and f'at least {round(words * 0.8)} words' in guidance
     assert f'never write more than {round(words * 1.3)} words' in guidance
     instructions = body['instructions']

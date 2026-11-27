@@ -384,7 +384,9 @@ NATIVE = {
         '("sohalarida keng qo‘llanilmoqda", not "sferalarida realizatsiya qilinmoqda"); established international '
         'terms (texnologiya, internet, iqtisodiyot) stay. Dates and ordinals the Uzbek way: 2024-yil, 15-mart, '
         '3-bob; decimals with a comma (3,5 foiz). Keep each term the same throughout. Avoid stock phrases '
-        '("Bugungi kunda", "Maʼlumki", "Shuni taʼkidlash joizki", "muhim ahamiyat kasb etadi") and never begin two '
+        '("Bugungi kunda", "Maʼlumki", "Shuni taʼkidlash joizki", "muhim ahamiyat kasb etadi", "muhim o‘rin '
+        'tutadi", "katta ahamiyatga ega", "dolzarb masalalardan biri hisoblanadi", "Xulosa qilib aytganda"), do not '
+        'chain sentences with "Shuningdek", "Bundan tashqari" and "Shu bilan birga", and never begin two '
         'sections the same way; do not be stiff or bureaucratic. Russian names in Uzbek Latin spelling (Pushkin, '
         'Moskva), well-known foreign names in their established Uzbek form (Shekspir, Nyuton), brand, product and '
         'organisation names as their owners write them (Google, Payme, IT Park).'
@@ -395,7 +397,9 @@ NATIVE = {
         '(Tashkent, Samarkand). Use precise, internationally accepted terminology and a tone that suits the '
         'kind of document; prefer specific explanations to general statements, connect paragraphs logically, '
         'and avoid filler and stock phrasing ("in today\'s fast-paced world", "it is important to note", '
-        '"delve into").'
+        '"delve into", "plays a crucial role", "a testament to", "in the realm of", "the landscape of", '
+        '"multifaceted", "In conclusion,"); do not chain paragraphs with "Furthermore", "Moreover" and '
+        '"Additionally".'
     ),
     'ru': (
         ' Write natural, grammatical Russian in standard Russian orthography, as an educated native speaker '
@@ -405,7 +409,8 @@ NATIVE = {
         'and technical identifiers; units of measurement in Russian (км, кг, МВт, %); Uzbek and other names in '
         'their established Russian form (Ташкент, Самарканд, Узбекистан); quotation marks «ёлочки». Avoid '
         'канцелярит and stock phrases («в современном мире», «играет важную роль», «следует отметить», '
-        '«является неотъемлемой частью»); prefer a verb to a chain of nouns («влияет», not «оказывает '
+        '«является неотъемлемой частью», «на сегодняшний день», «немаловажно», «в заключение можно сказать»), '
+        'do not chain sentences with «Кроме того», «Также» and «Более того»; prefer a verb to a chain of nouns («влияет», not «оказывает '
         'влияние»). Keep paragraphs coherent, with smooth transitions.'
     ),
 }
