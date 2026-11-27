@@ -7624,5 +7624,6 @@ tests/test_inpay_checkout.py::test_the_admin_shows_what_inpay_answered_to_a_fail
 # The web app inside Telegram (Mini App): the owner's switch makes the menu button and the bot's Open app buttons open it,
 # and Telegram saves a result from a link signed for that result alone.
 tests/test_mini_app.py::test_the_bot_sets_the_menu_button_it_is_configured_with
-tests/test_mini_app.py::test_open_buttons_open_the_app_inside_telegram_only_when_switched_on_and_in_a_private_chat
+tests/test_mini_app.py::test_open_buttons_open_the_app_inside_telegram_in_a_private_chat_at_an_https_address
+tests/test_mini_app.py::test_the_app_is_always_on_and_no_switch_is_kept_or_read
 tests/test_mini_app.py::test_a_download_link_serves_one_result_without_the_session_for_five_minutes

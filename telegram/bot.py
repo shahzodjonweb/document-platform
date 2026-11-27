@@ -107,8 +107,8 @@ async def web_url(account,route=''):
 # Open web app becomes Open app once it opens inside Telegram.
 APP_LABELS={'open':'open_app','web_tools':'app_tools'}
 async def open_button(message,account,route='',label='open'):
-    """A page of the web app: inside Telegram (a Mini App) once the owner turns it on, in a private chat,
-    where Telegram takes a web_app button; elsewhere, and while it is off, a link to the browser."""
+    """A page of the web app: inside Telegram (a Mini App) in a private chat, where Telegram takes a web_app
+    button, at an https address; elsewhere (a group, a local http address) a link to the browser."""
     from apps.commerce.providers import telegram_config
     from operations.integrations import mini_app_ready
     url=await web_url(account,route)
