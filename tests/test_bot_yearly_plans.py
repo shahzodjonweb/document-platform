@@ -52,11 +52,11 @@ def token(result, action, **payload):
 
 @pytest.mark.parametrize('locale,line,label,title,pay', [
     ('en', "📅 Or yearly: <b>11 000</b> so'm a month, billed 132 000 so'm once a year (−45%)",
-     "📅 Plus · 132 000 so'm / year · −45%", "<b>⚡ Plus — 132 000 so'm for 1 year</b>", "💳 Pay 132 000 so'm"),
+     "📅 Plus · 11 000 so'm a month −45%, paid yearly", "<b>⚡ Plus — 132 000 so'm for 1 year</b>", "💳 Pay 132 000 so'm"),
     ('uz', "📅 Yoki yillik: oyiga <b>11 000</b> so'm, yiliga bir yo‘la 132 000 so'm to‘lanadi (−45%)",
-     "📅 Plus · 132 000 so'm / 1 yil · −45%", "<b>⚡ Plus — 1 yil uchun 132 000 so'm</b>", "💳 132 000 so'm to‘lash"),
+     "📅 Plus · oyiga 11 000 so'm −45%, yillik to‘lanadi", "<b>⚡ Plus — 1 yil uchun 132 000 so'm</b>", "💳 132 000 so'm to‘lash"),
     ('ru', '📅 Или на год: <b>11 000</b> сум в месяц, оплата 132 000 сум сразу за год (−45%)',
-     '📅 Plus · 132 000 сум / год · −45%', '<b>⚡ Plus — 132 000 сум за 1 год</b>', '💳 Оплатить 132 000 сум'),
+     '📅 Plus · 11 000 сум в месяц −45%, оплата за год', '<b>⚡ Plus — 132 000 сум за 1 год</b>', '💳 Оплатить 132 000 сум'),
 ], ids=['en', 'uz', 'ru'])
 def test_the_year_is_shown_beside_the_month_and_paid_once_on_inpay(local_bot, bank, locale, line, label, title, pay):
     switch_on(kassa='bot')

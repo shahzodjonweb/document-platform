@@ -24,7 +24,7 @@ COPY = {
     'en': {
         "card_pay": "💳 {plan} · {price} so'm / 30 days",
         "card_pay_discount": "💳 {plan} −{percent}% · {price} so'm / 30 days",
-        "card_pay_year": "📅 {plan} · {price} so'm / year · −{percent}%",
+        "card_pay_year": "📅 {plan} · {per_month} so'm a month −{percent}%, paid yearly",
         "period_month": "30 days", "period_year": "1 year", "plan_year": "{plan} · 1 year",
         "card_intro": "💳 Pay by card transfer\nPick a plan. You send the money from your bank app, send us the receipt, and we switch your plan on after checking it.",
         "automatic_soon": "⚡ Automatic payment — coming soon",
@@ -62,7 +62,7 @@ COPY = {
     'uz': {
         "card_pay": "💳 {plan} · {price} so'm / 30 kun",
         "card_pay_discount": "💳 {plan} −{percent}% · {price} so'm / 30 kun",
-        "card_pay_year": "📅 {plan} · {price} so'm / 1 yil · −{percent}%",
+        "card_pay_year": "📅 {plan} · oyiga {per_month} so'm −{percent}%, yillik to‘lanadi",
         "period_month": "30 kun", "period_year": "1 yil", "plan_year": "{plan} · 1 yil",
         "card_intro": "💳 Karta orqali to‘lov\nTarifni tanlang. Pulni bank ilovangizdan o‘tkazasiz, kvitansiyani yuborasiz, tekshirgach tarifingizni yoqamiz.",
         "automatic_soon": "⚡ Avtomatik to‘lov — tez orada",
@@ -100,7 +100,7 @@ COPY = {
     'ru': {
         "card_pay": "💳 {plan} · {price} сум / 30 дней",
         "card_pay_discount": "💳 {plan} −{percent}% · {price} сум / 30 дней",
-        "card_pay_year": "📅 {plan} · {price} сум / год · −{percent}%",
+        "card_pay_year": "📅 {plan} · {per_month} сум в месяц −{percent}%, оплата за год",
         "period_month": "30 дней", "period_year": "1 год", "plan_year": "{plan} · 1 год",
         "card_intro": "💳 Оплата переводом на карту\nВыберите тариф. Вы переводите деньги из своего банковского приложения, присылаете квитанцию, и после проверки мы включаем тариф.",
         "automatic_soon": "⚡ Автоматическая оплата — скоро",
@@ -532,9 +532,13 @@ def period_name(account, term):
 
 
 def year_label(account, item):
-    """One plan's yearly button: the year's price, and what it saves on twelve months."""
+    """One plan's yearly button: a month of the year, what it saves, and that the year is paid at once.
+
+    The owner's wording: "oyiga 11 000 so'm −45%, yillik to‘lanadi". The
+    year's total is on the plan card above and on the payment screen it opens.
+    """
     year = item['yearly']
-    return copy(account, 'card_pay_year').format(plan=item['plan'].title(), price=money(year['price']),
+    return copy(account, 'card_pay_year').format(plan=item['plan'].title(), per_month=money(year['per_month']),
                                                  percent=year['percent'])
 
 
