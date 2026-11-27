@@ -6,7 +6,7 @@
 not twice. A draft without a category never touches any of this.
 """
 NAMES = frozenset((
-    'get', 'of', 'bounds', 'for_feature', 'live', 'menu', 'on', 'examples', 'version', 'template', 'check',
+    'get', 'of', 'bounds', 'for_feature', 'live', 'menu', 'picker', 'plain', 'on', 'examples', 'version', 'template', 'check',
     'CHOSEN_EVENT', 'PAPER_BOUNDS', 'Bounds', 'Entry', 'Node', 'CatalogueError'))
 
 

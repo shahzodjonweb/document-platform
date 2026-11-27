@@ -12,7 +12,8 @@ only through this module:
 - `on()`, `live(fid)` and `menu(fid, group)`: what customers may pick now. They
   read the switch row (`operations.categories_settings`) on every call, and are
   off while that module does not exist. Off, or with nothing ticked, they
-  answer from that row alone, without loading the catalogue;
+  answer from that row alone, without loading the catalogue; `picker(fid,
+  locale)` is `menu` as the web's picker reads it (`GET /studio/categories`);
 - `check()`, the checks a person cannot be trusted to remember (alphabets,
   references, budgets, the ids lock), run by the catalogue test and by
   `python -m apps.studio.categories.catalogue --check [prefix] | --lock`.
@@ -282,6 +283,18 @@ def _index_problems(entries, index):
     for item, places in placed.items():
         if len(places) > 1:
             problems.append(f'index: {item} is listed {len(places)} times')
+    # The web's list rows carry a line under each button of the two top lists; a group's children have none.
+    hints = index.get('hints')
+    top = {item for items in lists.values() for item in items if item != OTHER}
+    if not isinstance(hints, dict):
+        problems.append('index: hints: the line under each button of the top lists is missing')
+    else:
+        problems += [f'index: hints: {item} needs its line in uz, ru and en' for item in sorted(top)
+                     if not _is_text3(hints.get(item))]
+        # A line for a group's child would never show; one an entry retired since leaves behind is harmless.
+        children = {child for node in groups.values() for child in node.get('children') or ()}
+        problems += [f'index: hints: {item} is inside a group, where buttons have no line'
+                     for item in sorted(set(hints) & children)]
     for name, raw in entries.items():
         if raw['status'] == RETIRED:
             continue
@@ -574,6 +587,57 @@ def menu(feature_id, group=None):
         elif item in shown:
             nodes.append(Node(item, 'category', shown[item].raw['labels'], shown[item]))
     return nodes if any(node.kind != 'other' for node in nodes) else []
+
+
+# The emoji a bot button or prompt line opens with (with its joiners, skin tones
+# and variation selector), and the space after it: the web draws its own icons.
+EMOJI = re.compile('^(?:[\U0001F000-\U0001FAFF\u2190-\u21FF\u2300-\u23FF\u2460-\u27BF\u2900-\u297F'
+                   '\u2B00-\u2BFF\u3030\u303D\u3297\u3299\uFE0F\u200D])+[ \t]*', re.MULTILINE)
+
+
+def plain(text):
+    """`text` without the emoji that opens it or any of its lines, nor the spaces around it."""
+    return EMOJI.sub('', text).strip()
+
+
+def _picked(node, locale):
+    return {'id': node.id, 'kind': node.kind, 'label': plain(node.label(locale))}
+
+
+def picker(feature_id, locale):
+    """A service's list as the web's picker shows it, in `locale`: [] when nothing in it is live.
+
+    The same buttons as the bot's (`menu`), in its order, each without its
+    emoji. A category carries its line in the list (`hint`, None inside a
+    group), its bot prompt as paragraphs, its examples and whether it takes
+    files; a group its line and its own list, a category or Boshqa each; Boshqa
+    only its label. Every word is in `locale` (en when it is not uz or ru).
+    """
+    locale = locale if locale in LOCALES else 'en'
+    top = menu(feature_id)
+    if not top:
+        # Nothing live: answered from the switch row alone, as menu is.
+        return []
+    hints = _catalogue().index.get('hints') or {}
+
+    def category(node, hint):
+        bot = node.entry.raw['bot']
+        return {**_picked(node, locale), 'hint': hint,
+                'prompt': [line for line in (plain(text) for text in bot['prompt'][locale].split('\n')) if line],
+                'examples': [example[locale] for example in bot['examples']], 'attach': bool(bot['attach'])}
+
+    nodes = []
+    for node in top:
+        hint = (hints.get(node.id) or {}).get(locale)
+        if node.kind == 'category':
+            nodes.append(category(node, hint))
+        elif node.kind == 'group':
+            children = [category(child, None) if child.kind == 'category' else _picked(child, locale)
+                        for child in menu(feature_id, node.id)]
+            nodes.append({**_picked(node, locale), 'hint': hint, 'children': children})
+        else:
+            nodes.append(_picked(node, locale))
+    return nodes
 
 
 def examples():
