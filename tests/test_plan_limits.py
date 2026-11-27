@@ -25,7 +25,7 @@ WEEKLY = ('weekly_ai_documents', 'weekly_file_jobs', 'edits_per_file')
 RETIRED = ('file_tasks', 'file_page_units', 'ai_credits', 'daily_file_tasks', 'daily_ai_documents')
 UNLIMITED = float('inf')
 # What still differs by plan; every other limit is shared.
-PER_PLAN = ('price_uzs', 'discount_price_uzs', 'discount_until', *WEEKLY)
+PER_PLAN = ('price_uzs', 'discount_price_uzs', 'discount_until', 'yearly_price_uzs', *WEEKLY)
 SHARED = [key for key in SEED['plans']['premium'] if key not in PER_PLAN]
 
 
@@ -43,7 +43,7 @@ def test_free_never_gives_more_than_a_paid_plan():
     plans = SEED['plans']
     value = lambda plan, key: UNLIMITED if plans[plan][key] is None else plans[plan][key]
     for key, free in plans['free'].items():
-        if key.startswith(('price_', 'discount_')) or not isinstance(free, (int, type(None))):
+        if key.startswith(('price_', 'discount_', 'yearly_')) or not isinstance(free, (int, type(None))):
             continue
         for lower, higher in (('free', 'plus'), ('plus', 'premium')):
             assert value(higher, key) >= value(lower, key), (key, lower, higher)

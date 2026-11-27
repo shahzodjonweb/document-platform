@@ -169,10 +169,10 @@ def test_a_card_button_is_acknowledged_before_the_payment_is_opened(customer, mo
         if isinstance(method, AnswerCallbackQuery):
             events.append('ack')
         return await original_request(self, bot, method, timeout)
-    def create(account, plan, channel='web'):
+    def create(account, plan, channel='web', term='month'):
         assert events == ['ack']
         events.append('payment')
-        return original_create(account, plan, channel)
+        return original_create(account, plan, channel, term)
     monkeypatch.setattr(LocalTelegramSession, 'make_request', tracked_request)
     monkeypatch.setattr(manual, 'create', create)
     result = dispatch_local(customer, text='/plans')

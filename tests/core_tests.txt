@@ -177,6 +177,18 @@ tests/test_plan_limits.py::test_the_plans_page_advertises_a_discount_beside_the_
 tests/test_bot_plans_overview.py::test_a_discount_strikes_the_regular_price_through_and_says_until_when
 tests/test_bot_manual_payments.py::test_the_payment_screen_asks_for_the_discounted_amount_and_shows_the_regular_price
 
+# Yearly plans: 365 days paid once at the owner's yearly price, which no discount lowers,
+# through inPAY on the website and in the bot, or by card transfer; an admin form that
+# refuses a year saving nothing
+tests/test_yearly_plans.py::test_a_year_is_the_owners_price_spread_over_twelve_months_with_its_saving
+tests/test_yearly_plans.py::test_a_discount_lowers_the_month_and_leaves_the_year_as_it_is
+tests/test_yearly_plans.py::test_a_monthly_price_lowered_under_the_year_is_refused_from_its_side
+tests/test_yearly_plans.py::test_a_year_paid_on_inpay_gives_365_days_and_is_said_to_be_a_year
+tests/test_yearly_plans.py::test_a_year_follows_the_month_already_held_and_a_higher_plan_starts_at_once
+tests/test_yearly_plans.py::test_a_year_by_card_transfer_is_asked_for_and_approved_as_365_days
+tests/test_yearly_plans.py::test_the_admin_shows_a_yearly_inpay_payment_with_its_period
+tests/test_bot_yearly_plans.py::test_the_year_is_shown_beside_the_month_and_paid_once_on_inpay[uz]
+
 # Card payment request and receipt via web API
 tests/test_manual_payments.py::test_the_api_offers_card_payment_and_walks_a_payment_to_review
 tests/test_manual_payments.py::test_the_api_needs_a_signed_in_owner

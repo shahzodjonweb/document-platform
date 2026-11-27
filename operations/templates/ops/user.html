@@ -141,7 +141,7 @@
         {% for row in payment_rows %}
         <tr>
           <td class="muted">{{ row.payment.created_at|date:'d M Y · H:i' }}</td>
-          <td><span class="badge plan-{{ row.payment.plan }}">{{ row.payment.plan|capfirst }}</span></td>
+          <td><span class="badge plan-{{ row.payment.plan }}">{{ row.payment.plan|capfirst }}</span>{% if row.payment.term == 'year' %} <span class="badge info">{{ t.term_year }}</span>{% endif %}</td>
           <td>{{ row.payment.amount|money }} so'm</td>
           <td><span class="badge status-{{ row.payment.status }}">{{ row.status }}</span></td>
           <td class="actions"><a class="button secondary small" href="/ops/payments/manual/{{ row.payment.id }}?lang={{ lang }}">{{ t.gen_open }}</a></td>

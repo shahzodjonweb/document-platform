@@ -61,7 +61,7 @@
           <td><a class="table-link" href="{% if row.provider == 'manual' %}/ops/payments/manual/{{ row.manual.id }}{% else %}/ops/payments/{{ row.id }}{% endif %}?lang={{ lang }}">{{ row.account.display_name|default:'—' }}</a></td>
           <td>{{ row.kind }}{% if row.is_renewal %} · {{ f.renewal }}{% endif %}</td>
           <td>{% if row.currency == 'UZS' %}{{ row.amount_xtr|money }} so'm{% else %}{{ row.amount_xtr }} {{ row.currency }}{% endif %}</td>
-          <td>{{ row.plan|default:'—'|capfirst }}</td>
+          <td>{{ row.plan|default:'—'|capfirst }}{% if row.invoice.snapshot.term == 'year' %} · {{ f.term_year }}{% endif %}</td>
           <td class="muted">{{ row.occurred_at|date:'d M Y · H:i' }}</td>
         </tr>
         {% empty %}

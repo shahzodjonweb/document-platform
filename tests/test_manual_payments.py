@@ -105,7 +105,10 @@ def test_nothing_is_offered_until_a_card_and_a_price_are_set():
     assert manual.options()['enabled'] is False, 'a card without a price sells nothing'
     plan_settings.save('premium', {'price_uzs': 65_000})
     offered = manual.options()
-    assert offered['enabled'] and offered['plans'] == [{'plan': 'premium', 'price': 65_000, 'regular_price': 65_000, 'discount': None}]
+    # The yearly price stays as the owner set it, its saving worked out against the new monthly price.
+    assert offered['enabled'] and offered['plans'] == [{'plan': 'premium', 'price': 65_000, 'regular_price': 65_000, 'discount': None,
+                                                        'yearly': {'price': 396_000, 'per_month': 33_000, 'regular': 780_000,
+                                                                   'percent': 49, 'days': 365}}]
     assert offered['automatic'] == {'available': False}
     with pytest.raises(DomainError, match='checkout_disabled'):
         manual.create(customer(), 'plus')
@@ -403,8 +406,10 @@ def test_a_discount_is_todays_price_and_never_changes_the_days():
     assert manual.regular_prices() == {'plus': 20_000, 'premium': 60_000}
     assert manual.options()['plans'] == [
         {'plan': 'plus', 'price': 15_000, 'regular_price': 20_000,
-         'discount': {'price': 15_000, 'regular': 20_000, 'percent': 25, 'until': until}},
-        {'plan': 'premium', 'price': 60_000, 'regular_price': 60_000, 'discount': None}]
+         'discount': {'price': 15_000, 'regular': 20_000, 'percent': 25, 'until': until},
+         # A discount lowers the month only: the year keeps its price and its saving.
+         'yearly': {'price': 132_000, 'per_month': 11_000, 'regular': 240_000, 'percent': 45, 'days': 365}},
+        {'plan': 'premium', 'price': 60_000, 'regular_price': 60_000, 'discount': None, 'yearly': {'price': 396_000, 'per_month': 33_000, 'regular': 720_000, 'percent': 45, 'days': 365}}]
     account = customer()
     payment = submitted(account, 'plus')
     assert payment.amount == 15_000 and manual.period_days(payment) == 30

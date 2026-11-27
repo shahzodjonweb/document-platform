@@ -21,8 +21,9 @@ def test_a_discount_is_a_lower_price_with_its_percent_and_last_day():
     now = datetime(2026, 10, 20, 12, tzinfo=TASHKENT)
     assert pricing.plan_price('plus', PLUS, now) == {
         'plan': 'plus', 'regular': 20_000, 'price': 15_000,
-        'discount': {'price': 15_000, 'regular': 20_000, 'percent': 25, 'until': '2026-10-31'}}
-    assert pricing.plan_price('plus', {'price_uzs': 20_000}, now) == {'plan': 'plus', 'regular': 20_000, 'price': 20_000, 'discount': None}
+        'discount': {'price': 15_000, 'regular': 20_000, 'percent': 25, 'until': '2026-10-31'}, 'yearly': None}
+    assert pricing.plan_price('plus', {'price_uzs': 20_000}, now) == {'plan': 'plus', 'regular': 20_000, 'price': 20_000, 'discount': None,
+                                                                      'yearly': None}
     assert pricing.plan_price('free', {'price_uzs': None, 'discount_price_uzs': 1_000, 'discount_until': '2099-01-01'}, now) is None
     assert pricing.plan_price('plus', {'price_uzs': True}, now) is None, 'a bool is not a price'
 

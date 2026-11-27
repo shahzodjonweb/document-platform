@@ -26,6 +26,8 @@ from apps.core.errors import DomainError
 
 PLANS = ('plus', 'premium')
 PERIOD_DAYS = 30
+# One yearly period, in seconds, as an offer records how long it buys.
+YEAR_SECONDS = 365 * 86400
 AWAIT_HOURS = 48
 RECEIPT_BYTES = 10 * 1024 * 1024
 RECEIPT_PIXELS = 40_000_000
@@ -74,7 +76,7 @@ def options(account=None, channel='web'):
     offered = priced if card or automatic['available'] else {}
     return {'enabled': card, 'currency': 'UZS', 'period_days': PERIOD_DAYS,
             'plans': [{'plan': plan, 'price': offer['price'], 'regular_price': offer['regular'],
-                       'discount': offer['discount']} for plan, offer in offered.items()],
+                       'discount': offer['discount'], 'yearly': offer['yearly']} for plan, offer in offered.items()],
             'automatic': automatic}
 
 
@@ -94,19 +96,23 @@ def _reference():
 
 
 @transaction.atomic
-def create(account, plan, channel='web'):
-    """A request to pay for `plan`, or the one already open for it."""
+def create(account, plan, channel='web', term='month'):
+    """A request to pay for `plan` for a month or a year (`term`), or the one already open for it."""
     from apps.core.customer_auth import auth_limit
     from apps.core.models import Account
     from .models import ManualPayment
-    if plan not in PLANS:
+    from .pricing import charge_for, term_of
+    term = term_of(term)
+    if plan not in PLANS or term is None:
         raise DomainError('invalid_plan')
     offered = offers() if _config()['ready'] else {}
-    if plan not in offered:
+    charged = charge_for(offered[plan], term) if plan in offered else None
+    if charged is None:
         raise DomainError('checkout_disabled', 409)
     # Today's price, and the regular one it is set against: the request keeps
-    # both, so a request opened at a discount is known as one later on.
-    price, regular = offered[plan]['price'], offered[plan]['regular']
+    # both, so a request opened at a discount is known as one later on. A
+    # year has one price, which no discount lowers.
+    price, regular = charged
     account = Account.objects.select_for_update().get(pk=account.pk)
     existing = open_payment(account)
     if existing and existing.status == 'awaiting' and existing.expires_at <= timezone.now():
@@ -120,7 +126,8 @@ def create(account, plan, channel='web'):
         # covers a discount starting (down to it) and one ending (back up to
         # the regular price). A receipt already sent at the old price waits
         # for the owner (period_days).
-        if existing.plan == plan and not (existing.status == 'awaiting' and existing.amount != price):
+        if (existing.plan == plan and existing.term == term
+                and not (existing.status == 'awaiting' and existing.amount != price)):
             return existing, False
     # A request already open is finished as it began; a new one is not made
     # while customers pay through inPAY where they are.
@@ -141,14 +148,14 @@ def create(account, plan, channel='web'):
             with transaction.atomic():
                 payment = ManualPayment.objects.create(
                     reference=_reference(), account=account, plan=plan, amount=price, regular_amount=regular,
-                    card=card, channel=channel if channel in ('web', 'bot') else 'web',
+                    term=term, card=card, channel=channel if channel in ('web', 'bot') else 'web',
                     expires_at=timezone.now() + timedelta(hours=AWAIT_HOURS))
             break
         except IntegrityError:
             continue
     else:
         raise DomainError('manual_payment_unavailable', 503, retryable=True)
-    _action(account, None, 'manual_payment.created', payment, {'plan': plan, 'amount': payment.amount})
+    _action(account, None, 'manual_payment.created', payment, {'plan': plan, 'amount': payment.amount, 'term': term})
     return payment, True
 
 
@@ -256,7 +263,7 @@ def _require_finance(actor):
 
 
 def period_days(payment):
-    """Whole days of the plan that approving this transfer gives: 30, or more.
+    """Whole days of the plan that approving this transfer gives: 30 (365 for a year), or more.
 
     A request opened before a price fell asked for the old amount, and the
     customer may well have sent it. That money buys time at today's price
@@ -267,11 +274,20 @@ def period_days(payment):
     "Today's price" here is the regular one, never a discount: a discount is
     a lower price for the same 30 days, so the full price sent while one runs
     buys 30 days, not 40, and a discounted receipt buys its 30.
+
+    A year is held to the same rule against today's yearly price: 365 days,
+    or more when that price fell after the request was opened.
     """
-    price = regular_prices().get(payment.plan)
+    from .pricing import days_for
+    base = days_for(payment.term)
+    offer = offers().get(payment.plan)
+    if payment.term == 'year':
+        price = (offer.get('yearly') or {}).get('price') if offer else None
+    else:
+        price = offer['regular'] if offer else None
     if not price or payment.amount <= price:
-        return PERIOD_DAYS
-    return max(PERIOD_DAYS, PERIOD_DAYS * payment.amount // price)
+        return base
+    return max(base, base * payment.amount // price)
 
 
 @transaction.atomic
@@ -294,11 +310,13 @@ def approve(payment_id, actor, note=''):
     # A payment buys the plan, not a copy of its numbers: the weekly limits are
     # read from the plan as it stands, so one offer per plan and price is enough.
     # A discounted purchase and a full-price one are two offers, by the amount.
+    yearly = payment.term == 'year'
     offer, _ = OfferVersion.objects.get_or_create(
-        id=f'manual:{payment.plan}:{payment.amount}',
-        defaults={'offer_id': f'manual_{payment.plan}', 'version': 'manual-v2', 'kind': 'subscription',
-                  'plan': payment.plan, 'name': f'{payment.plan.title()} · card transfer',
-                  'period_seconds': PERIOD, 'sandbox': False, 'enabled': False})
+        id=f'manual:{payment.plan}:year:{payment.amount}' if yearly else f'manual:{payment.plan}:{payment.amount}',
+        defaults={'offer_id': f'manual_{payment.plan}' + ('_year' if yearly else ''), 'version': 'manual-v2',
+                  'kind': 'subscription', 'plan': payment.plan,
+                  'name': f'{payment.plan.title()} · card transfer' + (' · 1 year' if yearly else ''),
+                  'period_seconds': YEAR_SECONDS if yearly else PERIOD, 'sandbox': False, 'enabled': False})
     days = period_days(payment)
     # What was bought, as it stood when the request was opened: the invoice
     # keeps it after the prices and the discount have moved on. A request from
@@ -307,7 +325,7 @@ def approve(payment_id, actor, note=''):
     snapshot = {'id': offer.id, 'offer_id': offer.offer_id, 'version': offer.version, 'kind': offer.kind,
                 'plan': payment.plan, 'name': offer.name, 'currency': payment.currency, 'price': payment.amount,
                 'regular_price': regular, 'discounted': regular is not None and payment.amount < regular,
-                'provider': 'manual', 'period_seconds': days * 86400, 'period_days': days}
+                'provider': 'manual', 'term': payment.term, 'period_seconds': days * 86400, 'period_days': days}
     paid, period = grant(account, payment.plan, days, provider='manual', charge=f'manual:{payment.id}',
                          amount=payment.amount, currency=payment.currency, offer=offer, snapshot=snapshot,
                          occurred_at=payment.submitted_at or now, now=now)
@@ -317,7 +335,7 @@ def approve(payment_id, actor, note=''):
     payment.save()
     _notice(payment, 'approved')
     _action(account, actor, 'manual_payment.approved', payment,
-            {'plan': payment.plan, 'amount': payment.amount, 'currency': payment.currency, 'days': days,
+            {'plan': payment.plan, 'amount': payment.amount, 'currency': payment.currency, 'days': days, 'term': payment.term,
              'starts_at': start.isoformat(), 'ends_at': end.isoformat()}, reason=note)
     return payment
 

@@ -222,10 +222,11 @@ def plans(request):
         # once for every reader; `limits.price_uzs` stays the regular price
         # for readers written before discounts. The discount as the owner
         # typed it stays theirs: `discount` says what is on today, and an
-        # expired or half-filled one is not for the public.
+        # expired or half-filled one is not for the public. `yearly` is the
+        # year's price paid at once, with its saving against twelve months.
         offer=plan_price(key,limits)
-        public={field:value for field,value in limits.items() if field not in ('discount_price_uzs','discount_until')}
-        return {'id':key,'name':key.title(),'price_uzs':offer['regular'] if offer else None,'discount':offer['discount'] if offer else None,'limits':public,
+        public={field:value for field,value in limits.items() if field not in ('discount_price_uzs','discount_until','yearly_price_uzs')}
+        return {'id':key,'name':key.title(),'price_uzs':offer['regular'] if offer else None,'discount':offer['discount'] if offer else None,'yearly':offer['yearly'] if offer else None,'limits':public,
                 'features':[fid for fid in released if FEATURES[fid]['plans'][key] not in ('none','excluded','not_included','unavailable')]}
     # How a plan can be paid for today, so the pricing page describes the way that exists.
     from apps.commerce.checkout import on_sale

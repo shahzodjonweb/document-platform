@@ -246,6 +246,8 @@ class ManualPayment(models.Model):
     # at a discount stays one however the prices move afterwards. Null on
     # requests from before discounts, which were all opened at the regular price.
     regular_amount=models.PositiveIntegerField(null=True)
+    # How long it buys: 'month' (30 days) or 'year' (365 days, at the yearly price).
+    term=models.CharField(max_length=8,default='month',db_default='month')
     currency=models.CharField(max_length=3,default='UZS')
     # The card the customer was told to pay, as it was then: the owner may
     # change cards while a transfer is on its way.
@@ -289,6 +291,8 @@ class Checkout(models.Model):
     amount=models.PositiveIntegerField()
     # The plan's regular price when the payment was opened, as ManualPayment keeps it.
     regular_amount=models.PositiveIntegerField(null=True)
+    # How long it buys: 'month' (30 days) or 'year' (365 days, at the yearly price).
+    term=models.CharField(max_length=8,default='month',db_default='month')
     currency=models.CharField(max_length=3,default='UZS')
     provider=models.CharField(max_length=24,default='inpay')
     # Which of inPAY's APIs opened it ('v2' or 'v1'): its status is asked the same way.

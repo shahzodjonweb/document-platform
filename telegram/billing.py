@@ -24,9 +24,11 @@ COPY = {
     'en': {
         "card_pay": "💳 {plan} · {price} so'm / 30 days",
         "card_pay_discount": "💳 {plan} −{percent}% · {price} so'm / 30 days",
+        "card_pay_year": "📅 {plan} · {price} so'm / year · −{percent}%",
+        "period_month": "30 days", "period_year": "1 year", "plan_year": "{plan} · 1 year",
         "card_intro": "💳 Pay by card transfer\nPick a plan. You send the money from your bank app, send us the receipt, and we switch your plan on after checking it.",
         "automatic_soon": "⚡ Automatic payment — coming soon",
-        "manual_screen": "<b>💳 {plan} — {price} so'm for 30 days</b>{note}\n\n1. Send exactly <b>{price} so'm</b> to this card:\n<code>{card}</code>\n{holder}\n\n2. Tap «I've paid» and send the receipt here as a photo or PDF.\n\nPayment code: <code>{reference}</code>\nWe check every payment by hand, usually within a few hours, and message you here.",
+        "manual_screen": "<b>💳 {plan} — {price} so'm for {period}</b>{note}\n\n1. Send exactly <b>{price} so'm</b> to this card:\n<code>{card}</code>\n{holder}\n\n2. Tap «I've paid» and send the receipt here as a photo or PDF.\n\nPayment code: <code>{reference}</code>\nWe check every payment by hand, usually within a few hours, and message you here.",
         "manual_discount": "\nRegular price <s>{regular} so'm</s> · −{percent}% until {until}",
         "manual_waiting": "⏳ Payment {reference} ({plan}, {price} so'm) is waiting for our check. We'll message you here.",
         "manual_paid": "📎 I've paid — send receipt",
@@ -39,7 +41,7 @@ COPY = {
         "manual_rejected": "⚠️ We couldn't confirm payment {reference}: {reason}\nIf you did pay, write to us: /paysupport",
         "manual_reminder": "⏰ Your {plan} plan ends on {date}. To keep it, pay again: /plans",
         "checkout_fallback": "⚠️ Online payment isn't working right now, so you can pay by card transfer instead.",
-        "checkout_screen": "<b>⚡ {plan} — {price} so'm for 30 days</b>{note}\n\nTap «Pay» to open inPAY's payment page and pay with Click, Payme, Uzcard or Humo.\n\nYour plan switches on by itself after the payment, usually within a minute, and we message you here. Nothing renews by itself.",
+        "checkout_screen": "<b>⚡ {plan} — {price} so'm for {period}</b>{note}\n\nTap «Pay» to open inPAY's payment page and pay with Click, Payme, Uzcard or Humo.\n\nYour plan switches on by itself after the payment, usually within a minute, and we message you here. Nothing renews by itself.",
         "checkout_test_note": "\n\n🧪 Test mode: no money moves and your plan does not change.",
         "checkout_pay": "💳 Pay {price} so'm",
         "checkout_check": "🔄 I've paid — check",
@@ -60,9 +62,11 @@ COPY = {
     'uz': {
         "card_pay": "💳 {plan} · {price} so'm / 30 kun",
         "card_pay_discount": "💳 {plan} −{percent}% · {price} so'm / 30 kun",
+        "card_pay_year": "📅 {plan} · {price} so'm / 1 yil · −{percent}%",
+        "period_month": "30 kun", "period_year": "1 yil", "plan_year": "{plan} · 1 yil",
         "card_intro": "💳 Karta orqali to‘lov\nTarifni tanlang. Pulni bank ilovangizdan o‘tkazasiz, kvitansiyani yuborasiz, tekshirgach tarifingizni yoqamiz.",
         "automatic_soon": "⚡ Avtomatik to‘lov — tez orada",
-        "manual_screen": "<b>💳 {plan} — 30 kun uchun {price} so'm</b>{note}\n\n1. Shu kartaga aynan <b>{price} so'm</b> o‘tkazing:\n<code>{card}</code>\n{holder}\n\n2. «To‘ladim» tugmasini bosing va kvitansiyani shu yerga rasm yoki PDF qilib yuboring.\n\nTo‘lov kodi: <code>{reference}</code>\nHar bir to‘lovni qo‘lda tekshiramiz, odatda bir necha soat ichida, va shu yerga yozamiz.",
+        "manual_screen": "<b>💳 {plan} — {period} uchun {price} so'm</b>{note}\n\n1. Shu kartaga aynan <b>{price} so'm</b> o‘tkazing:\n<code>{card}</code>\n{holder}\n\n2. «To‘ladim» tugmasini bosing va kvitansiyani shu yerga rasm yoki PDF qilib yuboring.\n\nTo‘lov kodi: <code>{reference}</code>\nHar bir to‘lovni qo‘lda tekshiramiz, odatda bir necha soat ichida, va shu yerga yozamiz.",
         "manual_discount": "\nOdatdagi narx <s>{regular} so'm</s> · −{percent}% chegirma, {until}gacha",
         "manual_waiting": "⏳ {reference} to‘lovi ({plan}, {price} so'm) tekshiruvni kutmoqda. Natijani shu yerga yozamiz.",
         "manual_paid": "📎 To‘ladim — kvitansiya yuborish",
@@ -75,7 +79,7 @@ COPY = {
         "manual_rejected": "⚠️ {reference} to‘lovini tasdiqlay olmadik: {reason}\nAgar to‘lagan bo‘lsangiz, bizga yozing: /paysupport",
         "manual_reminder": "⏰ {plan} tarifingiz {date} kuni tugaydi. Davom ettirish uchun qayta to‘lang: /plans",
         "checkout_fallback": "⚠️ Onlayn to‘lov hozir ishlamayapti, shuning uchun kartaga o‘tkazma orqali to‘lashingiz mumkin.",
-        "checkout_screen": "<b>⚡ {plan} — 30 kun uchun {price} so'm</b>{note}\n\n«To‘lash» tugmasini bosing: inPAY to‘lov sahifasi ochiladi, u yerda Click, Payme, Uzcard yoki Humo orqali to‘laysiz.\n\nTo‘lovdan keyin tarifingiz o‘zi yoqiladi, odatda bir daqiqa ichida, va shu yerga yozamiz. Hech narsa o‘z-o‘zidan uzaytirilmaydi.",
+        "checkout_screen": "<b>⚡ {plan} — {period} uchun {price} so'm</b>{note}\n\n«To‘lash» tugmasini bosing: inPAY to‘lov sahifasi ochiladi, u yerda Click, Payme, Uzcard yoki Humo orqali to‘laysiz.\n\nTo‘lovdan keyin tarifingiz o‘zi yoqiladi, odatda bir daqiqa ichida, va shu yerga yozamiz. Hech narsa o‘z-o‘zidan uzaytirilmaydi.",
         "checkout_test_note": "\n\n🧪 Sinov rejimi: pul yechilmaydi va tarifingiz o‘zgarmaydi.",
         "checkout_pay": "💳 {price} so'm to‘lash",
         "checkout_check": "🔄 To‘ladim — tekshirish",
@@ -96,9 +100,11 @@ COPY = {
     'ru': {
         "card_pay": "💳 {plan} · {price} сум / 30 дней",
         "card_pay_discount": "💳 {plan} −{percent}% · {price} сум / 30 дней",
+        "card_pay_year": "📅 {plan} · {price} сум / год · −{percent}%",
+        "period_month": "30 дней", "period_year": "1 год", "plan_year": "{plan} · 1 год",
         "card_intro": "💳 Оплата переводом на карту\nВыберите тариф. Вы переводите деньги из своего банковского приложения, присылаете квитанцию, и после проверки мы включаем тариф.",
         "automatic_soon": "⚡ Автоматическая оплата — скоро",
-        "manual_screen": "<b>💳 {plan} — {price} сум за 30 дней</b>{note}\n\n1. Переведите ровно <b>{price} сум</b> на эту карту:\n<code>{card}</code>\n{holder}\n\n2. Нажмите «Я оплатил» и отправьте сюда квитанцию фото или PDF.\n\nКод платежа: <code>{reference}</code>\nМы проверяем каждый платёж вручную, обычно в течение нескольких часов, и напишем вам здесь.",
+        "manual_screen": "<b>💳 {plan} — {price} сум за {period}</b>{note}\n\n1. Переведите ровно <b>{price} сум</b> на эту карту:\n<code>{card}</code>\n{holder}\n\n2. Нажмите «Я оплатил» и отправьте сюда квитанцию фото или PDF.\n\nКод платежа: <code>{reference}</code>\nМы проверяем каждый платёж вручную, обычно в течение нескольких часов, и напишем вам здесь.",
         "manual_discount": "\nОбычная цена <s>{regular} сум</s> · −{percent}% до {until}",
         "manual_waiting": "⏳ Платёж {reference} ({plan}, {price} сум) ждёт проверки. Мы напишем вам здесь.",
         "manual_paid": "📎 Я оплатил — отправить квитанцию",
@@ -111,7 +117,7 @@ COPY = {
         "manual_rejected": "⚠️ Не удалось подтвердить платёж {reference}: {reason}\nЕсли вы оплатили, напишите нам: /paysupport",
         "manual_reminder": "⏰ Ваш тариф {plan} заканчивается {date}. Чтобы продолжить, оплатите снова: /plans",
         "checkout_fallback": "⚠️ Онлайн-оплата сейчас не работает, поэтому можно оплатить переводом на карту.",
-        "checkout_screen": "<b>⚡ {plan} — {price} сум за 30 дней</b>{note}\n\nНажмите «Оплатить»: откроется страница оплаты inPAY, где можно заплатить через Click, Payme, Uzcard или Humo.\n\nПосле оплаты тариф включится сам, обычно в течение минуты, и мы напишем вам здесь. Автоматического продления нет.",
+        "checkout_screen": "<b>⚡ {plan} — {price} сум за {period}</b>{note}\n\nНажмите «Оплатить»: откроется страница оплаты inPAY, где можно заплатить через Click, Payme, Uzcard или Humo.\n\nПосле оплаты тариф включится сам, обычно в течение минуты, и мы напишем вам здесь. Автоматического продления нет.",
         "checkout_test_note": "\n\n🧪 Тестовый режим: деньги не списываются, тариф не меняется.",
         "checkout_pay": "💳 Оплатить {price} сум",
         "checkout_check": "🔄 Я оплатил — проверить",
@@ -151,6 +157,7 @@ PLAN_COPY = {
         'head': "<b>{icon} {name}</b> — {price} so'm / 30 days",
         'head_discount': "<b>{icon} {name}</b> — <s>{regular}</s> <b>{price}</b> so'm / 30 days",
         'discount_line': '−{percent}% until {until}',
+        'yearly_line': "📅 Or yearly: <b>{per_month}</b> so'm a month, billed {price} so'm once a year (−{percent}%)",
         'yours': ' · ✅ yours',
         'ai_week': 'AI documents and decks: {n} a week',
         'ai_unlimited': 'AI documents and decks: unlimited',
@@ -172,6 +179,7 @@ PLAN_COPY = {
         'head': "<b>{icon} {name}</b> — 30 kun uchun {price} so'm",
         'head_discount': "<b>{icon} {name}</b> — 30 kun uchun <s>{regular}</s> <b>{price}</b> so'm",
         'discount_line': '−{percent}% chegirma, {until}gacha',
+        'yearly_line': "📅 Yoki yillik: oyiga <b>{per_month}</b> so'm, yiliga bir yo‘la {price} so'm to‘lanadi (−{percent}%)",
         'yours': ' · ✅ sizniki',
         'ai_week': 'AI hujjat va taqdimotlar: haftasiga {n} ta',
         'ai_unlimited': 'AI hujjat va taqdimotlar: cheksiz',
@@ -193,6 +201,7 @@ PLAN_COPY = {
         'head': '<b>{icon} {name}</b> — {price} сум за 30 дней',
         'head_discount': '<b>{icon} {name}</b> — <s>{regular}</s> <b>{price}</b> сум за 30 дней',
         'discount_line': '−{percent}% до {until}',
+        'yearly_line': '📅 Или на год: <b>{per_month}</b> сум в месяц, оплата {price} сум сразу за год (−{percent}%)',
         'yours': ' · ✅ ваш',
         'ai_week': 'ИИ-документы и презентации: {n} в неделю',
         'ai_unlimited': 'ИИ-документы и презентации: без ограничений',
@@ -445,6 +454,12 @@ def plans_overview(account):
         if discount:
             head += '\n' + words['discount_line'].format(percent=discount['percent'],
                                                          until=day_label(discount['until'], locale))
+        # The year paid at once, spread over its months so it compares with the
+        # month above; no discount touches it (apps/commerce/pricing.yearly).
+        year = offer['yearly'] if plan != 'free' else None
+        if year:
+            head += '\n' + words['yearly_line'].format(per_month=money(year['per_month']), price=money(year['price']),
+                                                       percent=year['percent'])
         # The weekly limits, as the owner's table puts them (a limit that is not
         # set is unlimited), then the channels, which Premium never asks for.
         # That is all a card says: nothing else differs between plans.
@@ -505,6 +520,24 @@ def money(amount):
     return f'{amount:,}'.replace(',', ' ')
 
 
+def term_name(account, plan, term):
+    """'Plus', or 'Plus · 1 year' for a plan bought for a year, as the payment screens title it."""
+    name = plan.title()
+    return copy(account, 'plan_year').format(plan=name) if term == 'year' else name
+
+
+def period_name(account, term):
+    """'30 days' or '1 year', in the customer's language."""
+    return copy(account, 'period_year' if term == 'year' else 'period_month')
+
+
+def year_label(account, item):
+    """One plan's yearly button: the year's price, and what it saves on twelve months."""
+    year = item['yearly']
+    return copy(account, 'card_pay_year').format(plan=item['plan'].title(), price=money(year['price']),
+                                                 percent=year['percent'])
+
+
 def card_label(account, item):
     """One plan's button on the plans screen: its price today, and how much off while a discount runs.
 
@@ -538,6 +571,14 @@ async def show_offers(message, account, edit=False, source=None, tap=''):
             text=card_label(account, item),
             callback_data=await callback(account, action, {'plan': item['plan']}),
         )])
+        # A year is paid once, on inPAY's page (or by card transfer while that
+        # is the way): it never renews from a saved card, so it skips that choice.
+        if item.get('yearly'):
+            rows.append([InlineKeyboardButton(
+                text=year_label(account, item),
+                callback_data=await callback(account, 'commerce_checkout_plan' if automatic else 'commerce_manual_plan',
+                                             {'plan': item['plan'], 'term': 'year'}),
+            )])
     rows.append([await button(account, 'subscription', 'subscription')])
     rows.extend(await navigation(account))
     overview = await sync_to_async(plans_overview)(account)
@@ -562,21 +603,21 @@ async def show_offers(message, account, edit=False, source=None, tap=''):
         await sync_to_async(funnel.plans_viewed)(account, source, tap)
 
 
-async def show_manual(message, account, plan, edit=False, switch=True):
-    """The card, the price and the code for one plan, and how to send the receipt."""
+async def show_manual(message, account, plan, edit=False, switch=True, term='month'):
+    """The card, the price and the code for one plan (a month or a year), and how to send the receipt."""
     from apps.commerce import manual
     await leave_input_prompt(account)
     try:
-        payment, _ = await sync_to_async(manual.create)(account, plan, 'bot')
+        payment, _ = await sync_to_async(manual.create)(account, plan, 'bot', term)
     except DomainError as exc:
         # Customers pay through inPAY now: a card-transfer button from before leads there.
         if not switch or exc.code != 'checkout_disabled' or not (await sync_to_async(manual.options)(account, 'bot'))['automatic']['available']:
             raise
-        return await show_checkout(message, account, plan, edit, switch=False)
+        return await show_checkout(message, account, plan, edit, switch=False, term=term)
     await show_manual_payment(message, account, payment, edit)
 
 
-async def show_checkout(message, account, plan, edit=False, switch=True):
+async def show_checkout(message, account, plan, edit=False, switch=True, term='month'):
     """Open a payment at inPAY for one plan and show the button that leads to its page.
 
     When inPAY cannot open it, or stopped being the way since the plans were
@@ -587,7 +628,7 @@ async def show_checkout(message, account, plan, edit=False, switch=True):
     from apps.commerce import checkout, manual
     await leave_input_prompt(account)
     try:
-        row, request = await sync_to_async(checkout.begin)(account, plan, 'bot')
+        row, request = await sync_to_async(checkout.begin)(account, plan, 'bot', term)
         if request is not None:
             # inPAY is asked off the thread the bot's queries share: a slow answer holds no other chat up.
             opened, failure = await asyncio.to_thread(checkout.ask, request)
@@ -599,14 +640,15 @@ async def show_checkout(message, account, plan, edit=False, switch=True):
             # Said first, then the card screen under it as a message of its own.
             await message.answer(copy(account, 'checkout_fallback'))
             edit = False
-        return await show_manual(message, account, plan, edit, switch=False)
+        return await show_manual(message, account, plan, edit, switch=False, term=term)
     await show_checkout_row(message, account, row, edit)
 
 
 async def show_checkout_row(message, account, row, edit=False):
     from .bot import callback
     note = await sync_to_async(discount_note)(account, row)
-    body = copy(account, 'checkout_screen').format(plan=row.plan.title(), price=money(row.amount), note=note)
+    body = copy(account, 'checkout_screen').format(plan=row.plan.title(), price=money(row.amount),
+                                                   period=period_name(account, row.term), note=note)
     if not row.livemode:
         body += copy(account, 'checkout_test_note')
     rows = [
@@ -970,6 +1012,9 @@ def discount_note(account, payment):
     shows it, and a note about a discount would contradict the amount.
     """
     from apps.commerce.pricing import plan_price
+    # A year has its own price, which no discount lowers.
+    if getattr(payment, 'term', 'month') == 'year':
+        return ''
     offer = plan_price(payment.plan)
     discount = offer['discount'] if offer else None
     if not discount or payment.amount != offer['price']:
@@ -985,9 +1030,10 @@ async def show_manual_payment(message, account, payment, edit=False):
     number = ' '.join(card.get('number', '')[i:i + 4] for i in range(0, len(card.get('number', '')), 4))
     holder = html.escape(' · '.join(part for part in (card.get('holder', ''), card.get('label', '')) if part))
     values = {'plan': payment.plan.title(), 'price': money(payment.amount), 'card': number,
-              'holder': holder, 'reference': payment.reference, 'note': ''}
+              'holder': holder, 'reference': payment.reference, 'note': '', 'period': period_name(account, payment.term)}
     if payment.status == 'submitted':
-        body = copy(account, 'manual_waiting').format(**values)
+        # "(Plus · 1 year, 132 000 so'm)": the waiting line has no period of its own to say it.
+        body = copy(account, 'manual_waiting').format(**{**values, 'plan': term_name(account, payment.plan, payment.term)})
         send = 'manual_resend'
     else:
         values['note'] = await sync_to_async(discount_note)(account, payment)
@@ -1104,9 +1150,9 @@ def register_billing_handlers(dp):
         account = await account_for(query.from_user)
         try:
             if ref.action == 'commerce_manual_plan':
-                await show_manual(query.message, account, ref.payload['plan'], edit=True)
+                await show_manual(query.message, account, ref.payload['plan'], edit=True, term=ref.payload.get('term') or 'month')
             elif ref.action == 'commerce_checkout_plan':
-                await show_checkout(query.message, account, ref.payload['plan'], edit=True)
+                await show_checkout(query.message, account, ref.payload['plan'], edit=True, term=ref.payload.get('term') or 'month')
             elif ref.action == 'commerce_checkout_check':
                 await check_checkout(query.message, account, ref.payload['checkout_id'])
             elif ref.action == 'commerce_plan_choice':

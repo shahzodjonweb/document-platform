@@ -13,7 +13,8 @@
     <dt>{{ f.inpay_id }}</dt><dd class="mono">{{ checkout.provider_id }}</dd>
     {% if checkout.receipt_url %}<dt>{{ f.open_receipt }}</dt><dd><a class="table-link" href="{{ checkout.receipt_url }}" rel="noopener noreferrer" target="_blank">ofd.soliq.uz</a></dd>{% endif %}{% endif %}
     <dt>{{ f.kind }}</dt><dd>{{ payment.kind }}</dd>
-    <dt>{{ f.plan }}</dt><dd>{{ payment.plan|default:'—' }}</dd>
+    <dt>{{ f.plan }}</dt><dd>{{ payment.plan|default:'—'|capfirst }}{% if payment.invoice.snapshot.term == 'year' %} · <span class="badge info" data-testid="payment-term">{{ f.term_year }}</span>{% endif %}</dd>
+    {% if period %}<dt>{{ f.period }}</dt><dd>{{ period.starts_at|date:'d M Y' }} → {{ period.ends_at|date:'d M Y' }}{% if period.revoked_at %} · {{ f.refunded }}{% endif %}</dd>{% endif %}
     <dt>{{ f.date }}</dt><dd>{{ payment.occurred_at|date:'d M Y · H:i' }}</dd>
   </dl>
 </section>

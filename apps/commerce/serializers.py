@@ -7,7 +7,8 @@ def payment_data(payment):
     """A payment as its customer sees it: `amount` and `refunded` are in `currency`, so'm for a card transfer."""
     refund=Refund.objects.filter(payment=payment).first()
     refunded=refund.amount_xtr if refund and refund.status=='confirmed' else 0
-    return {'id':str(payment.id),'invoice_id':str(payment.invoice_id),'kind':payment.kind,'plan':payment.plan or None,'amount':payment.amount_xtr,'currency':payment.currency,'sandbox':payment.sandbox,'occurred_at':payment.occurred_at,'is_renewal':payment.is_renewal,'refunded':refunded,'status':'refunded' if refunded else 'paid','refund_status':refund.status if refund else None,'provider':payment.provider}
+    snapshot=payment.invoice.snapshot if payment.invoice_id else {}
+    return {'id':str(payment.id),'invoice_id':str(payment.invoice_id),'kind':payment.kind,'plan':payment.plan or None,'term':(snapshot or {}).get('term') or 'month','amount':payment.amount_xtr,'currency':payment.currency,'sandbox':payment.sandbox,'occurred_at':payment.occurred_at,'is_renewal':payment.is_renewal,'refunded':refunded,'status':'refunded' if refunded else 'paid','refund_status':refund.status if refund else None,'provider':payment.provider}
 
 
 def subscription_data(account):
@@ -32,7 +33,7 @@ def manual_payment_data(payment):
     open_=payment.status in ('awaiting','submitted')
     number=str(card.get('number') or '')
     period=getattr(payment.payment,'period',None) if payment.payment_id else None
-    return {'id':str(payment.id),'reference':payment.reference,'plan':payment.plan,'amount':payment.amount,'currency':payment.currency,
+    return {'id':str(payment.id),'reference':payment.reference,'plan':payment.plan,'term':payment.term,'amount':payment.amount,'currency':payment.currency,
             'status':payment.status,'channel':payment.channel,
             'card':{'number':number if open_ else None,'last4':number[-4:],'holder':card.get('holder',''),'label':card.get('label','')},
             'receipt_received':bool(payment.receipt_key or payment.receipt_deleted_at),'payer_note':payment.payer_note,
@@ -55,7 +56,7 @@ def checkout_data(row,owner=False):
     period=getattr(row.payment,'period',None) if row.payment_id else None
     status='pending' if row.status in ('created','review') else row.status
     username=str(telegram_config().get('username') or '').strip().lstrip('@') if row.channel=='bot' else ''
-    return {'id':str(row.id),'plan':row.plan,'amount':row.amount,'currency':row.currency,'status':status,
+    return {'id':str(row.id),'plan':row.plan,'term':row.term,'amount':row.amount,'currency':row.currency,'status':status,
             'test':not row.livemode,'channel':row.channel,
             'checkout_url':row.checkout_url if owner and row.status=='pending' and row.checkout_url else None,
             'bot_url':f'https://t.me/{username}' if username else None,

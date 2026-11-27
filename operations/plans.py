@@ -24,6 +24,10 @@ FIELDS = {
     # strings, which the form's date input takes as its min and max.
     'discount_price_uzs': (1_000, 100_000_000),
     'discount_until': ('2020-01-01', '2099-12-31'),
+    # So'm for 365 days paid at once; blank means the plan is sold by the month
+    # only. Below twelve months at the regular price by a whole per cent at
+    # least, and never lowered by a discount (apps/commerce/pricing.yearly).
+    'yearly_price_uzs': (1_000, 100_000_000),
     # AI documents (PDF documents and decks) a week; blank is unlimited.
     'weekly_ai_documents': (1, 10_000),
     # File tasks a week, every tool sharing one count; blank is unlimited.
@@ -53,7 +57,7 @@ DATES = ('discount_until',)
 DISCOUNT = ('discount_price_uzs', 'discount_until')
 # Blank is a real value for these: no price means a plan is not for sale, no
 # discount means the regular price, and no limit means unlimited.
-NULLABLE = {'price_uzs', *DISCOUNT, 'weekly_ai_documents', 'weekly_file_jobs', 'edits_per_file'}
+NULLABLE = {'price_uzs', *DISCOUNT, 'yearly_price_uzs', 'weekly_ai_documents', 'weekly_file_jobs', 'edits_per_file'}
 WEEKLY = ('weekly_ai_documents', 'weekly_file_jobs')
 # What the free plan may never leave unlimited, and what no paid plan may set
 # below the free plan's: each of them is AI or processing paid for per use.
@@ -61,11 +65,11 @@ WEEKLY = ('weekly_ai_documents', 'weekly_file_jobs')
 # every other one is the same on every plan, so Free is held under a paid plan
 # only here.
 FLOOR = (*WEEKLY, 'edits_per_file')
-# What each plan sets for itself: its price, its discount and the limits above.
+# What each plan sets for itself: its prices, its discount and the limits above.
 # Every other field is one value for all three plans, so a change made from any
 # plan's form is written to every plan (save, reset); a field edited per plan
 # would bring back the plan differences the owner removed.
-PER_PLAN = ('price_uzs', *DISCOUNT, *FLOOR)
+PER_PLAN = ('price_uzs', *DISCOUNT, 'yearly_price_uzs', *FLOOR)
 SHARED = tuple(field for field in FIELDS if field not in PER_PLAN)
 
 
@@ -177,6 +181,25 @@ def validate(plan_id, values, defaults):
         # what changed.
         if touched and date.fromisoformat(until) < today():
             raise PlanError("The discount's last day cannot be before today.")
+    # A yearly price is a saving on twelve months at the regular price, or
+    # nothing worth selling: the customer is shown what they save. Judged
+    # against the regular price, never a discount, which lowers the month only.
+    # A plan taken off sale (no monthly price) is off sale by the year too:
+    # its yearly price waits in the panel for the plan to come back.
+    year, regular = after.get('yearly_price_uzs'), after.get('price_uzs')
+    if plan_id == 'free' and year is not None:
+        raise PlanError('The free plan has no yearly price.')
+    if year is not None and regular is None and 'yearly_price_uzs' in changed:
+        raise PlanError('A yearly price needs a monthly price.')
+    if year is not None and regular is not None:
+        from apps.commerce.pricing import MONTHS_A_YEAR, percent_off
+        full = regular * MONTHS_A_YEAR
+        if year >= full or percent_off(full, year) < 1:
+            shown = f'{full:,}'.replace(',', ' ')
+            if 'price_uzs' in changed and 'yearly_price_uzs' not in changed:
+                raise PlanError(f'The yearly price must stay at least 1% below 12 months at the monthly price ({shown}). '
+                                'Lower or clear the yearly price first.')
+            raise PlanError(f'The yearly price must be at least 1% below 12 months at the monthly price ({shown}).')
     if plan_id == 'free':
         paid_plans = [limits_for(paid, defaults[paid]) for paid in defaults if paid != 'free']
         for field in FLOOR:
