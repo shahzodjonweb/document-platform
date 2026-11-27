@@ -8,8 +8,8 @@ refused and its words read by antiword. Its "pages" are parts of at most 3,000
 characters (processors/source_text.pages), the parts the model will be shown.
 
 Every other upload is exactly as it was: a .txt is still refused for the tools,
-a .doc is not even a suffix they know, and the public endpoint refuses the
-purpose as it refuses any it does not publish.
+a .doc is not even a suffix they know. The web's category screen uploads
+them through the public endpoint with the same purpose.
 
 The people and organisations in these files are invented.
 """
@@ -305,13 +305,16 @@ def test_a_word_source_with_a_clickable_link_is_taken_but_never_by_the_tools(off
         validate_inputs(account, 'convert.word_to_pdf', [str(asset.id)])
 
 
-def test_the_public_endpoint_refuses_the_purpose_as_any_unpublished_one():
+def test_the_public_endpoint_takes_the_purpose_for_the_webs_category_screen_and_refuses_any_unpublished_one():
     account, client = principal(89115)
-    for purpose in ('ai_source', 'anything'):
-        response = client.post('/api/v1/files/uploads', {'file': SimpleUploadedFile('notes.txt', ENGLISH.encode()),
-                                                         'purpose': purpose})
-        assert response.status_code == 400 and response.json()['error']['code'] == 'invalid_parameters'
+    response = client.post('/api/v1/files/uploads', {'file': SimpleUploadedFile('notes.txt', ENGLISH.encode()),
+                                                     'purpose': 'anything'})
+    assert response.status_code == 400 and response.json()['error']['code'] == 'invalid_parameters'
     assert not FileAsset.objects.exists() and not refused_codes(account)
+    response = client.post('/api/v1/files/uploads', {'file': SimpleUploadedFile('notes.txt', ENGLISH.encode()),
+                                                     'purpose': 'ai_source'})
+    assert response.status_code == 201 and response.json()['name'] == 'notes.txt'
+    assert FileAsset.objects.get().metadata['kind'] == 'text'
 
 
 # ------------------------------------------------------------------ the pure functions

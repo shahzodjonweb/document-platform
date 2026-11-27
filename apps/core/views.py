@@ -256,8 +256,8 @@ def uploads(request):
     # `purpose` 'cv_source' is a file a CV is made from: it may carry links
     # (services.upload_file), and is queued for the reader at once. `cv_read`
     # says how its reading stands (apps/studio/cv/reads.py upload_state).
-    # 'ai_source' (a category's source, which may be a .txt or an old .doc)
-    # is the bot's alone: refused here exactly as an unknown purpose is.
+    # 'ai_source' is a category's source (a PDF, Word or text file, an old
+    # .doc too), read for that category's draft and refused by every tool.
     purpose=request.POST.get('purpose','')
     if purpose not in PUBLIC_UPLOAD_PURPOSES: raise DomainError('invalid_parameters')
     asset=upload_file(request.account,request.FILES['file'],password=request.POST.get('password'),purpose=purpose)

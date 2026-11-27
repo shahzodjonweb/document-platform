@@ -162,6 +162,31 @@ def deck_designs(request):
     locale=request.GET.get('locale',request.account.locale)
     return {'categories':catalogue(locale if locale in ('en','uz','ru') else 'en'),'default_pages':SETUP_SLIDES}
 
+@api(('GET',))
+def categories(request):
+    """The AI PDF and AI Slides lists, as the bot shows them, for the web's picker.
+
+    Each service's list is what customers may pick now: [] while the owner's
+    switch is off or nothing of it is ticked, and the service then opens
+    today's description. `locale` (en, uz, ru; the account's when left out)
+    is the language of every word.
+    """
+    from .categories import picker
+    locale=request.GET.get('locale',request.account.locale)
+    return {'features':{fid:picker(fid,locale if locale in ('en','uz','ru') else 'en') for fid in (DOCUMENT,SLIDES)}}
+
+@api(('POST',))
+def category_chosen(request):
+    """A category's screen opened on the web, counted as the bot counts a tap on it (categories/chosen.py)."""
+    throttle(request,'category_chosen',60)
+    category=body(request).get('category')
+    from . import categories
+    from .categories.chosen import record
+    entry=categories.get(category) if isinstance(category,str) else None
+    if entry is None:raise DomainError('invalid_parameters')
+    record(request.account,entry.id,'web')
+    return {'recorded':True}
+
 @api(auth=False)
 def deck_design_preview(request,design):
     """A design's cover as the theme picker shows it. No customer data: public and cacheable."""

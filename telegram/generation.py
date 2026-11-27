@@ -172,29 +172,10 @@ def category_of(draft):
     return (unpack(draft.encrypted_data).get('options') or {}).get('category') or ''
 
 
-# A customer who opens a category, looks at its examples and comes back, or
-# rewords their description, has chosen it once: taps on it this close together
-# are one choice, so the admin's chosen-versus-made compares like with like.
-CHOSEN_WINDOW_SECONDS = 30 * 60
-
-
 def chosen(account, category):
-    """Record that a customer opened a category's question in the bot. Never raises."""
-    try:
-        from django.core.cache import cache
-        from apps.core.funnel import environment
-        from apps.core.models import AnalyticsEvent
-        from apps.studio import categories
-        entry = categories.get(category)
-        if entry is None or not cache.add(f'category-chosen:{account.pk}:{entry.id}', 1, CHOSEN_WINDOW_SECONDS):
-            return
-        AnalyticsEvent.objects.create(
-            account=account, event_type=categories.CHOSEN_EVENT, feature_id=entry.feature_id, channel='bot',
-            locale=getattr(account, 'locale', '') or 'en', plan_at_event=getattr(account, 'plan', '') or 'free',
-            environment=environment(account), properties={'category': entry.id})
-    except Exception:
-        # Counting is never worth a customer's request failing.
-        return
+    """Record that a customer opened a category's question in the bot (categories/chosen.py). Never raises."""
+    from apps.studio.categories.chosen import record
+    record(account, category, 'bot')
 
 
 # A category's one extra question (its entry's `ask`) is a button on the

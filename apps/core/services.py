@@ -43,11 +43,11 @@ def engine_inspect(path, password=None, allow_links=False, sources=False):
 # is made from (apps/studio/cv/sources.py), whose text is read, by the reader,
 # and never converted. 'ai_source' is a file an AI PDF or AI Slides of a chosen
 # category is made from (apps/studio/categories/sources.py): read, never
-# converted, and it may also be a .txt or an old Word .doc. Only the bot
-# uploads one; the public endpoint takes PUBLIC_UPLOAD_PURPOSES, as its
-# published contract says.
+# converted, and it may also be a .txt or an old Word .doc. The bot and the
+# web's category screen upload one; the public endpoint takes
+# PUBLIC_UPLOAD_PURPOSES, as its published contract says.
 UPLOAD_PURPOSES = ('', 'cv_source', 'ai_source')
-PUBLIC_UPLOAD_PURPOSES = ('', 'cv_source')
+PUBLIC_UPLOAD_PURPOSES = ('', 'cv_source', 'ai_source')
 # Read, never converted: a Word file's clickable links are harmless in these.
 READ_ONLY_PURPOSES = ('cv_source', 'ai_source')
 UPLOAD_SUFFIXES = ('.pdf','.png','.jpg','.jpeg','.webp','.tif','.tiff','.docx','.xlsx','.pptx','.txt','.odt','.ods','.odp')
