@@ -142,8 +142,8 @@ def test_a_section_with_foreign_words_goes_back_and_uzbek_in_cyrillic_does_not()
     assert report.foreign == {'s2': ['bogood'], 's5': ['yengillashtirsen', 'mustahruulaxad'], 's6': ['պահպանlax']}
 
 
-def test_a_paragraph_that_reads_as_code_is_still_read_for_foreign_words():
-    # _prose drops a line with a bracket or a semicolon from the language reading; Uzbek academic prose has both.
+def test_a_paragraph_with_brackets_and_semicolons_is_read_for_foreign_words():
+    # Uzbek academic prose has both; the words are read in the whole text, code lines too.
     body = ("Ishning maqsadi — boshqaruv tizimini yoritish; markaziy va mahalliy boshqaruvni tahlil qilish (XIV asr). "
             "Metodi esa boshqaruv unsurlarini qiyosiy tahlil qilishэд оршино.")
     _, report = uzbek(CLEAN, body)

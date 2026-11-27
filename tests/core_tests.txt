@@ -404,6 +404,7 @@ tests/test_script_policy.py::test_an_uzbek_deck_job_delivers_no_cyrillic_when_th
 tests/test_script_policy.py::test_a_file_that_still_has_cyrillic_is_never_delivered
 tests/test_generation_quality.py::test_a_flawed_document_is_repaired_once_for_the_flagged_sections_only[en-ai.pptx]
 tests/test_generation_quality.py::test_a_repair_that_fails_still_delivers_the_document[raises]
+tests/test_generation_quality.py::test_prose_with_brackets_semicolons_and_equals_is_read_for_its_language[russian]
 tests/test_prompt_assembly.py::test_an_uzbek_brief_in_cyrillic_gives_every_stage_the_same_latin_language_block
 # Words of another language (Mongolian, Kazakh) in Uzbek go back to the model, never delivered as Latin nonsense
 tests/test_foreign_words.py::test_a_section_with_foreign_words_goes_back_and_uzbek_in_cyrillic_does_not

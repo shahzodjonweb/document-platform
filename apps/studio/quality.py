@@ -211,9 +211,21 @@ NAMED_LANGUAGES = {
     'uz': r"o'?zbek(?:cha\w*)?|uzbek|узбекск\w*|узбек(?:ча\w*)?|ўзбек(?:ча\w*)?",
 }
 # Code is in no language: a Python or SQL sample on a Russian or Uzbek page is
-# left out when the page's language is judged.
-CODE_LINE = re.compile(r"^\s|:\s*$|[=(){}\[\];]|\b(?:SELECT|FROM|WHERE|INSERT|UPDATE)\b"
-                       r"|\b(?:def|class|import|return|print|function|const)\b")
+# left out when the page's language is judged. A line is code by what prose
+# never does, since prose has brackets, semicolons and "=" too ("Amir Temur
+# (1336–1405)", "…; …", "1 t = 1000 kg", "the function of"): any one of those
+# once dropped a fifth of a page's text from the reading. Code is an indented
+# line, braces, an operator, an assignment, a method call or a keyword at the
+# start of a line, a statement closed by ");", a tag, or SQL. Every part is
+# anchored or starts at a word, so a line is read in time that grows with it.
+CODE_LINE = re.compile(
+    r"^(?:\t| {2,})\S|[{}]|==|!=|&&|\|\||\+=|-=|\+\+|=>|[)\]'\"]\s*;\s*$"
+    r"|^\s*[A-Za-z_][\w.\[\]]*\s*[-+*/]?=(?!=)"
+    r"|(?<![\w.])[A-Za-z_]\w*\.[A-Za-z_]\w*\("
+    r"|</?[a-z][a-z0-9]*(?:\s[^<>]*)?/?>"
+    r"|^\s*(?:def|class|import|from\s+[\w.]+\s+import|return|function|const|let|var|for|while|if|elif|else|try"
+    r"|except|print|echo|public|private|static|void|int|#include)\b"
+    r"|\b(?:SELECT|FROM|WHERE|INSERT|UPDATE)\b")
 # A cover, section divider or closing slide is meant to repeat the deck's title
 # and subtitle or to say the same "Questions?" as another; it is not compared.
 STRUCTURAL = ('cover', 'closing', 'section')
@@ -304,8 +316,7 @@ def check(content, *, locale, fmt, prompt='', request=None, selected=None, expec
                         wrong.append(sid)
                     else:
                         report.add('foreign_passage', sid)
-                # The whole text, code-like lines too: a paragraph with a bracket or a
-                # semicolon in it reads as code to _prose, and no code is Mongolian.
+                # The whole text, code lines too: no code is Mongolian.
                 words = language.foreign_words(whole) if foreign else []
                 if words:
                     report.add('foreign_words', sid)
