@@ -69,7 +69,7 @@ def run_notices(bot):
 def test_with_only_inpay_a_plan_leads_straight_to_its_payment_page(customer, bank):
     switch_on(kassa='bot')
     plans = dispatch_local(customer, text='/plans')
-    assert "💳 Plus · 20 000 so'm / 30 days" in [button['label'] for button in buttons(plans)]
+    assert "💳 Plus · 20 000 so'm a month" in [button['label'] for button in buttons(plans)]
     last = plans['messages'][-1]['text']
     assert 'inPAY' in last and COPY['en']['automatic_soon'] not in last and 'receipt' not in last
     shown = dispatch_local(customer, callback_data=token(plans, 'commerce_checkout_plan', plan='plus'))
@@ -203,7 +203,7 @@ def test_a_return_link_that_is_not_the_customers_payment_leads_to_the_plans(cust
     row, _ = checkout.create(other, 'plus', 'bot')
     for link in (f'/start pay_{row.id.hex}', '/start pay_not-a-payment'):
         back = dispatch_local(customer, text=link)
-        assert "💳 Plus · 20 000 so'm / 30 days" in [button['label'] for button in buttons(back)]
+        assert "💳 Plus · 20 000 so'm a month" in [button['label'] for button in buttons(back)]
     assert not bank.count('GET', '/api/v2/payments/'), 'someone else’s payment is not looked up'
 
 
