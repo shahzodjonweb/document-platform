@@ -41,8 +41,11 @@ PROMPT = {
 # The caps of architecture 3.1 with the category block at its 5,000-character
 # budget: DOCUMENT, the block and the largest language block for a new paper
 # or a later part of one; REVISION_SYSTEM, REVISION_NOTE, the block,
-# SELECTED_REVISION and the language block for a change or a repair.
-CAPS = {'new': 10_000, 'part': 10_000, 'change': 12_000, 'selected': 12_000, 'repair': 12_000}
+# SELECTED_REVISION and the language block for a change or a repair. Measured
+# again 2026-11-26, when DOCUMENT gained the specifics note and the language
+# blocks longer stock-phrase lists (the new paper stack went from about 4,930
+# to 5,420 characters).
+CAPS = {'new': 10_500, 'part': 10_500, 'change': 12_000, 'selected': 12_000, 'repair': 12_000}
 
 
 def papers():
@@ -388,7 +391,9 @@ def test_a_papers_wire_schema_has_layouts_and_items_but_no_columns_photos_or_des
                                                                                           DOCUMENT)):
             properties = body['text']['format']['schema']['properties']
             section = properties['sections']['items']['properties']
-            assert set(section) == {'id', 'heading', 'body', 'layout', 'items'}
+            # A new paper lists each part's concrete material before its body (tests/test_section_specifics.py).
+            assert set(section) == {'id', 'heading', 'body', 'layout', 'items'} | (
+                {'specifics'} if 'revision' not in json.loads(body['input']) else set())
             assert section['layout']['enum'] == list(categories.PAPER_LAYOUTS)
             assert set(section['items']['items']['properties']) == {'label', 'text', 'value'}
             assert 'design' not in properties and 'questions' not in properties
@@ -507,7 +512,7 @@ def test_every_paper_stage_meets_its_cap_with_the_block_at_its_budget(entry):
             assert size - block + catalogue.BLOCK_BUDGET <= CAPS[stage], (stage, locale, size - block)
             if entry.status == catalogue.READY:
                 assert size <= CAPS[stage], (stage, locale, size)
-    assert len(categories.DOCUMENT) <= 3_200
+    assert len(categories.DOCUMENT) <= 3_600
 
 
 def test_a_ready_paper_block_within_budget_keeps_every_stage_under_its_cap(monkeypatch):

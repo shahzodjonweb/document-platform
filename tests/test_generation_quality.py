@@ -751,7 +751,9 @@ def test_a_flawed_document_is_repaired_once_for_the_flagged_sections_only(custom
     stored = {s['id']: s for s in unpack(authored.encrypted_data)['content']['sections']}
     for sid, written in first.items():
         fields = calls[0]['text']['format']['schema']['properties']['sections']['items']['properties']
-        expected = wire(fields, sid, deck['repairs'].get(sid, written))
+        # The model's specifics are a working note, taken out before the document is kept.
+        expected = {key: value for key, value in wire(fields, sid, deck['repairs'].get(sid, written)).items()
+                    if key != 'specifics'}
         assert {key: stored[sid][key] for key in expected} == expected, sid
     text = delivered(job)
     assert not scripts.artifact_violations(storage.local(job.artifacts.get().file.object_key), locale)

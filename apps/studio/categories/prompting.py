@@ -48,7 +48,7 @@ DECK = (
     'date, number, price, law, quotation or source that is not in the description or the sources; in a change, '
     'more or fuller information means more of what they say, never new names, numbers or sources.'
 )
-# About 3,050 characters, one text for every paper category and language, sent
+# About 3,470 characters, one text for every paper category and language, sent
 # in place of SYSTEM and DOCUMENT_RULES (architecture 3.1). Those say one
 # section is one page and ask for developed paragraphs that open by introducing
 # the topic, which is wrong for a form, a letter or a list part; so this says
@@ -74,8 +74,12 @@ DOCUMENT = (
     'label is the field id, text the value copied from their words, in the form the field table or the part that '
     'draws it asks for. ____ is written only for a field marked if needed that this paper needs and they did not '
     'give; a field they did not give has no item otherwise.\n'
-    'Never write a person, organisation, date, number, price, law, quotation or source that is not in the '
-    'description or the sources; where a sentence needs a missing fact, write ____ in its place. A part whose row '
+    'Never write a fact of the customer\'s own (a person, organisation, date, number, price, law, quotation or '
+    'source) that is not in the description or the sources; where a sentence needs one, write ____ in its place. '
+    'What a part may say of its subject from general knowledge is set by the category\'s rules. In a prose part, '
+    'fill specifics before the body: three to five items of concrete material it will develop (terms, events with '
+    'their years, places, people, mechanisms, examples), none used by another part; empty in any other part. It '
+    'never shortens a part and is never shown. A part whose row '
     'is grounded holds only what they say: where they say nothing for it, it keeps its formula with ____ for each '
     'missing fact, never filled from general knowledge.\n'
     'A table row is one item: the first cell in label, the last in value, the cells between in text joined by '

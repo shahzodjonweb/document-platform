@@ -754,6 +754,11 @@ tests/test_parallel_parts.py::test_a_long_deck_is_planned_then_written_in_parts_
 tests/test_parallel_parts.py::test_a_plan_that_cannot_be_had_leaves_the_parts_written_one_after_another[http]
 tests/test_parallel_parts.py::test_on_postgres_the_parts_and_the_photos_run_at_once
 
+# Section specifics: asked of a new document before each body; a reply without them is still the paid document
+tests/test_section_specifics.py::test_a_new_document_asks_for_specifics_right_before_the_body
+tests/test_section_specifics.py::test_the_document_is_read_with_or_without_specifics_and_never_keeps_them[missing]
+tests/test_section_specifics.py::test_the_document_is_read_with_or_without_specifics_and_never_keeps_them[malformed]
+
 # Categories, the catalogue: every file loads and holds together, ids stay locked, the owner's words, three-way of(), dark by default
 tests/test_category_catalogue.py::test_every_file_validates_and_the_catalogue_is_fit_to_ship
 tests/test_category_catalogue.py::test_the_lock_holds_every_id_of_the_catalogue

@@ -7,7 +7,7 @@ import re
 # Part of every prompt cache key. A change to any fixed block a model is told —
 # these, provider.SYSTEM and the rules, or a CV's blocks in cv/content.py —
 # bumps it, so no call is served a prefix cached for the old wording.
-VERSION = 'studio-efficient-v7'
+VERSION = 'studio-efficient-v8'
 # The list is read out of the description by a program (apps/studio/topics.py),
 # so it also catches requests about form: "with photos" must not become a section.
 SUBTOPICS = (
@@ -510,6 +510,17 @@ def schema(data, feature, *, final=True, design=False):
         section.pop('notes', None)
     if outline:
         section['body']['maxLength'] = 500
+    # A new document's section lists the concrete material it will use before
+    # its body: strict mode writes fields in schema order, so the body is then
+    # written around names, dates and mechanisms. Measured 2026-11-26 on
+    # gpt-6-luna, five briefs in three languages, two runs each: blind judges
+    # preferred these documents 9 times of 9. A working note only, taken out
+    # of the reply before it is read (provider._without_specifics).
+    if (not outline and not cv and data.get('output_format') != 'pptx' and not data.get('revision')
+            and data.get('_stage') not in ('plan', 'repair')):
+        first = {key: section[key] for key in ('id', 'heading') if key in section}
+        section = {**first, 'specifics': {'type': 'array', 'items': {'type': 'string'}},
+                   **{key: value for key, value in section.items() if key not in first}}
     properties['sections']['items'] = obj(section)
     # A change that asks for a test gets the questions field (and max_questions)
     # it never had; one that removes the test loses it, and the result has none.
@@ -574,8 +585,8 @@ def part_guidance(first, last, total, outline=False, planned=False):
 # a heading (and a deck's layout and photo subject, or a document's one-line
 # note of what a section covers) is a few dozen tokens.
 PLAN_BASE_TOKENS = 3000
-PLAN_SECTION_TOKENS = {'pptx': 90, 'pdf': 160}
-PLAN_NOTE_CHARS = 200
+PLAN_SECTION_TOKENS = {'pptx': 90, 'pdf': 260}
+PLAN_NOTE_CHARS = 400
 
 
 def plan_budget(fmt, count):
@@ -599,8 +610,10 @@ def plan_guidance(fmt, count, options, total):
                 'from this plan several at a time, so every headline must name a distinct point: no two slides cover '
                 'the same ground. Write no slide text yet. ' + layouts.photo_guidance(photos))
     return (f'Plan {count} sections only, in order, preserving section ids. For each: a heading where a new topic '
-            'starts (empty where the section continues the previous topic), and in body one sentence of at most '
-            f'{PLAN_NOTE_CHARS} characters saying what that section covers. The sections are then written from this '
+            'starts (empty where the section continues the previous topic), and in body at most '
+            f'{PLAN_NOTE_CHARS} characters: what that section covers, then the concrete material it will use (named '
+            'people, places, dates, events, cases, examples or mechanisms you are sure of), none planned for another '
+            'section. The sections are then written from this '
             'plan several at a time, so each must cover distinct ground and together they must cover the whole '
             'request in a logical order. Write none of the document yet.')
 

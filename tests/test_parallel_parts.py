@@ -143,7 +143,9 @@ def test_a_long_document_is_planned_with_a_note_per_section(settings, monkeypatc
     def plan(body):
         assert 'Plan 9 sections only' in sent(body)['writing_guidance']
         fields = body['text']['format']['schema']['properties']['sections']['items']['properties']
-        assert set(fields) == {'id', 'heading', 'body'} and fields['body']['maxLength'] <= 200
+        # A short note: what the section covers and the concrete material it will use, never the section itself.
+        assert set(fields) == {'id', 'heading', 'body'} and fields['body']['maxLength'] <= 400
+        assert 'concrete material' in sent(body)['writing_guidance']
         return {'title': 'Harbours', 'sections': [{'id': s['id'], 'heading': TOPICS[n], 'body': f'Covers {TOPICS[n].lower()}.'}
                                                   for n, s in enumerate(sent(body)['outline']['sections'])]}
     job, calls = run(settings, monkeypatch, pages=9, fmt='pdf', plan=plan, prompt='A 9 page guide to how a harbour works')

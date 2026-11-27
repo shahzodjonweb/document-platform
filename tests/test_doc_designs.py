@@ -111,7 +111,8 @@ def test_a_plain_document_is_asked_for_plain_prose():
     body = provider.request_body(CONFIG, data, 'ai.pdf_topic')
     schema = body['text']['format']['schema']
     assert 'design' not in schema['properties']
-    assert set(schema['properties']['sections']['items']['properties']) == {'id', 'heading', 'body'}
+    # specifics is the working note asked before each body (tests/test_section_specifics.py), never stored.
+    assert set(schema['properties']['sections']['items']['properties']) == {'id', 'heading', 'specifics', 'body'}
     assert 'Choose a layout' not in body['instructions'] and '`design`' not in body['instructions']
     guidance = json.loads(body['input'])['writing_guidance']
     assert 'leave the heading empty when the section continues' in guidance
