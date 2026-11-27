@@ -66,6 +66,9 @@ def test_the_year_is_shown_beside_the_month_and_paid_once_on_inpay(local_bot, ba
     assert line in text and '<b>33 000</b>' in text, 'Premium has its year too'
     labels = [button['label'] for button in buttons(plans)]
     assert label in labels and labels.index(label) == labels.index(next(l for l in labels if l.startswith('💳 Plus'))) + 1
+    # The month beside it says its price the same way (the owner's "oyiga 20 000 so'm").
+    month = {'en': "💳 Plus · 20 000 so'm a month", 'uz': "💳 Plus · oyiga 20 000 so'm", 'ru': '💳 Plus · 20 000 сум в месяц'}[locale]
+    assert labels[labels.index(label) - 1] == month
     shown = dispatch_local(customer, callback_data=token(plans, 'commerce_checkout_plan', plan='plus', term='year'))
     row = Checkout.objects.get()
     assert (row.channel, row.term, row.amount) == ('bot', 'year', 132_000)

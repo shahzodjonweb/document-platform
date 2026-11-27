@@ -22,8 +22,8 @@ from .clock import day_label, stamp
 
 COPY = {
     'en': {
-        "card_pay": "💳 {plan} · {price} so'm / 30 days",
-        "card_pay_discount": "💳 {plan} −{percent}% · {price} so'm / 30 days",
+        "card_pay": "💳 {plan} · {price} so'm a month",
+        "card_pay_discount": "💳 {plan} · {price} so'm a month −{percent}%",
         "card_pay_year": "📅 {plan} · {per_month} so'm a month −{percent}%, paid yearly",
         "period_month": "30 days", "period_year": "1 year", "plan_year": "{plan} · 1 year",
         "card_intro": "💳 Pay by card transfer\nPick a plan. You send the money from your bank app, send us the receipt, and we switch your plan on after checking it.",
@@ -60,8 +60,8 @@ COPY = {
         'expired': 'Your subscription has ended. Pick a plan to continue.',
     },
     'uz': {
-        "card_pay": "💳 {plan} · {price} so'm / 30 kun",
-        "card_pay_discount": "💳 {plan} −{percent}% · {price} so'm / 30 kun",
+        "card_pay": "💳 {plan} · oyiga {price} so'm",
+        "card_pay_discount": "💳 {plan} · oyiga {price} so'm −{percent}%",
         "card_pay_year": "📅 {plan} · oyiga {per_month} so'm −{percent}%, yillik to‘lanadi",
         "period_month": "30 kun", "period_year": "1 yil", "plan_year": "{plan} · 1 yil",
         "card_intro": "💳 Karta orqali to‘lov\nTarifni tanlang. Pulni bank ilovangizdan o‘tkazasiz, kvitansiyani yuborasiz, tekshirgach tarifingizni yoqamiz.",
@@ -98,8 +98,8 @@ COPY = {
         'expired': 'Obunangiz tugagan. Davom etish uchun tarif tanlang.',
     },
     'ru': {
-        "card_pay": "💳 {plan} · {price} сум / 30 дней",
-        "card_pay_discount": "💳 {plan} −{percent}% · {price} сум / 30 дней",
+        "card_pay": "💳 {plan} · {price} сум в месяц",
+        "card_pay_discount": "💳 {plan} · {price} сум в месяц −{percent}%",
         "card_pay_year": "📅 {plan} · {per_month} сум в месяц −{percent}%, оплата за год",
         "period_month": "30 дней", "period_year": "1 год", "plan_year": "{plan} · 1 год",
         "card_intro": "💳 Оплата переводом на карту\nВыберите тариф. Вы переводите деньги из своего банковского приложения, присылаете квитанцию, и после проверки мы включаем тариф.",
@@ -543,7 +543,9 @@ def year_label(account, item):
 
 
 def card_label(account, item):
-    """One plan's button on the plans screen: its price today, and how much off while a discount runs.
+    """One plan's monthly button: its price today, and how much off while a discount runs.
+
+    Worded as the yearly button beside it, at the owner's request: "oyiga 20 000 so'm".
 
     An inline button cannot strike a price through, so the regular price is on
     the card above it; the button carries the percentage.

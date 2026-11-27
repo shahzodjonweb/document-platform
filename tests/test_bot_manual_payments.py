@@ -46,8 +46,8 @@ def labels(result):
 def test_plans_offer_card_payment_and_say_automatic_is_coming(customer):
     configure()
     result = dispatch_local(customer, text='/plans')
-    assert "💳 Plus · 20 000 so'm / 30 days" in labels(result)
-    assert "💳 Premium · 60 000 so'm / 30 days" in labels(result)
+    assert "💳 Plus · 20 000 so'm a month" in labels(result)
+    assert "💳 Premium · 60 000 so'm a month" in labels(result)
     assert COPY['en']['automatic_soon'] in result['messages'][-1]['text']
 
 
@@ -223,8 +223,8 @@ def test_the_delivery_loop_drains_payment_messages_too(customer):
 def test_the_default_prices_are_offered_as_soon_as_a_card_is_saved(customer):
     configure(prices=None)
     result = dispatch_local(customer, text='/plans')
-    assert "💳 Plus · 20 000 so'm / 30 days" in labels(result)
-    assert "💳 Premium · 60 000 so'm / 30 days" in labels(result)
+    assert "💳 Plus · 20 000 so'm a month" in labels(result)
+    assert "💳 Premium · 60 000 so'm a month" in labels(result)
 
 
 def test_plans_subscription_and_a_card_payment_replace_the_screen_they_were_opened_from(customer):
@@ -275,8 +275,8 @@ def test_a_discounted_plan_is_offered_at_its_price_with_how_much_off(customer):
     result = dispatch_local(customer, text='/plans')
     # The percentage leads: a narrow phone cuts a long button's tail, and what
     # it must not cut is the discount.
-    assert "💳 Plus −25% · 15 000 so'm / 30 days" in labels(result)
-    assert "💳 Premium · 60 000 so'm / 30 days" in labels(result)
+    assert "💳 Plus · 15 000 so'm a month −25%" in labels(result)
+    assert "💳 Premium · 60 000 so'm a month" in labels(result)
 
 
 def test_the_payment_screen_asks_for_the_discounted_amount_and_shows_the_regular_price(customer):
@@ -323,7 +323,7 @@ def test_a_request_opened_during_a_discount_is_asked_at_the_regular_price_after_
     assert ManualPayment.objects.get(status='awaiting').amount == 20000
 
 
-@pytest.mark.parametrize('locale,label', [('uz', "💳 Plus −25% · 15 000 so'm / 30 kun"), ('ru', '💳 Plus −25% · 15 000 сум / 30 дней')])
+@pytest.mark.parametrize('locale,label', [('uz', "💳 Plus · oyiga 15 000 so'm −25%"), ('ru', '💳 Plus · 15 000 сум в месяц −25%')])
 def test_the_discount_button_leads_with_the_percentage_in_each_language(customer, locale, label):
     configure()
     discount('plus')
