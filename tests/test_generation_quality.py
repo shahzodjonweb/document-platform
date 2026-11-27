@@ -418,6 +418,68 @@ def test_a_passage_that_may_be_content_is_never_sent_back_for_its_language(local
     assert 'wrong_language' not in report.issues and report.to_repair() == []
 
 
+# Model prose with a bracket, a semicolon or "=" in every paragraph, as academic writing has: once all
+# of it was taken for code and left out of the language reading, so a page in the wrong language went
+# out unrepaired.
+RUSSIAN_ACADEMIC = ("Электронная коммерция в Узбекистане (по данным 2023 года) растёт быстрее розничной торговли; "
+                    "основной рост дают маркетплейсы и доставка.\n"
+                    "Банковские карты Humo и Uzcard (вместе более 30 млн) упростили оплату; наличные остаются "
+                    "привычными в регионах.\n"
+                    "Средний чек = около 250 тысяч сумов; повторные покупки составляют почти половину заказов.")
+ENGLISH_ACADEMIC = ("The function of the delta was to filter water (and silt) before it reached the sea; once the "
+                    "rivers were diverted, that role disappeared.\n"
+                    "Fishermen could not return to the old harbour at Muynak; the shoreline had moved more than "
+                    "seventy kilometres away (by 1990).\n"
+                    "Each class of the local school lost pupils as families left; the population fell by a third.")
+
+
+@pytest.mark.parametrize('prompt,body', [
+    ('Elektron tijorat haqida 2 ta slayd', RUSSIAN_ACADEMIC),
+    # Asked for in English with Uzbek picked: an English page is the model following the brief's language.
+    ('Two slides on the Aral Sea disaster', ENGLISH_ACADEMIC),
+], ids=['russian', 'english-brief'])
+def test_prose_with_brackets_semicolons_and_equals_is_read_for_its_language(prompt, body):
+    deck = document(section('s1', 'Ipak yo‘li', SILK_ROAD), section('s2', 'Sahifa', body), title='Hujjat')
+    assert quality.check(deck, locale='uz', fmt='pptx', prompt=prompt).issues.get('wrong_language') == ['s2']
+
+
+@pytest.mark.parametrize('line', [
+    'Amir Temur (1336–1405) davlatni birlashtirdi; markaziy boshqaruvni kuchaytirdi.',
+    'Formula: 6CO₂ + 6H₂O = C₆H₁₂O₆ + 6O₂, ya’ni glyukoza va kislorod hosil bo‘ladi.',
+    '1 tonna = 1000 kg, shuning uchun hisob kilogrammda yuritiladi.',
+    'Средний чек = около 250 тысяч сумов (по данным банков); рост продолжается.',
+    'The function of the delta was to filter water; fishermen could not return to the harbour.',
+    'Each class lost pupils, and import duties rose (by a third).',
+    '- markaziy boshqaruv;',
+    'Quyidagi omillar muhim:',
+    'f(x) funksiyaning hosilasi x nuqtada nolga teng bo‘lsa, u ekstremum nuqta bo‘lishi mumkin.',
+    'Kitob(lar) so‘zidagi -lar qo‘shimchasi ko‘plikni bildiradi.',
+], ids=['dates-and-semicolon', 'formula-in-a-sentence', 'units', 'russian', 'english-keywords',
+        'english-import-class', 'list-item', 'lead-in', 'math', 'grammar'])
+def test_a_line_of_prose_is_never_taken_for_code(line):
+    assert not quality.CODE_LINE.search(line)
+    assert quality._prose(line) == line
+
+
+@pytest.mark.parametrize('sample', [CODE, SQL, (
+    "def greet(name):\n    return f'Salom, {name}!'\nimport numpy as np\nfrom collections import Counter\n"
+    "numbers = [1, 2, 3]\nmy_list.append(4)\nconsole.log(total);\nalert(\"Salom\");\nint main() {\n}\n"
+    "const total = a + b;\ni++\n<div class=\"box\">Salom</div>\n#include <stdio.h>\nprintf(\"%d\", x);\n"
+    "while i < 10:\nelse:\ntotal += price\necho $name;")], ids=['python', 'sql', 'mixed'])
+def test_every_line_of_a_code_sample_is_taken_for_code(sample):
+    assert quality._prose(sample) == ''
+
+
+@pytest.mark.parametrize('line', [
+    'a' * 60000, 'a.' * 30000, '<a ' * 20000, 'x' * 50000 + ' =', ' ' * 2 + 'b' * 50000, ');' * 20000,
+], ids=['one-word', 'dots', 'tags', 'late-equals', 'indented', 'semicolons'])
+def test_reading_a_long_line_for_code_takes_linear_time(line):
+    import time
+    start = time.perf_counter()
+    quality._prose(line)
+    assert time.perf_counter() - start < 0.2
+
+
 def test_a_change_request_that_names_russian_keeps_a_russian_slide():
     deck = document(section('s1', 'Ipak yo‘li', SILK_ROAD), section('s2', 'Улугбек', ULUGBEK_RUSSIAN),
                     section('s3', 'Amir Temur', TEMUR))
