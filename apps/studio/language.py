@@ -289,6 +289,89 @@ def written_in_russian(text):
             and not UZBEK_CYRILLIC_WORDS.search(body) and _russian(body))
 
 
+# --- Words in no language an Uzbek document is written in ----------------------
+#
+# Writing Uzbek, the model sometimes slides into a neighbouring language part-way
+# through a sentence: Mongolian (бөгөөд, болгоно, зохицуулалт), Kazakh or Kyrgyz.
+# Put into Latin letters such a word is no Uzbek word at all ("bogood"), so it is
+# found here and sent back to the model rather than transliterated. Uzbek written
+# in Cyrillic is not one: it is the same word in the other alphabet.
+
+# The Cyrillic letters Russian and Uzbek words are written with; any other —
+# Kazakh, Kyrgyz and Mongolian ә ө ү ң ұ һ і, Tajik ӣ ӯ ҷ, Ukrainian ї є ґ,
+# Serbian ђ ћ џ — is in neither language.
+RUSSIAN_OR_UZBEK = frozenset('абвгдеёжзийклмнопрстуфхцчшщъыьэюяўқғҳ')
+CONSONANTS = 'бвгджзйклмнпрстфхцчшщbcdfghjklmnpqrstvwxz'
+# Mongolian written with Russian letters alone, in a word with no Uzbek letter
+# in it: a doubled vowel Uzbek and Russian write once (эхлээд, зохицуулалт,
+# захиргааны), э after a consonant, where both write е (сэн, тэр), and the
+# endings of its cases and converbs (-аас, -аад, -аар, -ийн, -ын, -ыг; урвалд).
+# Not "оо", nor "аа" before т, л, с or at the end: Russian has соответствие,
+# Uzbek manfaat, taalluqli, taassurot and mutolaa.
+MONGOLIAN = re.compile(r'ээ|уу|аа[гнрхд]|(?<=[' + CONSONANTS + r'])э'
+                       r'|(?:[аэо]{2}[сдр]|ийн|ийг|ын|ыг|лд)$')
+# Its commonest words that show none of that.
+MONGOLIAN_WORDS = frozenset({
+    'нь', 'юм', 'байна', 'байдаг', 'байсан', 'байгаа', 'байв', 'байдал', 'болно', 'болон', 'болох', 'болсон',
+    'болгоно', 'болгох', 'болж', 'гэж', 'гэх', 'гэсэн', 'харин', 'хийх', 'хийж', 'буюу', 'эсвэл', 'оршино', 'чухал',
+    'энэ', 'тэр', 'тул', 'биш', 'улс', 'орон', 'нутаг', 'засаг', 'тухайн', 'хувь', 'эрх',
+})
+# A letter of a script that is neither Latin, Cyrillic nor Greek (whose letters
+# are science's symbols): Armenian, Georgian, Hebrew, Arabic, Indic, Thai, CJK,
+# Hangul. Inside a Latin or Cyrillic word it is never meant (պահպանлах).
+OTHER_SCRIPT = re.compile('[\u0530-\u06ff\u0900-\u0fff\u10a0-\u10ff\u3040-\u30ff\u4e00-\u9fff\uac00-\ud7af]')
+_LETTERS = re.compile(r"[\wЀ-ԯ'‘’ʻʼ`]+")
+# A brief about another language written in Cyrillic may show its words as content
+# ("Qozoq tilidagi o‘zlashma so‘zlar"), so none is sent back for this. Named as a
+# language, not a people: "Mo‘g‘ullar istilosi" is Uzbek history.
+OTHER_CYRILLIC_LANGUAGES = re.compile(
+    r"(?<![\wЀ-ӿ'])(?:qozoq|kazakh|қозоқ|казах|қазақ|qirg'iz|qirgiz|kyrgyz|kirgiz|қирғиз|кирги|кыргыз|mo'g'ul|mongol"
+    r"|мўғул|монгол|tojik|tajik|тожик|тоҷик|таджик|tatar|татар|boshqird|bashkir|бошқирд|башкир|ukrain|украин"
+    r"|belarus|беларус|белорус|bolgar|bulgar|болгар|serb|серб|makedon|macedon|македон|qoraqalpoq|karakalpak"
+    r"|қорақалпоқ|каракалпак)[\wЀ-ӿ']{0,6}?\s*(?:tili|tilida|tilin|tilid|tilig|tilg|tild|til\b|cha\b|chas|chad"
+    r"|language|тил|ча\b|язык)", re.IGNORECASE)
+
+
+def _foreign(word):
+    """Whether one word (look-alikes settled) is in neither Uzbek nor Russian, or mixes in a third script."""
+    if OTHER_SCRIPT.search(word):
+        return bool(LATIN.search(word) or CYRILLIC.search(word))
+    lower = word.lower()
+    letters = [letter for letter in lower if CYRILLIC.match(letter)]
+    if not letters:
+        return False
+    if any(letter.isalpha() and letter not in RUSSIAN_OR_UZBEK for letter in letters):
+        return True
+    if UZBEK_CYRILLIC.search(lower):
+        return False
+    return lower in MONGOLIAN_WORDS or bool(MONGOLIAN.search(lower))
+
+
+def foreign_words(text):
+    """The words of `text` written in a language that is neither Uzbek nor Russian, in order.
+
+    One pass over the words; each is looked at alone, so the time grows with
+    the text. A word that mixes the alphabets is first settled (a lone
+    look-alike put into the alphabet around it), so "mіnі" with a Cyrillic і
+    is a typo, not a foreign word.
+    """
+    from .uzbek import settle
+    found = []
+    for match in _LETTERS.finditer(text or ''):
+        word = match.group(0)
+        if not word.isascii() and _foreign(settle(word)):
+            found.append(word)
+    return found
+
+
+def other_cyrillic_language_named(text):
+    """Whether a brief or change request names Russian or another language written in Cyrillic."""
+    body = normalised(text)
+    return bool(OTHER_CYRILLIC_LANGUAGES.search(body)
+                or re.search(r"(?<![\wЀ-ӿ'])(?:rus(?:cha\w*)?|russian\w*|русск\w*|рус(?:ча\w*)?)(?![\wЀ-ӿ'])", body,
+                             re.IGNORECASE))
+
+
 def written_in(text, *, least_words=8):
     """'en', 'uz', 'ru', or None when the text is too short or too mixed to tell.
 
