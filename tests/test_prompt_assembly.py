@@ -876,7 +876,7 @@ def test_a_detailed_report_with_tables_is_asked_for_full_pages_and_offered_the_t
         'prompt': 'A detailed 10-page report on coastal erosion with examples'}).encrypted_data)
     assert not plain['options']['wants_layouts']
     body = provider.request_body(CONFIG, plain, DOCUMENT)
-    assert f'{max(4, round(words / 95))} paragraphs of 5 to 6 sentences' in sent(body)['writing_guidance']
+    assert f'{paragraphs} or {paragraphs + 1} paragraphs of varied length' in sent(body)['writing_guidance']
     assert 'Choose a layout' not in body['instructions'] and '- table: ' not in body['instructions']
     assert 'layout' not in body['text']['format']['schema']['properties']['sections']['items']['properties']
     assert body['instructions'] == '\n'.join([SYSTEM, DOCUMENT_RULES, language.instructions('en')])

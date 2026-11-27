@@ -317,7 +317,8 @@ def test_a_new_count_paper_is_told_its_rows_sizes_and_title_not_todays_page_guid
     assert said.startswith(f"Write the {len(count['content']['sections'])} sections of this call, each as its row")
     assert '12-page paper' in said and categories.COUNT_SIZES in said and categories.CEILING_SIZES not in said
     assert "title is the paper's title" in said
-    for today in ('Each section is one page', 'paragraphs of 5 to 6 sentences', 'This call writes sections'):
+    for today in ('Each section is one page', 'paragraphs of varied length', 'paragraphs of 5 to 6 sentences',
+                  'This call writes sections'):
         assert today not in said
 
 
