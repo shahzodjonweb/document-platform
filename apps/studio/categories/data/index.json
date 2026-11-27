@@ -24,10 +24,10 @@
  },
  "hints": {
    "pdf.mustaqil_ish": {"uz": "Titul, reja, matn va adabiyotlar · 8–20 sahifa", "ru": "Титул, план, текст и литература · 8–20 страниц", "en": "Title page, plan, text and references · 8–20 pages"},
-   "pdf.kurs_ishi": {"uz": "Kafedra talabidagi titul, kirish, boblar va xulosa", "ru": "Титул по требованиям кафедры, введение, главы и заключение", "en": "A title page as departments ask, introduction, chapters and conclusion"},
+   "pdf.kurs_ishi": {"uz": "Kafedra talabiga mos titul, kirish, boblar va xulosa", "ru": "Титул по требованиям кафедры, введение, главы и заключение", "en": "A title page as departments ask, introduction, chapters and conclusion"},
    "pdf.konspekt": {"uz": "Mavzu, reja, asosiy atamalar va xulosa", "ru": "Тема, план, ключевые термины и выводы", "en": "Topic, plan, key terms and summary"},
-   "pdf.dars_ishlanmasi": {"uz": "Bir darslik reja va o‘quvchilarga tarqatma", "ru": "План одного урока и раздаточный материал", "en": "A one-lesson plan and a handout for pupils"},
-   "pdf.test": {"uz": "Variantli savollar, kalitlar oxirgi sahifada", "ru": "Вопросы с вариантами, ключи на последней странице", "en": "Multiple-choice questions, the key on the last page"},
+   "pdf.dars_ishlanmasi": {"uz": "Bitta dars rejasi va o‘quvchilar uchun tarqatma", "ru": "План одного урока и раздаточный материал", "en": "A one-lesson plan and a handout for pupils"},
+   "pdf.test": {"uz": "Javob variantli savollar, kalitlar oxirgi sahifada", "ru": "Вопросы с вариантами, ключи на последней странице", "en": "Multiple-choice questions, the key on the last page"},
    "pdf.biz": {"uz": "Biznes-reja, tijorat taklifi, hisobot va boshqalar", "ru": "Бизнес-план, коммерческое предложение, отчёт и другое", "en": "Business plan, commercial proposal, report and more"},
    "pdf.xat": {"uz": "Motivatsion xat, ariza, tavsifnoma va boshqalar", "ru": "Мотивационное письмо, заявление, характеристика и другое", "en": "Motivation letter, official request, reference and more"},
    "slides.mavzu": {"uz": "Seminar, mustaqil ish yoki dars uchun", "ru": "Для семинара, самостоятельной работы или урока", "en": "For a seminar, an assignment or a class"},
@@ -35,7 +35,7 @@
    "slides.dars": {"uz": "O‘qituvchi darsda ko‘rsatadigan slaydlar", "ru": "Слайды, которые учитель показывает на уроке", "en": "Slides a teacher shows in class"},
    "slides.tadbir": {"uz": "Tarbiyaviy soat, bayram, ota-onalar yig‘ilishi", "ru": "Классный час, праздник, родительское собрание", "en": "Class hour, holiday, parents’ meeting"},
    "slides.pitch": {"uz": "Investor yoki grant uchun taqdimot", "ru": "Презентация для инвестора или гранта", "en": "A deck for an investor or a grant"},
-   "slides.hisobot": {"uz": "Oy, chorak yoki yil hisoboti", "ru": "Отчёт за месяц, квартал или год", "en": "A report for a month, a quarter or a year"},
+   "slides.hisobot": {"uz": "Oylik, choraklik yoki yillik hisobot", "ru": "Отчёт за месяц, квартал или год", "en": "A report for a month, a quarter or a year"},
    "slides.kompaniya": {"uz": "Kompaniya, mahsulot yoki xizmat taqdimoti", "ru": "Презентация компании, продукта или услуги", "en": "Presenting a company, a product or a service"}
   },
  "other": {"uz": "✏️ Boshqa", "ru": "✏️ Другое", "en": "✏️ Other"},
