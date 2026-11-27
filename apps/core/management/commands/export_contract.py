@@ -300,6 +300,8 @@ def extend_schema(models, endpoint, paths):
         description='Invite friends, earn Plus. A friend counts after opening the bot with `url` and finishing a first task, at most `monthly_cap` a calendar month (Tashkent). Every `step` counted friends earn Plus, one month more each time: 1 month, then 2, then 3. The months follow any paid period. Reading this counts the friends who are due.')
     endpoint('/referrals','post','claimReferral',obj({'id':I,'status':S}),obj({'code':S},['code']))
     endpoint('/artifacts/{id}/deliver','post','deliverArtifactToTelegram',ref('BotDelivery'),obj({}),code='201')
+    endpoint('/artifacts/{id}/link','post','createArtifactDownloadLink',obj({'url':{**S,'description':'`/api/v1/artifacts/{id}/download?link=…`, which needs no session.'},'name':S,'expires_in':{**I,'description':'Seconds the link works for.'}},['url','name','expires_in']),obj({}),
+        description='A download link for Telegram to fetch the file itself (the Mini App\'s WebApp.downloadFile), without the session cookie. It serves this one result of this account for `expires_in` seconds, and stops when the account signs out everywhere. Refused with `file_expired` (410) for a file that is gone.')
     local_asset=obj({'id':UUID,'name':S,'mime_type':S,'size_bytes':I,'download_url':S,'preview_url':nullable_string,'expires_at':KEPT_DT})
     local_message=obj({'id':UUID,'direction':S,'text':S,'buttons':arr(arr(obj({'label':S,'callback_data':nullable_string,'url':nullable_string}))),'asset':{'anyOf':[local_asset,{'type':'null'}]},'created_at':DT},['id','direction','text','buttons','asset','created_at'])
     local_history=obj({'sandbox':B,'transport':S,'messages':arr(local_message)},['sandbox','transport','messages'])
@@ -393,6 +395,7 @@ def schema():
     for path,operation in [('/files/{id}/download','downloadFile'),('/artifacts/{id}/download','downloadArtifact')]:
         endpoint(path,'get',operation,S)
         paths[path]['get']['responses']['200']={'description':'Private file, attachment; no-store','content':{'application/octet-stream':{'schema':{'type':'string','format':'binary'}}}}
+    paths['/artifacts/{id}/download']['get']['parameters'].append({'name':'link','in':'query','schema':S,'description':'A link from `POST /artifacts/{id}/link`, in place of the session.'})
     download=paths['/files/{id}/download']['get']
     download['parameters'].append({'name':'Range','in':'header','schema':S,'description':'One byte range: `bytes=0-99`, `bytes=100-` or `bytes=-500`. Several ranges, anything ill-formed, or an `If-Range` header answer with the whole file and 200.'})
     download['responses']['200']['headers']={'Accept-Ranges':{'schema':{'const':'bytes'}}}

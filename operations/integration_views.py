@@ -7,7 +7,7 @@ from apps.core.errors import DomainError
 from .auth import require_staff,audit,development_access
 from .views import context,finish_render
 from datetime import datetime
-from .integrations import inpay_config,test_inpay,test_autopay,telegram_config,ai_config,google_config,email_config,antibot_config,pixabay_config,manual_payment_config,channel_gate_config,test_channels,CARD_LABELS,save_config,test_telegram,test_email,test_pixabay,control_runner,runner_status,object_storage_config,test_object_storage
+from .integrations import inpay_config,test_inpay,test_autopay,telegram_config,ai_config,google_config,email_config,antibot_config,pixabay_config,manual_payment_config,channel_gate_config,test_channels,CARD_LABELS,save_config,test_telegram,menu_button,apply_menu_button,test_email,test_pixabay,control_runner,runner_status,object_storage_config,test_object_storage
 from .models import IntegrationConfig
 from apps.studio.tuning import EFFORTS,TIERS
 
@@ -28,6 +28,19 @@ for language,labels in {
     'ru':{'writing_effort':'Уровень рассуждений: текст','photo_effort':'Уровень рассуждений: выбор фото','service_tier':'Уровень обработки',
           'model_default':'По умолчанию модели','account_default':'По умолчанию аккаунта','tier_priority':'Приоритетный (быстрее, дороже)',
           'tuning_note':'Каждый вызов занимает около 1 с плюс 9,5 мс на выходной токен, включая рассуждения. Настройка, которую модель не принимает, отбрасывается автоматически.','parallel_parts':'Писать длинные новые документы частями параллельно (сначала план)'},
+}.items():LABELS[language].update(labels)
+
+# The Mini App switch on the bot's card (operations/integrations.py mini_app_ready).
+for language,labels in {
+    'en':{'mini_app':'Open the app inside Telegram (Mini App)',
+          'mini_app_note':'The chat menu button and the bot’s Open app buttons open this web application inside Telegram, signed in to the same account. Needs an HTTPS address; the menu button then replaces the command list (commands still work when typed with /).',
+          'menu_pending':'Saved. Telegram could not be told about the menu button just now; the bot sets it when it next starts.'},
+    'uz':{'mini_app':'Ilovani Telegram ichida ochish (Mini App)',
+          'mini_app_note':'Chatdagi menyu tugmasi va botning «Ilovani ochish» tugmalari shu veb ilovani Telegram ichida, o‘sha hisob bilan ochadi. HTTPS manzil kerak; menyu tugmasi buyruqlar ro‘yxati o‘rnini egallaydi (buyruqlar / bilan yozilganda ishlayveradi).',
+          'menu_pending':'Saqlandi. Menyu tugmasi haqida Telegram’ga hozir xabar berib bo‘lmadi; bot keyingi safar ishga tushganda uni o‘rnatadi.'},
+    'ru':{'mini_app':'Открывать приложение внутри Telegram (Mini App)',
+          'mini_app_note':'Кнопка меню в чате и кнопки бота «Открыть приложение» открывают это веб-приложение внутри Telegram с тем же аккаунтом. Нужен адрес HTTPS; кнопка меню заменяет список команд (команды по-прежнему работают, если набрать /).',
+          'menu_pending':'Сохранено. Сообщить Telegram о кнопке меню сейчас не удалось; бот установит её при следующем запуске.'},
 }.items():LABELS[language].update(labels)
 
 for language, values in {
@@ -394,7 +407,11 @@ def integrations(request):
             key=request.POST.get('integration','telegram')
             if action!='save' and key!='telegram' and not (key in ('email','pixabay','channels','object_storage','inpay','inpay_bot') and action=='test') \
                     and not (key in ('inpay','inpay_bot') and action=='test_autopay'):raise DomainError('invalid_parameters')
-            if action=='save':save_config(key,request.POST);message='saved'
+            if action=='save':
+                before=menu_button() if key=='telegram' else None
+                save_config(key,request.POST);message='saved'
+                # Every chat's menu button follows the Mini App switch at once, and the bot sets it again when it starts.
+                if key=='telegram' and menu_button()!=before and not apply_menu_button():message='menu_pending'
             elif action=='test_autopay':test_autopay('bot' if key=='inpay_bot' else 'web');message='autopay_connected'
             elif action=='test':
                 if key=='email':test_email();message='email_connected'
@@ -432,7 +449,7 @@ def integrations(request):
     # Do not misreport it as stopped using the local development PID check.
     status=labels[runner_status()] if local_controls else labels['managed' if bot['token'] else 'waiting']
     # Never include credentials in the template context.
-    data.update(bot={'username':bot['username'],'webapp_url':bot['webapp_url'],'configured':bool(bot['token']),'status':status},ai={'mode':ai['mode'],'model':ai['model'],'image_model':ai['image_model'],'configured':bool(ai['api_key']),'writing_effort':ai['writing_effort'],'photo_effort':ai['photo_effort'],'service_tier':ai['service_tier'],'parallel_parts':ai['parallel_parts']},efforts=EFFORTS,tiers=TIERS,local_controls=local_controls,notice=labels.get(request.GET.get('notice',''),''))
+    data.update(bot={'username':bot['username'],'webapp_url':bot['webapp_url'],'mini_app':bot['mini_app'],'configured':bool(bot['token']),'status':status},ai={'mode':ai['mode'],'model':ai['model'],'image_model':ai['image_model'],'configured':bool(ai['api_key']),'writing_effort':ai['writing_effort'],'photo_effort':ai['photo_effort'],'service_tier':ai['service_tier'],'parallel_parts':ai['parallel_parts']},efforts=EFFORTS,tiers=TIERS,local_controls=local_controls,notice=labels.get(request.GET.get('notice',''),''))
     data['google'] = {key: google[key] for key in ('enabled','client_id','redirect_uri','configured','ready')}
     data['email'] = {key: email[key] for key in ('enabled','host','port','username','use_tls','use_ssl','from_email','configured','ready')}
     data['antibot'] = {key: antibot[key] for key in ('web_enabled','bot_enabled','site_key','allowed_hostnames','configured','ready')}

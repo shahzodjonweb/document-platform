@@ -13,4 +13,4 @@ def telegram_config():
         from operations.integrations import telegram_config as configured
         return configured()
     except ImportError:
-        return {'token':settings.TELEGRAM_BOT_TOKEN,'username':settings.TELEGRAM_BOT_USERNAME,'webhook_secret':settings.TELEGRAM_WEBHOOK_SECRET,'webapp_url':settings.TELEGRAM_WEBAPP_URL}
+        return {'token':settings.TELEGRAM_BOT_TOKEN,'username':settings.TELEGRAM_BOT_USERNAME,'webhook_secret':settings.TELEGRAM_WEBHOOK_SECRET,'webapp_url':settings.TELEGRAM_WEBAPP_URL,'mini_app':False}

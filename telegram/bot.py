@@ -104,6 +104,17 @@ async def web_url(account,route=''):
     from apps.commerce.providers import telegram_config
     config=await sync_to_async(telegram_config)()
     return app_url(config['webapp_url'],account.locale,route)
+# Open web app becomes Open app once it opens inside Telegram.
+APP_LABELS={'open':'open_app','web_tools':'app_tools'}
+async def open_button(message,account,route='',label='open'):
+    """A page of the web app: inside Telegram (a Mini App) once the owner turns it on, in a private chat,
+    where Telegram takes a web_app button; elsewhere, and while it is off, a link to the browser."""
+    from apps.commerce.providers import telegram_config
+    from operations.integrations import mini_app_ready
+    url=await web_url(account,route)
+    if private_chat(message) and mini_app_ready(await sync_to_async(telegram_config)()):
+        return app_button(text(account,APP_LABELS.get(label,label)),url)
+    return InlineKeyboardButton(text=text(account,label),url=url)
 async def edit_buttons_on():
     from operations.integrations import editor_flags
     return (await sync_to_async(editor_flags)())['edit_buttons']
@@ -139,7 +150,7 @@ async def safe_error(message,account,exc):
         return await show_gate(message,account,edit=own_message(message))
     key='secure' if exc.code in ('password_required','secure_password_entry_required') else 'controls_expired' if exc.code=='controls_expired' else 'ai_format_only' if exc.code=='format_only_change' else None
     rows=[]
-    if key=='secure': rows.append([InlineKeyboardButton(text=text(account,'open'),url=await web_url(account))])
+    if key=='secure': rows.append([await open_button(message,account)])
     if getattr(account,'telegram_user_id',None):
         rows.append([await button(account,'continue_task','controls'),await button(account,'home','home')])
         # Only a used-up weekly allowance is something a plan buys. Every plan has
@@ -1165,7 +1176,7 @@ def build_dispatcher():
             await home_row(account),
             [await button(account,'all_tools','menu'),await button(account,'recent','recent')],
             [await button(account,'account','account'),await button(account,'contacts_button','contacts')],
-            [await button(account,'language_button','language'),InlineKeyboardButton(text=text(account,'open'),url=await web_url(account))],
+            [await button(account,'language_button','language'),await open_button(message,account)],
         ])
         body=(html.escape(notice)+'\n\n' if notice else '')+f'<b>👋 {PRODUCT_NAME}</b>\n{text(account,"home_body")}'
         await render(message,body,rows,edit)
@@ -1180,7 +1191,7 @@ def build_dispatcher():
         draft=await sync_to_async(draft_for)(account)
         rows=await received_edit_rows(message,account,draft.input_ids) if pdf_only else await ai_service_rows(account)
         for index in range(0,len(ids),2): rows.append([await tool_button(account,draft,key) for key in ids[index:index+2]])
-        rows.append([await button(account,'home','home'),InlineKeyboardButton(text=text(account,'web_tools'),url=await web_url(account))])
+        rows.append([await button(account,'home','home'),await open_button(message,account,'tools','web_tools')])
         body=text(account,'choose_pdf_action' if pdf_only else 'choose_tool')
         if pdf_only:
             names=await sync_to_async(lambda:list(FileAsset.objects.filter(account=account,id__in=draft.input_ids).values_list('name',flat=True)))()
@@ -1239,7 +1250,7 @@ def build_dispatcher():
         if quote_error:
             body+='\n\n'+html.escape(bot_error(quote_error,account.locale,account))
             if quote_error.code in ('password_required','unlock_first','secure_password_entry_required'):
-                rows.append([InlineKeyboardButton(text=text(account,'open'),url=await web_url(account))])
+                rows.append([await open_button(message,account)])
         if feature=='pdf.rotate': rows.append([await choice(f'{angle}°',{'angle':angle}) for angle in (90,180,270)])
         if feature=='pdf.to_images' and advanced:
             rows.append([await choice(value.upper(),{'format':value}) for value in ('png','jpg')])
@@ -2774,7 +2785,7 @@ def build_dispatcher():
         company=await sync_to_async(company_details)()
         details=[f"<b>{text(account,'company_title')}</b>"]+[f"{text(account,'company_'+field)}: {html.escape(company[field])}" for field in COMPANY_FIELDS if company[field]]
         about=f"<b>{text(account,'about_bot')}</b>\n{text(account,'about_intro')}\n\n{text(account,'guide')}"
-        await render(message,about+'\n\n'+'\n'.join(details),[[await button(account,'contacts_button','contacts')],[InlineKeyboardButton(text=text(account,'open'),url=await web_url(account))],[await button(account,'home','home')]],edit)
+        await render(message,about+'\n\n'+'\n'.join(details),[[await button(account,'contacts_button','contacts')],[await open_button(message,account)],[await button(account,'home','home')]],edit)
 
     async def account_view(message,account,edit=False):
         await sync_to_async(set_prompt)(account)
@@ -3519,7 +3530,9 @@ def build_dispatcher():
         # opens exactly one document; /web is the home page and carries nothing.
         if draft and draft.input_ids and command=='editor':
             url+='?'+urlencode({'file_id':draft.input_ids[:1]},doseq=True)
-        await render(message,text(account,'web_hint'),[[InlineKeyboardButton(text=text(account,'open'),url=url)],[await button(account,'home','home')]])
+        # /web opens the app's home; /editor without the editor's switch is the old page in the browser.
+        opener=await open_button(message,account) if command=='web' else InlineKeyboardButton(text=text(account,'open'),url=url)
+        await render(message,text(account,'web_hint'),[[opener],[await button(account,'home','home')]])
 
     @dp.message(Command('help','terms','password'))
     async def help_(message):

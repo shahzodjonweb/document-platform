@@ -12,6 +12,6 @@ urlpatterns=[
     path('me',views.me),path('catalog',views.catalog_view),path('plans',views.plans),path('usage',views.usage),path('channels',views.channels),path('channels/check',views.channels_check),
     path('files/uploads',views.uploads),path('files/<uuid:asset_id>',views.file_detail),path('files/<uuid:asset_id>/download',views.file_download),path('files/<uuid:asset_id>/preview',views.file_preview),
     path('secrets',views.secret_create),path('quotes',views.quotes),path('jobs',views.jobs),path('jobs/<uuid:job_id>',views.job_detail),path('jobs/<uuid:job_id>/cancel',views.job_cancel),
-    path('artifacts/<uuid:artifact_id>/download',views.artifact_download),path('artifacts/<uuid:artifact_id>/preview',views.artifact_preview),path('contacts',views.contacts),
+    path('artifacts/<uuid:artifact_id>/download',views.artifact_download),path('artifacts/<uuid:artifact_id>/link',views.artifact_link),path('artifacts/<uuid:artifact_id>/preview',views.artifact_preview),path('contacts',views.contacts),
     path('webhooks/telegram',views.telegram_webhook),
 ]

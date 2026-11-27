@@ -373,12 +373,48 @@ def job_detail(request,job_id):
 @api(('POST',))
 def job_cancel(request,job_id): return job_data(cancel_job(request.account,job_id))
 
-@api()
+# Inside Telegram a result is saved by Telegram itself (the Mini App's WebApp.downloadFile), which
+# fetches the file without the web view's session cookie: it takes a link signed for one result of
+# one account, good for LINK_SECONDS and only while that account's sign-ins stand.
+LINK_SECONDS=300
+LINK_SALT='docmaster.artifact-link'
+TELEGRAM_WEB='https://web.telegram.org'
+
+def linked_account(token,artifact_id):
+    """The account a download link was signed for, or None for one that is forged, old, for another result, or signed out since."""
+    from django.core import signing
+    try: data=signing.loads(token,salt=LINK_SALT,max_age=LINK_SECONDS)
+    except signing.BadSignature: return None
+    if not isinstance(data,dict) or data.get('artifact')!=str(artifact_id): return None
+    account=Account.objects.filter(pk=data.get('account'),deletion_requested_at__isnull=True).first()
+    return account if account and data.get('auth')==account.auth_version else None
+
+@api(('POST',))
+def artifact_link(request,artifact_id):
+    from django.core import signing
+    throttle(request,'artifact_link',30)
+    artifact=Artifact.objects.select_related('file').filter(pk=artifact_id,account=request.account).first()
+    if not artifact: raise DomainError('not_found',404)
+    # Refused here as the download would refuse it, so no link is handed out for a file that is gone.
+    if artifact.file.state!='ready' or artifact.file.expires_at<=timezone.now(): raise DomainError('file_expired',410)
+    from apps.studio.keeping import held_past_its_day,held_refusal
+    if held_past_its_day(artifact.file): raise held_refusal()
+    token=signing.dumps({'artifact':str(artifact.pk),'account':str(request.account.pk),'auth':request.account.auth_version},salt=LINK_SALT)
+    return {'url':f'/api/v1/artifacts/{artifact.pk}/download?link={token}','name':artifact.file.name,'expires_in':LINK_SECONDS}
+
+@api(auth=False)
 def artifact_download(request,artifact_id):
-    artifact=Artifact.objects.select_related('file','job').filter(pk=artifact_id,account=request.account).first()
+    # The session first; without one, a download link signed by artifact_link.
+    linked=request.account is None
+    account=request.account or linked_account(request.GET.get('link',''),artifact_id)
+    if account is None: raise DomainError('authentication_required',401)
+    request.account=account
+    artifact=Artifact.objects.select_related('file','job').filter(pk=artifact_id,account=account).first()
     if not artifact: raise DomainError('not_found',404)
     response=download_asset(request,artifact.file)
-    record_event(request.account,'artifact.downloaded',job=artifact.job)
+    # Telegram Web fetches the file from its own page (core.telegram.org/bots/webapps, downloadFile).
+    if linked: response['Access-Control-Allow-Origin']=TELEGRAM_WEB
+    record_event(account,'artifact.downloaded',job=artifact.job)
     return response
 
 @api(('GET',),auth=False)
