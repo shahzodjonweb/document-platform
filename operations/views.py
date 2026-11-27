@@ -61,7 +61,7 @@ SECTIONS = {'today':'today','overview':'analytics','analytics/acquisition':'anal
             'plans':'plans','system':'system','localization':'localization','editor':'editor','categories':'categories'}
 JOB_STATES = ['queued','running','succeeded','failed','canceled']
 USER_SORTS = {'new':'-created_at','old':'created_at','name':'display_name','plan':'-plan'}
-PLAN_GROUPS = [('group_price',['price_uzs','discount_price_uzs','discount_until']),
+PLAN_GROUPS = [('group_price',['price_uzs','discount_price_uzs','discount_until','yearly_price_uzs']),
                ('group_weekly',['weekly_ai_documents','weekly_file_jobs','edits_per_file']),
                ('group_task',['max_file_mib','max_pages_per_job','concurrent_jobs']),
                ('group_ai',['max_ai_source_pages','max_ai_source_files','max_deck_images','max_ai_input_tokens',
@@ -263,6 +263,7 @@ def page(request, section='overview'):
                                                        'nullable':name in plan_settings.NULLABLE,
                                                        'shared':name in plan_settings.SHARED,
                                                        'date':name in plan_settings.DATES,'discount':name in plan_settings.DISCOUNT,
+                                                       'yearly':name=='yearly_price_uzs',
                                                        'value':row.get(name),'seed':defaults[row['id']].get(name)}
                                                       for name in names if name in plan_settings.FIELDS and name in defaults[row['id']]]}
                                            for group,names in PLAN_GROUPS]}
@@ -322,7 +323,11 @@ def plan_row(key,limits,edited,t,lang='en'):
     label=''
     if offer and offer['discount']:
         label=t['discount_until'].format(date=pricing.day_label(until,lang))
-    return {'id':key,'title':key.capitalize(),'edited':edited,**limits,'offer':offer,'discount_label':label,
+    # The year paid at once, as customers are shown it: a discount never changes it.
+    year=offer['yearly'] if offer else None
+    def spaced(amount): return f'{amount:,}'.replace(',','\u00a0')
+    yearly_label=t['yearly_line'].format(price=spaced(year['price']),per_month=spaced(year['per_month']),percent=year['percent']) if year else ''
+    return {'id':key,'title':key.capitalize(),'edited':edited,**limits,'offer':offer,'discount_label':label,'yearly_label':yearly_label,
             'discount_ended':until is not None and pricing.ends_at(until)<=timezone.now()}
 
 

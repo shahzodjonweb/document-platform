@@ -238,4 +238,5 @@ def test_a_discount_whose_last_day_has_passed_is_not_shown(customer):
     ended_discount('plus')
     text = screen(customer)
     assert "Plus</b> — 30 kun uchun 20 000 so'm" in text
-    assert '<s>' not in text and 'chegirma' not in text and '%' not in text
+    # The yearly line's saving is the only per cent left on the screen.
+    assert '<s>' not in text and 'chegirma' not in text and text.count('%') == text.count('(−45%)') == 2

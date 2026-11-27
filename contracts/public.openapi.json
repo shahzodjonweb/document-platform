@@ -672,6 +672,12 @@
               "refunded"
             ]
           },
+          "term": {
+            "enum": [
+              "month",
+              "year"
+            ]
+          },
           "test": {
             "type": "boolean"
           }
@@ -2921,6 +2927,12 @@
               "string",
               "null"
             ]
+          },
+          "term": {
+            "enum": [
+              "month",
+              "year"
+            ]
           }
         },
         "required": [
@@ -3015,6 +3027,16 @@
                 "regular_price": {
                   "minimum": 0,
                   "type": "integer"
+                },
+                "yearly": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PlanYearly"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "required": [
@@ -3090,6 +3112,12 @@
           },
           "status": {
             "type": "string"
+          },
+          "term": {
+            "enum": [
+              "month",
+              "year"
+            ]
           }
         },
         "required": [
@@ -3138,6 +3166,16 @@
               "integer",
               "null"
             ]
+          },
+          "yearly": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlanYearly"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -3174,6 +3212,42 @@
           "regular",
           "percent",
           "until"
+        ],
+        "type": "object"
+      },
+      "PlanYearly": {
+        "properties": {
+          "days": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "per_month": {
+            "description": "The price spread over twelve months, to the nearest so'm.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "percent": {
+            "description": "Whole per cent saved against `regular`, rounded down; at least 1.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "price": {
+            "description": "So'm paid at once for 365 days. No discount lowers it.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "regular": {
+            "description": "Twelve months at the regular monthly price.",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "price",
+          "per_month",
+          "regular",
+          "percent",
+          "days"
         ],
         "type": "object"
       },
@@ -6359,7 +6433,7 @@
     },
     "/billing/checkout": {
       "post": {
-        "description": "Open an automatic payment for a plan at inPAY and return its payment page; 200 with the one already open for the same plan and price.",
+        "description": "Open an automatic payment for a plan at inPAY and return its payment page; 200 with the one already open for the same plan, term and price.",
         "operationId": "createCheckout",
         "parameters": [
           {
@@ -6380,6 +6454,13 @@
                     "enum": [
                       "plus",
                       "premium"
+                    ]
+                  },
+                  "term": {
+                    "description": "month: 30 days at today's price; year: 365 days at the yearly price, paid once.",
+                    "enum": [
+                      "month",
+                      "year"
                     ]
                   }
                 },
@@ -6560,6 +6641,13 @@
                     "enum": [
                       "plus",
                       "premium"
+                    ]
+                  },
+                  "term": {
+                    "description": "month: 30 days at today's price; year: 365 days at the yearly price, paid once.",
+                    "enum": [
+                      "month",
+                      "year"
                     ]
                   }
                 },

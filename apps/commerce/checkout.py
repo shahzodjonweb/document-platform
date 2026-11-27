@@ -39,7 +39,7 @@ from django.utils import timezone
 from apps.core.errors import DomainError
 
 from . import inpay
-from .manual import PERIOD_DAYS, PLANS, REMINDER_DAYS
+from .manual import PLANS, REMINDER_DAYS
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +61,8 @@ REOPEN_HOURS = 48
 FALLBACK_MINUTES = 10
 FINAL = ('paid', 'refunded')
 DESCRIPTION = {'en': 'DocMaster {plan} — 30 days', 'uz': 'DocMaster {plan} — 30 kun', 'ru': 'DocMaster {plan} — 30 дней'}
+# What inPAY shows the customer for a year paid at once.
+DESCRIPTION_YEAR = {'en': 'DocMaster {plan} — 1 year', 'uz': 'DocMaster {plan} — 1 yil', 'ru': 'DocMaster {plan} — 1 год'}
 
 
 # Where in the admin each kassa is set up, for the owner's alerts.
@@ -203,41 +205,47 @@ def _urls(row, locale):
     return {'return_url': f'{origin}/{locale}/app/pay/{row.id}', 'webhook_url': f'{origin}/api/v1/webhooks/inpay'}
 
 
-def begin(account, plan, channel='web'):
-    """A row for a new payment, or the page already open for this plan and price.
+def begin(account, plan, channel='web', term='month'):
+    """A row for a new payment, or the page already open for this plan, term and price.
 
-    Returns (row, request): `request` is what to ask inPAY, or None when the
-    row already has its page.
+    `term` is 'month' (30 days at today's price) or 'year' (365 days at the
+    yearly price, paid once: a year never renews by itself). Returns (row,
+    request): `request` is what to ask inPAY, or None when the row already
+    has its page.
     """
     from apps.core.customer_auth import auth_limit
     from apps.core.models import Account
     from .models import Checkout
-    if plan not in PLANS:
+    from .pricing import charge_for, term_of
+    term = term_of(term)
+    if plan not in PLANS or term is None:
         raise DomainError('invalid_plan')
     channel = kassa(channel)
     offered = offers()
-    if not availability(account, channel)['available'] or plan not in offered:
+    charged = charge_for(offered[plan], term) if plan in offered else None
+    if not availability(account, channel)['available'] or charged is None:
         raise DomainError('checkout_disabled', 409)
     cfg = _config(channel)
-    price, regular = offered[plan]['price'], offered[plan]['regular']
+    price, regular = charged
     now = timezone.now()
     with transaction.atomic():
         account = Account.objects.select_for_update().get(pk=account.pk)
         # A page opened in the other place belongs to the other kassa: it is not reused here.
         open_ = Checkout.objects.filter(
-            account=account, status='pending', plan=plan, amount=price, api=cfg['api'], livemode=cfg['live'],
+            account=account, status='pending', plan=plan, term=term, amount=price, api=cfg['api'], livemode=cfg['live'],
             channel=channel, created_at__gt=now - timedelta(minutes=REUSE_MINUTES), expires_at__gt=now,
         ).exclude(checkout_url='').order_by('-created_at').first()
         if open_:
             return open_, None
         auth_limit('checkout', str(account.pk), 12, 3600)
         row = Checkout.objects.create(
-            account=account, plan=plan, amount=price, regular_amount=regular, api=cfg['api'], livemode=cfg['live'],
-            channel=channel, expires_at=now + timedelta(hours=OPEN_HOURS))
+            account=account, plan=plan, term=term, amount=price, regular_amount=regular, api=cfg['api'],
+            livemode=cfg['live'], channel=channel, expires_at=now + timedelta(hours=OPEN_HOURS))
     urls = _urls(row, account.locale)
     if not urls:
         return row, {'failure': 'no_web_origin'}
-    description = DESCRIPTION.get(account.locale, DESCRIPTION['en']).format(plan=plan.title())
+    names = DESCRIPTION_YEAR if term == 'year' else DESCRIPTION
+    description = names.get(account.locale, names['en']).format(plan=plan.title())
     return row, {'cfg': cfg, 'reference': str(row.id), 'amount': price, 'description': description, **urls}
 
 
@@ -290,9 +298,9 @@ def complete(row, opened, failure):
     return row
 
 
-def create(account, plan, channel='web'):
-    """A payment for `plan` with its page at inPAY: (row, created)."""
-    row, request = begin(account, plan, channel)
+def create(account, plan, channel='web', term='month'):
+    """A payment for `plan` for a month or a year, with its page at inPAY: (row, created)."""
+    row, request = begin(account, plan, channel, term)
     if request is None:
         return row, False
     opened, failure = ask(request)
@@ -363,6 +371,7 @@ def apply(pk, remote):
     from apps.core.models import Account
     from .models import Checkout, OfferVersion
     from .periods import grant
+    from .pricing import days_for
     from .services import PERIOD
     row = Checkout.objects.select_for_update().get(pk=pk)
     if row.status in FINAL:
@@ -383,7 +392,7 @@ def apply(pk, remote):
                 reported = f"{_money(remote['amount'])} {remote['currency']}" if remote['amount'] is not None else 'no amount'
                 link = admin_url(f'/ops/users/{row.account_id}')
                 _alert('inpay_review', '⚠️ inPAY payment needs a look: ' + problem +
-                       f"\n{row.plan.title()} · {_money(row.amount)} so'm expected, inPAY reports {reported}"
+                       f"\n{row.plan.title()}{' · 1 year' if row.term == 'year' else ''} · {_money(row.amount)} so'm expected, inPAY reports {reported}"
                        f"{'' if remote['live'] else ' (test mode)'} · inPAY id {row.provider_id}"
                        f"\nCustomer: {(payer.display_name if payer else '') or (payer.telegram_user_id if payer else '') or row.account_id}"
                        + (f'\n{link}' if link else '') +
@@ -392,33 +401,36 @@ def apply(pk, remote):
             return row
         account = Account.objects.select_for_update().get(pk=row.account_id)
         period = None
+        # A month or a year, as the row was opened for: the amount inPAY took is that term's price.
+        days, yearly = days_for(row.term), row.term == 'year'
         if row.livemode:
-            # One offer per plan and price, as a card transfer has: a payment
+            # One offer per plan, term and price, as a card transfer has: a payment
             # buys the plan, and its limits are read from the plan as it stands.
             offer, _ = OfferVersion.objects.get_or_create(
-                id=f'inpay:{row.plan}:{row.amount}',
-                defaults={'offer_id': f'inpay_{row.plan}', 'version': 'inpay-v1', 'kind': 'subscription',
-                          'plan': row.plan, 'name': f'{row.plan.title()} · inPAY', 'period_seconds': PERIOD,
-                          'sandbox': False, 'enabled': False})
+                id=f'inpay:{row.plan}:year:{row.amount}' if yearly else f'inpay:{row.plan}:{row.amount}',
+                defaults={'offer_id': f'inpay_{row.plan}' + ('_year' if yearly else ''), 'version': 'inpay-v1',
+                          'kind': 'subscription', 'plan': row.plan,
+                          'name': f'{row.plan.title()} · inPAY' + (' · 1 year' if yearly else ''),
+                          'period_seconds': days * 86400 if yearly else PERIOD, 'sandbox': False, 'enabled': False})
             regular = row.regular_amount
             snapshot = {'id': offer.id, 'offer_id': offer.offer_id, 'version': offer.version, 'kind': offer.kind,
                         'plan': row.plan, 'name': offer.name, 'currency': row.currency, 'price': row.amount,
                         'regular_price': regular, 'discounted': regular is not None and row.amount < regular,
-                        'provider': PROVIDER, 'provider_payment': row.provider_id,
-                        'period_seconds': PERIOD_DAYS * 86400, 'period_days': PERIOD_DAYS}
-            row.payment, period = grant(account, row.plan, PERIOD_DAYS, provider=PROVIDER,
+                        'provider': PROVIDER, 'provider_payment': row.provider_id, 'term': row.term,
+                        'period_seconds': days * 86400, 'period_days': days}
+            row.payment, period = grant(account, row.plan, days, provider=PROVIDER,
                                         charge=f'{PROVIDER}:{row.provider_id}', amount=row.amount,
                                         currency=row.currency, offer=offer, snapshot=snapshot, occurred_at=now, now=now)
         row.status, row.paid_at, row.failure = 'paid', now, ''
         row.receipt_url = remote.get('receipt') or ''
         row.save()
         _notice(row, 'paid' if row.livemode else 'paid_test')
-        _action(row, 'checkout.paid', {'days': PERIOD_DAYS, 'ends_at': period.ends_at.isoformat()} if period else {})
+        _action(row, 'checkout.paid', {'days': days, 'ends_at': period.ends_at.isoformat()} if period else {})
         if row.livemode:
             from apps.core.links import admin_url
             link = admin_url(f'/ops/payments/{row.payment_id}')
             _alert('inpay_paid', "⚡ inPAY payment received\n"
-                   f"{row.plan.title()} · {_money(row.amount)} so'm\n"
+                   f"{row.plan.title()}{' · 1 year' if yearly else ''} · {_money(row.amount)} so'm\n"
                    f"From: {account.display_name or account.telegram_user_id or account.pk}" + (f'\n{link}' if link else ''))
         return row
     if remote['state'] in ('failed', 'cancelled') and row.status == 'pending':
@@ -575,5 +587,5 @@ def _alert(kind, text, once_an_hour=False):
 def _action(row, action, metadata):
     from .models import CommerceAction
     CommerceAction.objects.create(account_id=row.account_id, actor=None, action=action, target=str(row.id),
-                                  metadata={'plan': row.plan, 'amount': row.amount, 'currency': row.currency,
+                                  metadata={'plan': row.plan, 'term': row.term, 'amount': row.amount, 'currency': row.currency,
                                             'provider_id': row.provider_id, 'live': row.livemode, **metadata})

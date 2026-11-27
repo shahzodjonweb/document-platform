@@ -4,7 +4,7 @@
 <div class="page-heading">
   <div>
     <p class="eyebrow">{{ f.manual_detail }}</p>
-    <h1>{{ manual.plan|title }} · {{ amount }}</h1>
+    <h1>{{ manual.plan|title }}{% if manual.term == 'year' %} · {{ f.term_year }}{% endif %} · {{ amount }}</h1>
     <div class="profile-meta">
       <span class="badge status-{{ manual.status }}">{{ status_label }}</span>
       <span class="mono">{{ manual.reference }}</span>
@@ -21,7 +21,7 @@
       <h2>{{ f.detail }}</h2>
       <dl>
         <dt>{{ f.account }}</dt><dd><a class="table-link" href="/ops/users/{{ manual.account_id }}?lang={{ lang }}">{{ manual.account.display_name|default:manual.account.username|default:manual.account_id }}</a></dd>
-        <dt>{{ f.plan }}</dt><dd>{{ manual.plan|title }}</dd>
+        <dt>{{ f.plan }}</dt><dd>{{ manual.plan|title }}{% if manual.term == 'year' %} · <span class="badge info" data-testid="manual-term">{{ f.term_year }}</span>{% endif %}</dd>
         <dt>{{ f.amount }}</dt><dd><span class="amount">{{ amount }}</span></dd>
         {% if current_price %}<dt>{{ f.current_price }}</dt><dd>{{ current_price }}</dd>{% endif %}
         {% if period_days %}<dt>{{ f.period_label }}</dt><dd>{{ period_days }}</dd>{% endif %}

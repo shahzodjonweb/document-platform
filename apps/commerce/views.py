@@ -48,7 +48,7 @@ def subscription(request): return subscription_data(request.account)
 @endpoint()
 def transactions(request):
     # Plus months earned by inviting friends cost nothing; the invitations page lists them.
-    return {'results':[payment_data(payment) for payment in Payment.objects.filter(account=request.account).exclude(provider='referral').order_by('-occurred_at')[:100]]}
+    return {'results':[payment_data(payment) for payment in Payment.objects.filter(account=request.account).exclude(provider='referral').select_related('invoice').order_by('-occurred_at')[:100]]}
 
 @endpoint(('GET','POST'))
 def referrals(request):
@@ -116,7 +116,8 @@ def manual_payments(request):
         return {**manual.options(request.account),'payment':manual_payment_data(manual.latest_payment(request.account)),
                 'checkout':checkout_data(checkout.latest(request.account),owner=True)}
     throttle(request,'manual-payments',20)
-    payment,created=manual.create(request.account,body(request).get('plan'),'web')
+    data=body(request)
+    payment,created=manual.create(request.account,data.get('plan'),'web',data.get('term'))
     return JsonResponse(manual_payment_data(payment),status=201 if created else 200)
 
 @endpoint(('GET','DELETE'))
@@ -141,7 +142,9 @@ def manual_payment_receipt(request,payment_id):
 def checkouts(request):
     """Automatic payment through inPAY: open a payment for a plan and return its page."""
     throttle(request,'checkouts',10)
-    row,created=checkout.create(request.account,body(request).get('plan'),'web')
+    data=body(request)
+    # `term`: 'month' (the default) or 'year', paid once for 365 days.
+    row,created=checkout.create(request.account,data.get('plan'),'web',data.get('term'))
     return JsonResponse(checkout_data(row,owner=True),status=201 if created else 200)
 
 def _renewal_data(account):
