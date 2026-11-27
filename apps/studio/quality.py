@@ -5,10 +5,11 @@ compiled result, because the model does not always deliver what it is asked
 and a long document is written in several calls that cannot see each other's
 mistakes. Everything here is deterministic and cheap. What can be put right
 without the model is put right (alphabet, stray markdown, a continuing page's
-repeated heading); what cannot — a passage plainly in the wrong language, an
-empty section, a slide that repeats another — is sent back to the model once,
-for those sections only (`repair`), and the rest of the document is kept as it
-was. A change to selected pages never touches the others, not even to tidy them.
+repeated heading); what cannot — a passage plainly in the wrong language, words
+of another language slipped into Uzbek (Mongolian бөгөөд, which put into Latin
+letters would be nonsense), an empty section, a slide that repeats another — is
+sent back to the model once, for those sections only (`repair`), and the rest of
+the document is kept as it was. A change to selected pages never touches the others, not even to tidy them.
 
 A change request is also held to the model's own plan of it (`edit_plan`, a
 list of the parts of the request and the sections each goes in): a part whose
@@ -40,6 +41,8 @@ REPAIR_SECONDS_PER_CALL = 100
 DUPLICATE_SECTION = 0.6
 DUPLICATE_PARAGRAPH = 0.8
 PARAGRAPH_WORDS = 10
+# How many of a section's foreign words its repair line quotes.
+FOREIGN_WORDS_QUOTED = 8
 
 
 @dataclass
@@ -51,6 +54,9 @@ class Report:
     missing_subtopics: list = field(default_factory=list)
     # (section ids, instruction) for each part of a change request left undone.
     unapplied: list = field(default_factory=list)
+    # section id -> the words of another language found in it ('foreign_words'), as the
+    # repair call sees them (in Latin letters). Sent to the model, never logged.
+    foreign: dict = field(default_factory=dict)
 
     def add(self, code, item):
         bucket = self.issues.setdefault(code, [])
@@ -62,7 +68,7 @@ class Report:
 
     def to_repair(self):
         """Section ids that only the model can put right (repair() puts them in document order)."""
-        return list(dict.fromkeys(self.ids('wrong_language', 'empty_section', 'duplicate_section',
+        return list(dict.fromkeys(self.ids('wrong_language', 'foreign_words', 'empty_section', 'duplicate_section',
                                            'duplicate_paragraph', 'repeated_heading', 'unapplied',
                                            'pictures_missing')))
 
@@ -265,6 +271,12 @@ def check(content, *, locale, fmt, prompt='', request=None, selected=None, expec
     # recorded as foreign_passage, never rewritten.
     brief = 'ru' if language.written_in_russian(prompt) else language.written_in(prompt, least_words=4)
     named = _languages_named(prompt + '\n' + (request or ''))
+    # Words of a language that is neither Uzbek nor Russian (Mongolian бөгөөд, Kazakh
+    # әлем), and words mixing in a third script, in an Uzbek document: put into Latin
+    # letters they would read as nonsense, so the sentence is written again instead.
+    # Not when the brief or the change request is about Russian or another language
+    # written in Cyrillic: its words may be the content.
+    foreign = locale == 'uz' and not language.other_cyrillic_language_named(prompt + '\n' + (request or ''))
     wrong, judged = [], 0
     headings, compared, paragraphs = {}, [], []
     current = ''  # the heading over the page being read: a continuing page has none of its own
@@ -285,12 +297,20 @@ def check(content, *, locale, fmt, prompt='', request=None, selected=None, expec
                 report.add('empty_section', sid)
             if section.get('layout') != 'quote':
                 judged += 1
-                written = language.written_in(_prose(section_text(section, notes=True)))
+                whole = section_text(section, notes=True)
+                written = language.written_in(_prose(whole))
                 if written and written != locale:
                     if written == brief or (written == 'ru' and 'ru' not in named):
                         wrong.append(sid)
                     else:
                         report.add('foreign_passage', sid)
+                # The whole text, code-like lines too: a paragraph with a bracket or a
+                # semicolon in it reads as code to _prose, and no code is Mongolian.
+                words = language.foreign_words(whole) if foreign else []
+                if words:
+                    report.add('foreign_words', sid)
+                    report.foreign[sid] = list(dict.fromkeys(scripts.to_script(word, locale)
+                                                             for word in words))[:FOREIGN_WORDS_QUOTED]
         counted = not bare and section.get('layout') not in STRUCTURAL
         heading = ' '.join(_words(section.get('heading', '')))
         if heading and fmt != 'pptx' and heading == current:
@@ -605,6 +625,14 @@ def request_text(report, locale, fmt, ids):
     if pick('wrong_language'):
         lines.append(f'{", ".join(pick("wrong_language"))}: written in the wrong language. Rewrite each completely '
                      f'in {name}, keeping its meaning, its role in the document, its layout and its length.')
+    for sid in pick('foreign_words'):
+        if sid in pick('wrong_language'):
+            continue
+        quoted = ', '.join(f'"{word}"' for word in report.foreign.get(sid, []))
+        lines.append(f'{sid}: words of another language (Mongolian, Kazakh, Kyrgyz) or another script slipped into '
+                     f'the {name} text' + (f', such as these, as they read now: {quoted}' if quoted else '')
+                     + f'. Rewrite in {name} every sentence that is not entirely {name}, keeping its meaning; keep the '
+                     f'sentences already in {name} word for word.')
     if pick('empty_section'):
         lines.append(f'{", ".join(pick("empty_section"))}: empty. Write each as the {unit} that belongs at this '
                      f'point of the document, following writing_guidance (heading, text and, for a slide, speaker '
@@ -743,13 +771,15 @@ def finish(config, data, content, *, job, deadline=None, mode='openai', plan=Non
         content, fixed = enforce(content, locale, selected, skip=skip)
         outcome, after = None, report
         wanted = Report(issues={code: list(report.issues[code]) for code in repair_codes
-                                if report.issues.get(code)})
+                                if report.issues.get(code)}, foreign=report.foreign)
         if mode == 'openai' and wanted.to_repair():
             content, outcome = repair(config, data, content, wanted, job=job, deadline=deadline)
             if outcome == 'repaired':
                 content, _ = tidy(content, selected)
-                content, _ = enforce(content, locale, selected, skip=skip)
+                # Checked before the alphabet is put right, so what the repair left in
+                # another language or alphabet is still seen (and counted in 'left').
                 after = check(content, **scope, expected=None, subtopics=[])
+                content, _ = enforce(content, locale, selected, skip=skip)
         summary = {'found': report.summary(), 'transliterated': len(fixed), 'repair': outcome,
                    'left': {code: n for code, n in after.summary().items()
                             if code not in ('script', 'continued_heading')}}
@@ -782,8 +812,8 @@ def finish(config, data, content, *, job, deadline=None, mode='openai', plan=Non
         content, outcome = repair(config, data, content, report, job=job, deadline=deadline)
         if outcome == 'repaired':
             content, _ = tidy(content, selected)
-            content, _ = enforce(content, locale, selected)
             after = checked(content)
+            content, _ = enforce(content, locale, selected)
             content = _continuing(content, after.ids('continued_heading'))
     summary = {'found': report.summary(), 'transliterated': len(fixed), 'repair': outcome,
                'left': {code: n for code, n in after.summary().items() if code not in ('script', 'continued_heading')}}

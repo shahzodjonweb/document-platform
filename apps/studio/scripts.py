@@ -14,8 +14,11 @@ right what it can without losing meaning:
   own: "Мoсква" is Moskva, not Mockva; "Pythоn" stays Python in Russian.
 
 A whole passage written in the wrong language is not transliterated into
-gibberish: apps/studio/quality.py sends it back to the model. Only verbatim
-source quotes (citations) keep their own alphabet.
+gibberish: apps/studio/quality.py sends it back to the model, and so are words
+of a language that is neither Uzbek nor Russian in an Uzbek document (Mongolian
+бөгөөд, Kazakh әлем: language.foreign_words). What still comes back that way is
+put into Latin here as the last resort. Only verbatim source quotes (citations)
+keep their own alphabet.
 """
 import re
 import unicodedata

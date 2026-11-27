@@ -23,6 +23,11 @@ in place of today's "facts" (CATEGORY_INSTRUCTIONS), and its shortfall read in
 rendered pages alone, since its title page, contents and references are pages
 that hold no prose. What it writes is finished again before the paper is
 drawn a second time. A document without a category is extended as it always was.
+
+There is no repair after this call, so an addition to an Uzbek document that
+slid into another language (Mongolian бөгөөд, Kazakh әлем: language.foreign_words)
+is left out, and its section keeps the text that was checked: put into Latin
+letters those words would read as nonsense.
 """
 import json
 import math
@@ -224,11 +229,12 @@ def top_up(config, data, content, target_pages, rendered_pages, *, job, deadline
             futures = [pool.submit(_outcome, send, body) for body, _ in calls]
             outcomes = [future.result() for future in futures]
     additions = {}
+    foreign = foreign_reader(data)
     for (body, attempt), (raw, elapsed, failure) in zip(calls, outcomes):
         answer = _answer(attempt, raw, elapsed, failure)
         for entry in (answer or {}).get('sections', []):
             addition = entry['addition'].strip()
-            if addition and entry['id'] not in additions:
+            if addition and entry['id'] not in additions and not foreign(addition):
                 additions[entry['id']] = addition
     if not additions:
         return content
@@ -242,6 +248,16 @@ def top_up(config, data, content, target_pages, rendered_pages, *, job, deadline
             section = {**section, 'body': body}
         extended.append(section)
     return {**content, 'sections': extended}
+
+
+def foreign_reader(data):
+    """`text -> words of another language in it`, for the language `data` is written in (none but Uzbek's)."""
+    from . import language
+    revision = data.get('revision') or {}
+    about = (revision.get('original_prompt') or data.get('prompt') or '') + '\n' + (revision.get('request') or '')
+    if data.get('output_locale') != 'uz' or language.other_cyrillic_language_named(about):
+        return lambda text: []
+    return language.foreign_words
 
 
 def _outcome(send, body):
