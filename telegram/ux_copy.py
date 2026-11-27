@@ -18,6 +18,9 @@ MESSAGES = {
     'recent': ('🗂 Recent tasks', '🗂 So‘nggi vazifalar', '🗂 Последние задачи'),
     'account': ('👤 My account', '👤 Hisobim', '👤 Мой аккаунт'),
     'language_button': ('🌐 Language', '🌐 Til', '🌐 Язык'),
+    # The web app opened inside Telegram (the Mini App switch): bot.open_button.
+    'open_app': ('📱 Open app', '📱 Ilovani ochish', '📱 Открыть приложение'),
+    'app_tools': ('📱 More tools in the app', '📱 Ilovada ko‘proq vositalar', '📱 Больше инструментов в приложении'),
     'continue_task': ('▶️ Continue task', '▶️ Davom etish', '▶️ Продолжить'),
     'choose_tool': ('🧰 What would you like to do?', '🧰 Nima qilmoqchisiz?', '🧰 Что нужно сделать?'),
     'choose_pdf_action': ('📄 PDF received. What shall we do?\nTo merge, send another PDF.', '📄 PDF qabul qilindi. Nima qilamiz?\nBirlashtirish uchun yana PDF yuboring.', '📄 PDF получен. Что сделаем?\nДля объединения отправьте ещё один PDF.'),

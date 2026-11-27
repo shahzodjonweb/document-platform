@@ -49,7 +49,33 @@ def telegram_config():
     return {'token':secret.get('token') or settings.TELEGRAM_BOT_TOKEN,
             'username':cfg.get('username') or settings.TELEGRAM_BOT_USERNAME,
             'webhook_secret':secret.get('webhook_secret') or settings.TELEGRAM_WEBHOOK_SECRET,
-            'webapp_url':cfg.get('webapp_url') or settings.TELEGRAM_WEBAPP_URL}
+            'webapp_url':cfg.get('webapp_url') or settings.TELEGRAM_WEBAPP_URL,
+            # The web app opened inside Telegram (a Mini App): the chat's menu button and the
+            # bot's Open app buttons. Off until the owner ticks it on the bot's card.
+            'mini_app':cfg.get('mini_app') is True}
+
+def mini_app_ready(cfg=None):
+    """Whether the bot opens the web app inside Telegram: switched on, and at an address Telegram takes (https)."""
+    cfg = cfg or telegram_config()
+    return cfg.get('mini_app') is True and str(cfg.get('webapp_url') or '').startswith('https://')
+
+def menu_button(cfg=None):
+    """The chat menu button as the Bot API takes it: the app while the Mini App is on, else the command list."""
+    cfg = cfg or telegram_config()
+    if not mini_app_ready(cfg): return {'type':'commands'}
+    from apps.core.brand import PRODUCT_NAME
+    return {'type':'web_app','text':PRODUCT_NAME,'web_app':{'url':cfg['webapp_url']}}
+
+def apply_menu_button():
+    """Show the saved menu button in every chat now, not at the bot's next start. Best effort: False when Telegram
+    could not be told, and the bot sets it again when it starts."""
+    cfg=telegram_config()
+    if not cfg['token']: return False
+    try:
+        req=urllib.request.Request('https://api.telegram.org/bot'+cfg['token']+'/setChatMenuButton',
+                                   data=json.dumps({'menu_button':menu_button(cfg)}).encode(),headers={'Content-Type':'application/json'})
+        with urllib.request.urlopen(req,timeout=10) as response: return bool(json.loads(response.read(65536)).get('ok'))
+    except Exception: return False
 
 # What the new editors run on, all off until the owner turns them on, and the
 # seconds of free work one account may use a day. Editable at /ops/editor
@@ -584,7 +610,9 @@ def save_config(key, values):
         except ValueError:raise DomainError('invalid_webapp_url') from None
         if not valid_host or not valid_port or any(ord(c)<33 for c in url):raise DomainError('invalid_webapp_url')
         if parsed.scheme != 'https' and not (settings.DEBUG and parsed.scheme=='http' and parsed.hostname in ('localhost','127.0.0.1')): raise DomainError('invalid_webapp_url')
-        cfg.update(username=username,webapp_url=url)
+        # A form without the box (an older page, a script) leaves the switch as it was.
+        mini_app=_boolean(values.get('mini_app')) if 'mini_app' in values else cfg.get('mini_app') is True
+        cfg.update(username=username,webapp_url=url,mini_app=mini_app)
     elif key == 'ai':
         mode = values.get('mode','local_fixture')
         if mode not in ('local_fixture','openai','disabled') or (mode=='local_fixture' and not settings.DEBUG): raise DomainError('invalid_parameters')

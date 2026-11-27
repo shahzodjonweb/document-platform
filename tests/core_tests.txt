@@ -7614,3 +7614,9 @@ tests/test_kept_drafts.py::test_a_held_file_is_told_to_be_uploaded_again_whereve
 tests/test_kept_drafts.py::test_a_page_picture_of_a_held_source_lasts_no_longer_than_its_day
 tests/test_inpay_checkout.py::test_a_key_inpay_does_not_take_fails_the_connection_test
 tests/test_inpay_checkout.py::test_the_admin_shows_what_inpay_answered_to_a_failed_connection_test
+
+# The web app inside Telegram (Mini App): the owner's switch makes the menu button and the bot's Open app buttons open it,
+# and Telegram saves a result from a link signed for that result alone.
+tests/test_mini_app.py::test_the_bot_sets_the_menu_button_it_is_configured_with
+tests/test_mini_app.py::test_open_buttons_open_the_app_inside_telegram_only_when_switched_on_and_in_a_private_chat
+tests/test_mini_app.py::test_a_download_link_serves_one_result_without_the_session_for_five_minutes

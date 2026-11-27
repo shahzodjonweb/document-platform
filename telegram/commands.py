@@ -2,7 +2,7 @@
 import logging
 
 from aiogram.exceptions import TelegramAPIError
-from aiogram.types import BotCommand, BotCommandScopeChat, MenuButtonCommands
+from aiogram.types import BotCommand, BotCommandScopeChat, MenuButtonCommands, MenuButtonWebApp, WebAppInfo
 from asgiref.sync import sync_to_async
 from django.db import transaction
 
@@ -63,6 +63,15 @@ COMMANDS = {
 }
 
 
+def chat_menu_button(config):
+    """The menu button beside the message field: the app while the Mini App is on (operations.integrations.menu_button), else the commands."""
+    from operations.integrations import menu_button
+    button = menu_button(config)
+    if button['type'] == 'web_app':
+        return MenuButtonWebApp(text=button['text'], web_app=WebAppInfo(url=button['web_app']['url']))
+    return MenuButtonCommands()
+
+
 async def install_commands(bot):
     # A default menu covers clients with an unsupported or missing language code.
     for locale in ('', *COMMANDS):
@@ -71,7 +80,8 @@ async def install_commands(bot):
             [BotCommand(command=command, description=description) for command, description in commands.items()],
             language_code=locale,
         )
-    await bot.set_chat_menu_button(menu_button=MenuButtonCommands())
+    from apps.commerce.providers import telegram_config
+    await bot.set_chat_menu_button(menu_button=chat_menu_button(await sync_to_async(telegram_config)()))
 
 
 async def install_chat_commands(bot, chat_id, locale):
